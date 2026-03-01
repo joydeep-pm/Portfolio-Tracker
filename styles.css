@@ -117,6 +117,12 @@ body {
   background: rgba(235, 183, 191, 0.24);
 }
 
+.status-pill-warn {
+  color: #7d5a1b;
+  border-color: rgba(196, 154, 69, 0.42);
+  background: rgba(246, 226, 179, 0.42);
+}
+
 .status-pill-ok {
   color: #235f45;
   border-color: rgba(56, 157, 109, 0.34);

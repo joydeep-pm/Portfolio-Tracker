@@ -119,3 +119,41 @@ Backend mode sends:
 - UI behavior on failures:
   - keeps last good data visible
   - shows status chip (`Data delayed • retrying` or temporary sync issue)
+
+## Mock API Mode (Activation Bridge)
+
+Until broker account activation is complete, this repo now includes local/mock contract endpoints compatible with the frontend adapter:
+
+- `GET /api/v1/market/bootstrap`
+- `GET /api/v1/market/poll`
+- `GET /api/v1/comparison/series`
+
+These endpoints return realistic NSE/BSE-shaped payloads and allow end-to-end adapter flow testing before live Angel credentials are usable.
+
+### Frontend config for mock mode
+
+```html
+<script>
+  window.PORTFOLIO_TRACKER_CONFIG = {
+    dataMode: "backend",
+    apiBaseUrl: "/api/v1",
+    authToken: "mock-token"
+  };
+</script>
+```
+
+The mock backend ignores token validation, but a non-empty token is still required by the frontend adapter contract.
+
+## Angel Health Check Endpoint
+
+Use one-click readiness validation before attempting real Angel session generation:
+
+- `GET /api/angel/health`
+
+Response includes env presence checks for:
+- `ANGEL_API_KEY`
+- `ANGEL_CLIENT_CODE`
+- `ANGEL_PIN`
+- `ANGEL_TOTP_SECRET`
+
+This endpoint does not authenticate with Angel; it verifies backend configuration readiness only.

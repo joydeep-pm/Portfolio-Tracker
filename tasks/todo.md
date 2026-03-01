@@ -91,3 +91,38 @@
   - comparison series payload mapping to chart points
 - Manual constraints acknowledged:
   - backend endpoints are contract-defined but not available in this repo, so end-to-end fetch verification is pending staging/backend availability.
+
+## Activation Bridge Plan (2026-03-02)
+- [x] Add mock backend contract endpoints for `/api/v1/market/bootstrap`, `/api/v1/market/poll`, and `/api/v1/comparison/series`.
+- [x] Add shared mock market generator/state helper for consistent payloads across endpoints.
+- [x] Add one-click Angel integration health endpoint at `/api/angel/health` to validate env readiness.
+- [x] Refine topbar status behavior for stale/error/freshness clarity while backend activation is pending.
+- [x] Update README with mock-mode usage and health-check workflow.
+- [x] Verify syntax and API contract behavior using local Node checks and endpoint invocation scripts.
+
+## Activation Bridge Verify Plan Check-In
+- Scope: unblock integration progress while live Angel account activation is pending.
+- Safety: keep existing frontend adapter contracts intact; new APIs must conform to already-implemented DTOs.
+
+## Activation Bridge Review
+- Added backend mock contract routes:
+  - `api/v1/market/bootstrap.js`
+  - `api/v1/market/poll.js`
+  - `api/v1/comparison/series.js`
+- Added shared in-memory market simulator:
+  - `api/_lib/mockMarket.js`
+- Added env-readiness probe endpoint:
+  - `api/angel/health.js`
+- Frontend status polish:
+  - freshness chip now includes relative time + `asOf` timestamp
+  - stale health uses warning visual style, errors use alert style
+- Documentation updates:
+  - mock backend mode config and health-check workflow in `README.md`
+- Validation:
+  - `node --check app.js`
+  - `node --check api/_lib/mockMarket.js`
+  - `node --check api/v1/market/bootstrap.js`
+  - `node --check api/v1/market/poll.js`
+  - `node --check api/v1/comparison/series.js`
+  - `node --check api/angel/health.js`
+  - `node --test tests/adapterCore.test.js tests/mockApi.test.js` (13/13 passing)

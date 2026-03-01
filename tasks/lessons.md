@@ -7,3 +7,8 @@
 - User correction: remove borrowed third-party branding/copy references from the project.
 - Preventive rule: run a final copy audit for borrowed labels/phrasing before closing UI tasks, especially after screenshot-inspired implementations.
 - Preventive rule: prefer neutral product-owned naming in headings, nav labels, and docs from v1 instead of retrofitting later.
+
+## 2026-03-02
+- User correction: operational setup guidance was too technical for the user’s current workflow.
+- Preventive rule: when guiding third-party onboarding steps (broker/API dashboards), default to short, action-only checklists with minimal jargon first.
+- Preventive rule: sequence instructions by immediate user action (what to click and where) before architecture details, and defer technical internals until asked.

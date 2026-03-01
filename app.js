@@ -1114,10 +1114,11 @@ function renderComparison() {
 function freshnessLabel(nowMs) {
   if (!runtimeState.lastSuccessAtMs) return "No successful sync yet";
   const deltaSec = Math.max(0, Math.floor((nowMs - runtimeState.lastSuccessAtMs) / 1000));
-  if (deltaSec < 2) return "Updated just now";
-  if (deltaSec < 60) return `Updated ${deltaSec}s ago`;
+  const asOfLabel = runtimeState.lastAsOfLabel ? ` • as of ${new Date(runtimeState.lastAsOfLabel).toLocaleTimeString("en-IN")}` : "";
+  if (deltaSec < 2) return `Updated just now${asOfLabel}`;
+  if (deltaSec < 60) return `Updated ${deltaSec}s ago${asOfLabel}`;
   const min = Math.floor(deltaSec / 60);
-  return `Updated ${min}m ago`;
+  return `Updated ${min}m ago${asOfLabel}`;
 }
 
 function renderDataStatus() {
@@ -1132,9 +1133,18 @@ function renderDataStatus() {
   if (!runtimeState.healthMessage) {
     healthStatus.classList.add("hidden");
     healthStatus.textContent = "";
+    healthStatus.classList.remove("status-pill-alert", "status-pill-warn", "status-pill-ok", "status-pill-muted");
   } else {
     healthStatus.classList.remove("hidden");
     healthStatus.textContent = runtimeState.healthMessage;
+    healthStatus.classList.remove("status-pill-alert", "status-pill-warn", "status-pill-ok", "status-pill-muted");
+    if (runtimeState.health === "stale") {
+      healthStatus.classList.add("status-pill-warn");
+    } else if (runtimeState.health === "ok") {
+      healthStatus.classList.add("status-pill-ok");
+    } else {
+      healthStatus.classList.add("status-pill-alert");
+    }
   }
 }
 
