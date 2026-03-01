@@ -31,3 +31,91 @@ Open:
 - Timeframe controls (`1D`, `5D`, `1M`, `6M`, `YTD`)
 - Exchange filters (`All`, `NSE`, `BSE`)
 - Normalized real-time line chart and relative-strength scan panel
+
+## Backend Integration (NSE/BSE Adapter Hooks v1)
+
+The app supports two runtime data modes through a global config object:
+
+```html
+<script>
+  window.PORTFOLIO_TRACKER_CONFIG = {
+    dataMode: "backend", // "backend" | "synthetic"
+    apiBaseUrl: "/api/v1",
+    authToken: "YOUR_BEARER_TOKEN"
+  };
+</script>
+```
+
+Defaults (when omitted) are:
+- `dataMode: "synthetic"`
+- `apiBaseUrl: "/api/v1"`
+- `authToken: ""`
+
+If `dataMode` is `backend` but token/config is invalid, the UI shows an adapter warning and automatically falls back to synthetic mode.
+
+### Backend endpoints
+
+`GET /market/bootstrap`
+- query: `exchange=all|nse|bse`, `window=1D|5D|1M|6M|YTD`, `include=taxonomy,stocks,momentum`
+- response:
+
+```json
+{
+  "asOf": "2026-03-01T09:47:10+05:30",
+  "cursor": "1740802630_8891",
+  "heads": [],
+  "clusters": [],
+  "stocks": []
+}
+```
+
+`GET /market/poll`
+- query: `cursor=<lastCursor>`, `exchange=all|nse|bse`
+- response:
+
+```json
+{
+  "asOf": "2026-03-01T09:47:15+05:30",
+  "cursor": "1740802635_8899",
+  "updates": {
+    "stocks": [],
+    "clusters": [],
+    "heads": []
+  }
+}
+```
+
+`GET /comparison/series`
+- query: `clusterIds=cluster-1,cluster-9`, `window=1D|5D|1M|6M|YTD`, `exchange=all|nse|bse`, `points=<n>`
+- response:
+
+```json
+{
+  "asOf": "2026-03-01T09:47:15+05:30",
+  "window": "1M",
+  "exchange": "all",
+  "seriesByClusterId": {
+    "cluster-1": [{ "ts": "2026-03-01T09:46:15+05:30", "value": 1.2 }]
+  }
+}
+```
+
+### Auth contract
+
+Backend mode sends:
+- `Accept: application/json`
+- `Authorization: Bearer <authToken>`
+
+### Polling, retry, staleness
+
+- Backend mode polling cadence:
+  - market hours (IST weekdays 09:15–15:30): every 5s
+  - off-hours: every 60s
+  - hidden tab: interval x2
+- Retry backoff on failures: `5s -> 10s -> 20s -> ...` (capped at `60s`)
+- Stale state triggers when:
+  - 2+ consecutive poll failures, or
+  - no successful update for >20s during market hours
+- UI behavior on failures:
+  - keeps last good data visible
+  - shows status chip (`Data delayed • retrying` or temporary sync issue)

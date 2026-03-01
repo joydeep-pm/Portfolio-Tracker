@@ -24,7 +24,11 @@
         <a href="#" class="muted">Signals</a>
         <a href="#" class="muted" data-app-view-target="comparison">Comparison</a>
       </nav>
-      <div class="live-pill"><span class="dot"></span>LIVE DATA</div>
+      <div class="topbar-status">
+        <div id="liveSourcePill" class="live-pill"><span class="dot"></span><span id="liveSourceText">LIVE DATA</span></div>
+        <div id="freshnessStatus" class="status-pill status-pill-muted">Initializing data…</div>
+        <div id="healthStatus" class="status-pill status-pill-alert hidden"></div>
+      </div>
     </header>
 
     <main>
@@ -138,6 +142,14 @@
       <div id="modalTableWrap" class="modal-table-wrap"></div>
     </dialog>
 
+    <script>
+      window.PORTFOLIO_TRACKER_CONFIG = window.PORTFOLIO_TRACKER_CONFIG || {
+        dataMode: "synthetic",
+        apiBaseUrl: "/api/v1",
+        authToken: "",
+      };
+    </script>
+    <script src="adapterCore.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

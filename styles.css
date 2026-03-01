@@ -88,6 +88,45 @@ body {
   gap: 0.45rem;
 }
 
+.topbar-status {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.status-pill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.26rem 0.58rem;
+  font-size: 0.64rem;
+  letter-spacing: 0.05rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: #fffdf7;
+}
+
+.status-pill-muted {
+  color: #6b6457;
+}
+
+.status-pill-alert {
+  color: #913e4b;
+  border-color: rgba(171, 75, 92, 0.45);
+  background: rgba(235, 183, 191, 0.24);
+}
+
+.status-pill-ok {
+  color: #235f45;
+  border-color: rgba(56, 157, 109, 0.34);
+  background: rgba(184, 234, 208, 0.35);
+}
+
+.hidden {
+  display: none !important;
+}
+
 .dot {
   width: 0.5rem;
   height: 0.5rem;
@@ -706,6 +745,11 @@ h1 span {
     order: 3;
     width: 100%;
     overflow-x: auto;
+  }
+
+  .topbar-status {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   main {

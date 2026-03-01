@@ -62,3 +62,32 @@
   - nav labels now use `Sectors` and `Signals`
   - hero heading now `Thematic Map`
   - comparison heading now `Cluster Comparison`
+
+## Real Data Adapter Plan (2026-03-01)
+- [x] Add adapter core module with DTO validation, poll cadence/backoff helpers, merge utilities, and backend adapter HTTP client.
+- [x] Wire app runtime config (`window.PORTFOLIO_TRACKER_CONFIG`) and adapter factory (`backend` / `synthetic`) into boot path.
+- [x] Replace fixed interval loop with scheduler-based polling (adaptive market-hours for backend, retry/backoff, stale-state handling).
+- [x] Route comparison series through adapter hooks and keep synthetic fallback path for local/demo mode.
+- [x] Add topbar data status UI (source mode, freshness, stale/error chip).
+- [x] Add Node unit tests for normalization, scheduler/backoff, merge logic, and comparison series mapping.
+- [x] Update README with backend integration contract and operational behavior.
+
+## Real Data Adapter Verify Plan Check-In
+- Scope: frontend adapter hooks and contracts only; no backend service implementation.
+- Safety: preserve existing render and interaction behavior while changing only data source lifecycle and status surfacing.
+
+## Real Data Adapter Review
+- Validation commands:
+  - `node --check app.js`
+  - `node --check adapterCore.js`
+  - `node --test tests/adapterCore.test.js`
+- Unit tests passed (`8/8`):
+  - bootstrap payload normalization success + validation failures
+  - poll payload validation for missing return windows
+  - adaptive market-hours polling interval logic
+  - exponential retry backoff cap
+  - stale-state trigger rules
+  - state merge behavior for stock updates and empty updates
+  - comparison series payload mapping to chart points
+- Manual constraints acknowledged:
+  - backend endpoints are contract-defined but not available in this repo, so end-to-end fetch verification is pending staging/backend availability.

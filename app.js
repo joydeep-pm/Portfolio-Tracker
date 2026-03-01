@@ -138,6 +138,11 @@ const COMPARE_COLOR_PALETTE = [
   "#9f7d4b",
 ];
 
+const AdapterCore = window.PortfolioAdapterCore;
+if (!AdapterCore) {
+  throw new Error("PortfolioAdapterCore is required. Ensure adapterCore.js is loaded before app.js.");
+}
+
 let state = {
   heads: [],
   clusters: [],
@@ -148,6 +153,8 @@ let state = {
   activeClusterId: null,
   liveTick: 0,
   activeView: "themes",
+  cursor: "",
+  asOf: "",
 };
 
 let compareState = {
@@ -158,6 +165,21 @@ let compareState = {
   seriesByCluster: new Map(),
   colorByCluster: new Map(),
   resizeRaf: null,
+  seriesRequestId: 0,
+};
+
+let runtimeState = {
+  adapter: null,
+  adapterMode: "synthetic",
+  pollTimer: null,
+  pollInFlight: false,
+  consecutiveFailures: 0,
+  backoffFailures: 0,
+  lastSuccessAtMs: 0,
+  lastAsOfLabel: "",
+  health: "ok",
+  healthMessage: "",
+  persistentWarning: "",
 };
 
 const themesViewEl = document.getElementById("themesView");
@@ -186,6 +208,9 @@ const modalTitle = document.getElementById("modalTitle");
 const modalMeta = document.getElementById("modalMeta");
 const modalTableWrap = document.getElementById("modalTableWrap");
 const closeModal = document.getElementById("closeModal");
+const liveSourceText = document.getElementById("liveSourceText");
+const freshnessStatus = document.getElementById("freshnessStatus");
+const healthStatus = document.getElementById("healthStatus");
 
 function mulberry32(seed) {
   return () => {
@@ -398,6 +423,232 @@ function buildUniverse() {
   return { heads, clusters: allClusters, stocks };
 }
 
+function readRuntimeConfig() {
+  const defaultConfig = {
+    dataMode: "synthetic",
+    apiBaseUrl: "/api/v1",
+    authToken: "",
+  };
+
+  const incoming = window.PORTFOLIO_TRACKER_CONFIG || {};
+  const dataMode = typeof incoming.dataMode === "string" ? incoming.dataMode.toLowerCase() : defaultConfig.dataMode;
+
+  return {
+    dataMode: dataMode === "backend" ? "backend" : "synthetic",
+    apiBaseUrl: typeof incoming.apiBaseUrl === "string" && incoming.apiBaseUrl.trim() ? incoming.apiBaseUrl : defaultConfig.apiBaseUrl,
+    authToken: typeof incoming.authToken === "string" ? incoming.authToken : defaultConfig.authToken,
+  };
+}
+
+function cloneReturns(returns) {
+  return WINDOWS.reduce((acc, key) => {
+    acc[key] = returns[key];
+    return acc;
+  }, {});
+}
+
+function normalizeUniverseForState(payload) {
+  const stocks = payload.stocks.map((stock) => ({
+    id: stock.id,
+    symbol: stock.symbol,
+    exchange: stock.exchange,
+    name: stock.name,
+    clusterId: stock.clusterId,
+    returns: cloneReturns(stock.returns),
+  }));
+
+  const stocksByCluster = new Map();
+  stocks.forEach((stock) => {
+    if (!stocksByCluster.has(stock.clusterId)) stocksByCluster.set(stock.clusterId, []);
+    stocksByCluster.get(stock.clusterId).push(stock);
+  });
+
+  const clustersById = new Map();
+  const clusters = payload.clusters.map((cluster) => {
+    const mapped = {
+      id: cluster.id,
+      headId: cluster.headId,
+      headName: cluster.headName,
+      name: cluster.name,
+      stocks: stocksByCluster.get(cluster.id) || [],
+      momentum: cloneReturns(cluster.momentum),
+      trendBias: 0,
+    };
+    clustersById.set(mapped.id, mapped);
+    return mapped;
+  });
+
+  const heads = payload.heads.map((head) => ({
+    id: head.id,
+    name: head.name,
+    clusters: head.clusterIds.map((clusterId) => clustersById.get(clusterId)).filter(Boolean),
+    momentum: cloneReturns(head.momentum),
+  }));
+
+  return { heads, clusters, stocks };
+}
+
+function currentStateAsAdapterDTO() {
+  return {
+    heads: state.heads.map((head) => ({
+      id: head.id,
+      name: head.name,
+      momentum: cloneReturns(head.momentum),
+      clusterIds: head.clusters.map((cluster) => cluster.id),
+    })),
+    clusters: state.clusters.map((cluster) => ({
+      id: cluster.id,
+      headId: cluster.headId,
+      headName: cluster.headName,
+      name: cluster.name,
+      momentum: cloneReturns(cluster.momentum),
+    })),
+    stocks: state.stocks.map((stock) => ({
+      id: stock.id,
+      symbol: stock.symbol,
+      exchange: stock.exchange,
+      name: stock.name,
+      clusterId: stock.clusterId,
+      returns: cloneReturns(stock.returns),
+    })),
+  };
+}
+
+function syntheticBootstrapPayload(universe) {
+  return AdapterCore.normalizeBootstrapPayload({
+    asOf: new Date().toISOString(),
+    cursor: `synthetic_${Date.now()}`,
+    heads: universe.heads.map((head) => ({
+      id: head.id,
+      name: head.name,
+      momentum: cloneReturns(head.momentum),
+      clusterIds: head.clusters.map((cluster) => cluster.id),
+    })),
+    clusters: universe.clusters.map((cluster) => ({
+      id: cluster.id,
+      headId: cluster.headId,
+      headName: cluster.headName,
+      name: cluster.name,
+      momentum: cloneReturns(cluster.momentum),
+    })),
+    stocks: universe.stocks.map((stock) => ({
+      id: stock.id,
+      symbol: stock.symbol,
+      exchange: stock.exchange,
+      name: stock.name,
+      clusterId: stock.clusterId,
+      returns: cloneReturns(stock.returns),
+    })),
+  });
+}
+
+function synthesizeStockUpdates() {
+  return state.stocks.map((stock) => {
+    const updated = {
+      ...stock,
+      returns: {
+        ...stock.returns,
+      },
+    };
+
+    updated.returns["1D"] = clamp(updated.returns["1D"] + (Math.random() - 0.5) * 0.72, -15, 15);
+    updated.returns["1W"] = clamp(updated.returns["1W"] + updated.returns["1D"] * 0.018 + (Math.random() - 0.5) * 0.16, -30, 30);
+    updated.returns["1M"] = clamp(updated.returns["1M"] + updated.returns["1D"] * 0.009 + (Math.random() - 0.5) * 0.08, -45, 45);
+    updated.returns["6M"] = clamp(updated.returns["6M"] + updated.returns["1D"] * 0.006 + (Math.random() - 0.5) * 0.05, -70, 70);
+    updated.returns.YTD = clamp(updated.returns.YTD + updated.returns["1D"] * 0.005 + (Math.random() - 0.5) * 0.04, -90, 90);
+
+    return {
+      id: updated.id,
+      symbol: updated.symbol,
+      exchange: updated.exchange,
+      name: updated.name,
+      clusterId: updated.clusterId,
+      returns: cloneReturns(updated.returns),
+    };
+  });
+}
+
+/**
+ * @typedef {Object} MarketDataAdapter
+ * @property {(params?: {exchange?: string, window?: string}) => Promise<any>} bootstrap
+ * @property {(params?: {cursor?: string, exchange?: string}) => Promise<any>} poll
+ * @property {(params?: {clusterIds?: string[], window?: string, exchange?: string, points?: number}) => Promise<any>} fetchComparisonSeries
+ */
+
+/**
+ * Synthetic fallback implementation of MarketDataAdapter.
+ * Used when backend mode is disabled or backend config/auth is unavailable.
+ * @returns {MarketDataAdapter}
+ */
+function createSyntheticAdapter() {
+  return {
+    mode: "synthetic",
+    async bootstrap() {
+      return syntheticBootstrapPayload(buildUniverse());
+    },
+    async poll() {
+      return AdapterCore.normalizePollPayload({
+        asOf: new Date().toISOString(),
+        cursor: `synthetic_${Date.now()}`,
+        updates: {
+          stocks: synthesizeStockUpdates(),
+          clusters: [],
+          heads: [],
+        },
+      });
+    },
+    async fetchComparisonSeries(params) {
+      const seriesByClusterId = {};
+      const selectedIds = params?.clusterIds || [];
+      const points = Number.isFinite(params?.points) ? params.points : 40;
+      selectedIds.forEach((clusterId) => {
+        const pointsForCluster = compareSeriesForCluster(clusterId, params?.window || compareState.window, params?.exchange || compareState.exchange);
+        seriesByClusterId[clusterId] = pointsForCluster.slice(-points).map((point, index) => ({
+          ts: new Date(Date.now() - (points - index) * 60000).toISOString(),
+          value: point.y,
+        }));
+      });
+
+      return AdapterCore.normalizeComparisonPayload({
+        asOf: new Date().toISOString(),
+        window: params?.window || compareState.window,
+        exchange: params?.exchange || compareState.exchange || "all",
+        seriesByClusterId,
+      });
+    },
+  };
+}
+
+function resolveAdapter() {
+  const config = readRuntimeConfig();
+  if (config.dataMode === "backend") {
+    try {
+      const adapter = AdapterCore.createBackendAdapter({
+        apiBaseUrl: config.apiBaseUrl,
+        authToken: config.authToken,
+      });
+
+      return {
+        adapter,
+        mode: "backend",
+        warning: "",
+      };
+    } catch (error) {
+      return {
+        adapter: createSyntheticAdapter(),
+        mode: "synthetic",
+        warning: error.message || "Backend adapter unavailable. Using synthetic mode.",
+      };
+    }
+  }
+
+  return {
+    adapter: createSyntheticAdapter(),
+    mode: "synthetic",
+    warning: "",
+  };
+}
+
 function matchesSearch(cluster, query) {
   if (!query) return true;
   const lower = query.toLowerCase();
@@ -557,17 +808,17 @@ function selectCompareColor(clusterId) {
   return color;
 }
 
-function compareSeriesForCluster(clusterId) {
+function compareSeriesForCluster(clusterId, windowKey = compareState.window, exchangeKey = compareState.exchange) {
   const cluster = state.clusters.find((item) => item.id === clusterId);
   if (!cluster) return [];
 
-  const config = COMPARE_WINDOWS[compareState.window];
-  const momentumKey = compareWindowToMomentumKey(compareState.window);
-  const filteredStocks = clusterStocksByExchange(cluster, compareState.exchange);
+  const config = COMPARE_WINDOWS[windowKey];
+  const momentumKey = compareWindowToMomentumKey(windowKey);
+  const filteredStocks = clusterStocksByExchange(cluster, exchangeKey);
   const sourceStocks = filteredStocks.length ? filteredStocks : cluster.stocks;
 
   const base = averageReturns(sourceStocks.map((stock) => stock.returns))[momentumKey];
-  const seed = hashString(`${cluster.id}|${compareState.window}|${compareState.exchange}`);
+  const seed = hashString(`${cluster.id}|${windowKey}|${exchangeKey}`);
   const seededRandom = mulberry32(seed || 1);
 
   const output = [];
@@ -596,15 +847,20 @@ function addCompareCluster(clusterId) {
   if (compareState.selectedClusterIds.length >= MAX_COMPARE_SELECTION) return;
 
   compareState.selectedClusterIds.push(clusterId);
-  compareState.seriesByCluster.set(clusterId, compareSeriesForCluster(clusterId));
   selectCompareColor(clusterId);
-  renderComparison();
+  refreshComparisonSeries().catch((error) => {
+    console.error("Unable to refresh comparison series after add", error);
+    setRuntimeHealth("stale", "Comparison data delayed");
+  });
 }
 
 function removeCompareCluster(clusterId) {
   compareState.selectedClusterIds = compareState.selectedClusterIds.filter((id) => id !== clusterId);
   compareState.seriesByCluster.delete(clusterId);
-  renderComparison();
+  refreshComparisonSeries().catch((error) => {
+    console.error("Unable to refresh comparison series after remove", error);
+    setRuntimeHealth("stale", "Comparison data delayed");
+  });
 }
 
 function searchCompareClusters(query) {
@@ -855,6 +1111,61 @@ function renderComparison() {
   renderMomentumScan();
 }
 
+function freshnessLabel(nowMs) {
+  if (!runtimeState.lastSuccessAtMs) return "No successful sync yet";
+  const deltaSec = Math.max(0, Math.floor((nowMs - runtimeState.lastSuccessAtMs) / 1000));
+  if (deltaSec < 2) return "Updated just now";
+  if (deltaSec < 60) return `Updated ${deltaSec}s ago`;
+  const min = Math.floor(deltaSec / 60);
+  return `Updated ${min}m ago`;
+}
+
+function renderDataStatus() {
+  const sourceLabel = runtimeState.adapterMode === "backend" ? "LIVE DATA (BACKEND)" : "LIVE DATA (SYNTHETIC)";
+  liveSourceText.textContent = sourceLabel;
+
+  const nowMs = Date.now();
+  freshnessStatus.textContent = freshnessLabel(nowMs);
+  freshnessStatus.classList.toggle("status-pill-ok", runtimeState.health === "ok");
+  freshnessStatus.classList.toggle("status-pill-muted", runtimeState.health !== "ok");
+
+  if (!runtimeState.healthMessage) {
+    healthStatus.classList.add("hidden");
+    healthStatus.textContent = "";
+  } else {
+    healthStatus.classList.remove("hidden");
+    healthStatus.textContent = runtimeState.healthMessage;
+  }
+}
+
+function setRuntimeHealth(health, message) {
+  runtimeState.health = health;
+  runtimeState.healthMessage = message || "";
+  renderDataStatus();
+}
+
+async function refreshComparisonSeries() {
+  const requestId = compareState.seriesRequestId + 1;
+  compareState.seriesRequestId = requestId;
+
+  if (!compareState.selectedClusterIds.length) {
+    compareState.seriesByCluster.clear();
+    renderComparison();
+    return;
+  }
+
+  const adapterPayload = await runtimeState.adapter.fetchComparisonSeries({
+    clusterIds: [...compareState.selectedClusterIds],
+    window: compareState.window,
+    exchange: compareState.exchange,
+    points: COMPARE_WINDOWS[compareState.window].points,
+  });
+
+  if (requestId !== compareState.seriesRequestId) return;
+  compareState.seriesByCluster = AdapterCore.mapComparisonSeries(adapterPayload);
+  renderComparison();
+}
+
 function applyCompareButtonStates() {
   compareWindowButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.compareWindow === compareState.window);
@@ -879,22 +1190,29 @@ function setActiveView(target) {
     if (modal.open) closeClusterModal();
     requestAnimationFrame(() => {
       resizeCompareCanvas();
-      renderComparison();
+      refreshComparisonSeries().catch((error) => {
+        console.error("Failed to refresh comparison on view switch", error);
+        renderComparison();
+      });
     });
   }
 }
 
-function initializeComparisonState() {
+async function initializeComparisonState() {
   const defaultSelection = [...state.clusters]
     .sort((a, b) => b.momentum["1M"] - a.momentum["1M"])
     .slice(0, 4)
     .map((cluster) => cluster.id);
 
   compareState.selectedClusterIds = defaultSelection;
-  rebuildComparisonSeries();
   applyCompareButtonStates();
   resizeCompareCanvas();
-  renderComparison();
+  try {
+    await refreshComparisonSeries();
+  } catch (error) {
+    console.error("Comparison series bootstrap failed", error);
+    renderComparison();
+  }
 }
 
 function attachHandlers() {
@@ -914,6 +1232,23 @@ function attachHandlers() {
   liveToggle.addEventListener("click", () => {
     state.isLive = !state.isLive;
     liveToggle.textContent = state.isLive ? "Pause Live" : "Resume Live";
+    if (state.isLive) {
+      if (runtimeState.persistentWarning) {
+        setRuntimeHealth("error", runtimeState.persistentWarning);
+      } else if (runtimeState.health === "stale" || runtimeState.health === "error") {
+        setRuntimeHealth(runtimeState.health, runtimeState.healthMessage);
+      } else {
+        setRuntimeHealth("ok", "");
+      }
+      scheduleNextPoll(0);
+    } else {
+      if (runtimeState.persistentWarning) {
+        setRuntimeHealth("error", `${runtimeState.persistentWarning} • paused`);
+      } else {
+        setRuntimeHealth(runtimeState.health, "Live updates paused");
+      }
+      renderDataStatus();
+    }
   });
 
   viewLinks.forEach((link) => {
@@ -950,18 +1285,22 @@ function attachHandlers() {
   compareWindowButtons.forEach((button) => {
     button.addEventListener("click", () => {
       compareState.window = button.dataset.compareWindow;
-      rebuildComparisonSeries();
       applyCompareButtonStates();
-      renderComparison();
+      refreshComparisonSeries().catch((error) => {
+        console.error("Window switch series refresh failed", error);
+        setRuntimeHealth("stale", "Comparison data delayed");
+      });
     });
   });
 
   compareExchangeButtons.forEach((button) => {
     button.addEventListener("click", () => {
       compareState.exchange = button.dataset.compareExchange;
-      rebuildComparisonSeries();
       applyCompareButtonStates();
-      renderComparison();
+      refreshComparisonSeries().catch((error) => {
+        console.error("Exchange switch series refresh failed", error);
+        setRuntimeHealth("stale", "Comparison data delayed");
+      });
     });
   });
 
@@ -985,75 +1324,159 @@ function attachHandlers() {
   });
 }
 
-function updateComparisonLiveSeries() {
-  if (!compareState.selectedClusterIds.length) return;
+function applyNormalizedUniverse(payload, options = {}) {
+  const universe = normalizeUniverseForState(payload);
+  state.heads = universe.heads;
+  state.clusters = universe.clusters;
+  state.stocks = universe.stocks;
+  state.cursor = payload.cursor || state.cursor;
+  state.asOf = payload.asOf || state.asOf;
 
-  const config = COMPARE_WINDOWS[compareState.window];
-  const momentumKey = compareWindowToMomentumKey(compareState.window);
-
-  compareState.selectedClusterIds.forEach((clusterId) => {
-    const cluster = state.clusters.find((item) => item.id === clusterId);
-    if (!cluster) return;
-
-    const points = compareState.seriesByCluster.get(clusterId) || compareSeriesForCluster(clusterId);
-    const filteredStocks = clusterStocksByExchange(cluster, compareState.exchange);
-    const sourceStocks = filteredStocks.length ? filteredStocks : cluster.stocks;
-    const base = averageReturns(sourceStocks.map((stock) => stock.returns))[momentumKey];
-
-    const last = points[points.length - 1] || { x: 0, y: 0 };
-    const drift = base * 0.025;
-    const noise = (Math.random() - 0.5) * config.noise;
-    const next = {
-      x: last.x + 1,
-      y: clamp(last.y + drift + noise, -85, 85),
-    };
-
-    points.push(next);
-    while (points.length > config.points) points.shift();
-    compareState.seriesByCluster.set(clusterId, points);
-  });
-
-  if (state.activeView === "comparison") {
-    drawCompareChart();
-    renderMomentumScan();
-    renderComparisonMeta();
+  if (!options.skipRecalc) {
+    recalcAllMomentum(state.heads, state.clusters);
   }
 }
 
-function tickLiveMarket() {
-  if (!state.isLive) return;
-
-  state.stocks.forEach((stock) => {
-    stock.returns["1D"] = clamp(stock.returns["1D"] + (Math.random() - 0.5) * 0.72, -15, 15);
-    stock.returns["1W"] = clamp(stock.returns["1W"] + stock.returns["1D"] * 0.018 + (Math.random() - 0.5) * 0.16, -30, 30);
-    stock.returns["1M"] = clamp(stock.returns["1M"] + stock.returns["1D"] * 0.009 + (Math.random() - 0.5) * 0.08, -45, 45);
-    stock.returns["6M"] = clamp(stock.returns["6M"] + stock.returns["1D"] * 0.006 + (Math.random() - 0.5) * 0.05, -70, 70);
-    stock.returns.YTD = clamp(stock.returns.YTD + stock.returns["1D"] * 0.005 + (Math.random() - 0.5) * 0.04, -90, 90);
-  });
-
-  recalcAllMomentum(state.heads, state.clusters);
-  state.liveTick += 1;
-
-  if (state.activeView === "themes") renderMatrix();
-
-  if (state.activeClusterId) {
-    const activeCluster = state.clusters.find((c) => c.id === state.activeClusterId);
-    if (activeCluster && modal.open) renderClusterModal(activeCluster);
+function scheduleNextPoll(delayMs) {
+  if (runtimeState.pollTimer) {
+    clearTimeout(runtimeState.pollTimer);
   }
-
-  updateComparisonLiveSeries();
+  runtimeState.pollTimer = window.setTimeout(pollAndApplyUpdates, Math.max(0, delayMs));
 }
 
-function init() {
-  const universe = buildUniverse();
-  state = { ...state, ...universe, liveTick: 1 };
+function baseIntervalMs() {
+  if (runtimeState.adapterMode !== "backend") return 2100;
+  return AdapterCore.getAdaptivePollIntervalMs({
+    date: new Date(),
+    hidden: document.hidden,
+  });
+}
+
+function onPollSuccess(payload) {
+  runtimeState.pollInFlight = false;
+  runtimeState.consecutiveFailures = 0;
+  runtimeState.backoffFailures = 0;
+  runtimeState.lastSuccessAtMs = Date.now();
+  runtimeState.lastAsOfLabel = payload.asOf;
+
+  if (runtimeState.persistentWarning) {
+    setRuntimeHealth("error", runtimeState.persistentWarning);
+  } else {
+    setRuntimeHealth("ok", "");
+  }
+
+  renderDataStatus();
+  scheduleNextPoll(baseIntervalMs());
+}
+
+function onPollFailure(error) {
+  runtimeState.pollInFlight = false;
+  runtimeState.consecutiveFailures += 1;
+  runtimeState.backoffFailures += 1;
+
+  const marketHours = AdapterCore.isMarketHoursIst(new Date());
+  const stale = AdapterCore.shouldMarkStale({
+    consecutiveFailures: runtimeState.consecutiveFailures,
+    lastSuccessAtMs: runtimeState.lastSuccessAtMs,
+    nowMs: Date.now(),
+    marketHours,
+  });
+
+  if (stale) {
+    setRuntimeHealth("stale", "Data delayed • retrying");
+  } else {
+    setRuntimeHealth("error", "Temporary sync issue");
+  }
+
+  console.error("Live poll failed", error);
+  scheduleNextPoll(
+    runtimeState.adapterMode === "backend"
+      ? AdapterCore.nextBackoffMs(runtimeState.backoffFailures)
+      : Math.min(8000, 1500 + runtimeState.backoffFailures * 1200),
+  );
+}
+
+async function pollAndApplyUpdates() {
+  if (!runtimeState.adapter || runtimeState.pollInFlight) return;
+
+  if (!state.isLive) {
+    if (runtimeState.persistentWarning) {
+      setRuntimeHealth("error", `${runtimeState.persistentWarning} • paused`);
+    } else {
+      setRuntimeHealth(runtimeState.health, "Live updates paused");
+    }
+    scheduleNextPoll(1000);
+    return;
+  }
+
+  runtimeState.pollInFlight = true;
+
+  try {
+    const payload = await runtimeState.adapter.poll({
+      cursor: state.cursor,
+      exchange: "all",
+    });
+
+    const merged = AdapterCore.mergeMarketState(currentStateAsAdapterDTO(), payload);
+    const hasBackendAggregates = payload.updates.clusters.length > 0 || payload.updates.heads.length > 0;
+    applyNormalizedUniverse(merged, {
+      skipRecalc: hasBackendAggregates,
+    });
+    state.liveTick += 1;
+
+    if (state.activeView === "themes") {
+      renderMatrix();
+    }
+
+    if (state.activeClusterId && modal.open) {
+      const activeCluster = state.clusters.find((cluster) => cluster.id === state.activeClusterId);
+      if (activeCluster) renderClusterModal(activeCluster);
+    }
+
+    if (compareState.selectedClusterIds.length) {
+      refreshComparisonSeries().catch((error) => {
+        console.error("Comparison refresh during poll failed", error);
+      });
+    }
+
+    onPollSuccess(payload);
+  } catch (error) {
+    onPollFailure(error);
+  }
+}
+
+async function init() {
+  const resolved = resolveAdapter();
+  runtimeState.adapter = resolved.adapter;
+  runtimeState.adapterMode = resolved.mode;
+  runtimeState.persistentWarning = resolved.warning || "";
+
+  if (resolved.warning) {
+    setRuntimeHealth("error", resolved.warning);
+  }
+
+  const bootstrap = await runtimeState.adapter.bootstrap({
+    exchange: "all",
+    window: compareState.window,
+  });
+
+  applyNormalizedUniverse(bootstrap, {
+    skipRecalc: runtimeState.adapterMode === "backend",
+  });
+  state.liveTick = 1;
+  runtimeState.lastSuccessAtMs = Date.now();
+  runtimeState.lastAsOfLabel = bootstrap.asOf;
 
   attachHandlers();
   renderMatrix();
-  initializeComparisonState();
+  await initializeComparisonState();
   setActiveView("themes");
-
-  setInterval(tickLiveMarket, 2100);
+  renderDataStatus();
+  scheduleNextPoll(baseIntervalMs());
+  window.setInterval(renderDataStatus, 1000);
 }
 
-init();
+init().catch((error) => {
+  console.error("Application bootstrap failed", error);
+  setRuntimeHealth("error", "Unable to initialize data adapter");
+});
