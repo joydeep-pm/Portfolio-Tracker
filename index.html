@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Indian Thematic Market Architecture</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-noise" aria-hidden="true"></div>
+    <header class="topbar">
+      <div class="brand">NEXUSMAP</div>
+      <nav class="nav-links">
+        <a href="#" class="muted">Universe</a>
+        <a href="#" class="muted">Domain Vector</a>
+        <a href="#" class="active" data-app-view-target="themes">Themes</a>
+        <a href="#" class="muted">Tracker</a>
+        <a href="#" class="muted" data-app-view-target="comparison">Comparison</a>
+      </nav>
+      <div class="live-pill"><span class="dot"></span>LIVE</div>
+    </header>
+
+    <main>
+      <section id="themesView" class="app-view active-view">
+        <section class="hero">
+          <div>
+            <p class="kicker">Deep thematic mapping (India)</p>
+            <h1>Market <span>Architecture</span></h1>
+            <p class="subhead">
+              India-only theme tracking across 2,486 stocks, 26 core heads, and 175 micro-clusters.
+            </p>
+          </div>
+
+          <div class="controls">
+            <input id="searchInput" type="text" placeholder="Find NSE/BSE stocks, clusters, themes..." />
+            <button data-mode="all" class="mode-btn active">Show All</button>
+            <button data-mode="movers" class="mode-btn">Movers</button>
+            <button data-mode="laggards" class="mode-btn">Laggards</button>
+            <button id="liveToggle" class="mode-btn">Pause Live</button>
+          </div>
+        </section>
+
+        <section class="stats" id="statsRow"></section>
+
+        <section class="legend" aria-label="Performance legend">
+          <span>Performance Analytics</span>
+          <div class="legend-scale">
+            <span class="l1">-8%</span>
+            <span class="l2">-2%</span>
+            <span class="l3">0%</span>
+            <span class="l4">+2%</span>
+            <span class="l5">+8%</span>
+          </div>
+        </section>
+
+        <section id="matrix" class="matrix"></section>
+      </section>
+
+      <section id="comparisonView" class="app-view">
+        <section class="hero comparison-hero">
+          <div>
+            <p class="kicker">Cross-Vector Performance Analysis</p>
+            <h1>Comparison <span>Engine</span></h1>
+            <p class="subhead">
+              Real-time comparison across all 175 Indian micro-clusters in any combination.
+            </p>
+          </div>
+
+          <div class="compare-toolbar">
+            <div class="compare-left-tools">
+              <div id="compareChipRow" class="compare-chip-row"></div>
+              <div class="compare-search-wrap">
+                <input
+                  id="compareClusterInput"
+                  type="text"
+                  placeholder="Compare micro-cluster..."
+                  autocomplete="off"
+                />
+                <div id="compareSearchResults" class="compare-search-results"></div>
+              </div>
+            </div>
+            <div class="compare-right-tools">
+              <div id="compareWindowGroup" class="compare-pill-group" role="group" aria-label="Timeframe">
+                <button class="compare-pill" data-compare-window="1D">1D</button>
+                <button class="compare-pill" data-compare-window="5D">5D</button>
+                <button class="compare-pill active" data-compare-window="1M">1M</button>
+                <button class="compare-pill" data-compare-window="6M">6M</button>
+                <button class="compare-pill" data-compare-window="YTD">YTD</button>
+              </div>
+              <div id="compareExchangeGroup" class="compare-pill-group" role="group" aria-label="Exchange">
+                <button class="compare-pill active" data-compare-exchange="all">All</button>
+                <button class="compare-pill" data-compare-exchange="nse">NSE</button>
+                <button class="compare-pill" data-compare-exchange="bse">BSE</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="compare-grid">
+          <article class="chart-card">
+            <header class="compare-card-head">
+              <h3>Normalized Cluster Yields</h3>
+              <p id="compareMeta"></p>
+            </header>
+            <div class="compare-canvas-wrap">
+              <canvas id="compareCanvas" width="1200" height="480"></canvas>
+            </div>
+            <footer class="compare-foot">Normalized returns (%), auto-refresh every live tick</footer>
+          </article>
+
+          <aside class="scan-card">
+            <header class="compare-card-head">
+              <h3>Momentum Scan</h3>
+              <p id="scanMeta"></p>
+            </header>
+            <div id="momentumScanList" class="scan-list"></div>
+          </aside>
+        </section>
+      </section>
+    </main>
+
+    <dialog id="clusterModal" class="modal">
+      <div class="modal-header">
+        <div>
+          <p class="kicker" id="modalHead"></p>
+          <h2 id="modalTitle"></h2>
+          <p class="modal-meta" id="modalMeta"></p>
+        </div>
+        <button id="closeModal" class="close-btn" aria-label="Close">×</button>
+      </div>
+      <div id="modalTableWrap" class="modal-table-wrap"></div>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>
