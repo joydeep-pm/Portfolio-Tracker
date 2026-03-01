@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Indian Thematic Market Architecture</title>
+    <title>Indian Thematic Market Tracker</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -16,15 +16,15 @@
   <body>
     <div class="bg-noise" aria-hidden="true"></div>
     <header class="topbar">
-      <div class="brand">NEXUSMAP</div>
+      <div class="brand">PORTFOLIO TRACKER</div>
       <nav class="nav-links">
         <a href="#" class="muted">Universe</a>
-        <a href="#" class="muted">Domain Vector</a>
+        <a href="#" class="muted">Sectors</a>
         <a href="#" class="active" data-app-view-target="themes">Themes</a>
-        <a href="#" class="muted">Tracker</a>
+        <a href="#" class="muted">Signals</a>
         <a href="#" class="muted" data-app-view-target="comparison">Comparison</a>
       </nav>
-      <div class="live-pill"><span class="dot"></span>LIVE</div>
+      <div class="live-pill"><span class="dot"></span>LIVE DATA</div>
     </header>
 
     <main>
@@ -32,7 +32,7 @@
         <section class="hero">
           <div>
             <p class="kicker">Deep thematic mapping (India)</p>
-            <h1>Market <span>Architecture</span></h1>
+            <h1>Thematic <span>Map</span></h1>
             <p class="subhead">
               India-only theme tracking across 2,486 stocks, 26 core heads, and 175 micro-clusters.
             </p>
@@ -66,8 +66,8 @@
       <section id="comparisonView" class="app-view">
         <section class="hero comparison-hero">
           <div>
-            <p class="kicker">Cross-Vector Performance Analysis</p>
-            <h1>Comparison <span>Engine</span></h1>
+            <p class="kicker">Cross-Cluster Performance Analysis</p>
+            <h1>Cluster <span>Comparison</span></h1>
             <p class="subhead">
               Real-time comparison across all 175 Indian micro-clusters in any combination.
             </p>
@@ -112,12 +112,12 @@
             <div class="compare-canvas-wrap">
               <canvas id="compareCanvas" width="1200" height="480"></canvas>
             </div>
-            <footer class="compare-foot">Normalized returns (%), auto-refresh every live tick</footer>
+            <footer class="compare-foot">Normalized returns (%), auto-refresh every tick</footer>
           </article>
 
           <aside class="scan-card">
             <header class="compare-card-head">
-              <h3>Momentum Scan</h3>
+              <h3>Relative Strength Scan</h3>
               <p id="scanMeta"></p>
             </header>
             <div id="momentumScanList" class="scan-list"></div>

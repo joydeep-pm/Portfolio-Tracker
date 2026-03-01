@@ -1,4 +1,4 @@
-# Indian Thematic Market Architecture Prototype
+# Indian Thematic Market Tracker Prototype
 
 Interactive thematic engine prototype that models:
 - 2,486 stocks
@@ -27,7 +27,7 @@ Open:
 - Mode filters: all, movers, laggards
 - Cluster drill-down modal with stock-level momentum
 - Live momentum simulation with pause/resume control
-- Comparison engine with multi-select cluster combinations (up to 8 at once)
+- Comparison view with multi-select cluster combinations (up to 8 at once)
 - Timeframe controls (`1D`, `5D`, `1M`, `6M`, `YTD`)
 - Exchange filters (`All`, `NSE`, `BSE`)
-- Normalized real-time line chart and momentum scan panel
+- Normalized real-time line chart and relative-strength scan panel

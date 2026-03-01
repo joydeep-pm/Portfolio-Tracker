@@ -22,7 +22,7 @@ Record repeatable mistakes and prevention rules here.
 - Issue: Comparison was at risk of being treated as an optional add-on instead of a core workflow.
 - Root cause: Initial MVP focus was matrix rendering, not cross-cluster analysis.
 - Prevention rule: For market-analytics tools, define comparison requirements in v1 scope (selection, windows, filters, scan panel).
-- Applied fix: Added a dedicated Comparison view with multi-cluster chips, timeframe toggles, exchange filters, normalized chart, and momentum scan.
+- Applied fix: Added a dedicated comparison view with multi-cluster chips, timeframe toggles, exchange filters, normalized chart, and a relative-strength scan.
 
 - Date: 2026-03-01
 - Issue: Synthetic-market demos can drift across runs and make QA hard to reproduce.

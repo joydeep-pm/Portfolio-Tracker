@@ -8,9 +8,9 @@
 - [x] Simulate live momentum updates and refresh aggregate values
 - [x] Verify behavior locally and document review results
 - [x] Retarget taxonomy and labeling to Indian market-only coverage (NSE/BSE context)
-- [x] Build comparison engine view with cluster multi-select and control toolbar
+- [x] Build comparison view with cluster multi-select and control toolbar
 - [x] Add normalized comparison chart with timeframe switching (`1D`, `5D`, `1M`, `6M`, `YTD`)
-- [x] Add NSE/BSE comparison filter and momentum scan side panel
+- [x] Add NSE/BSE comparison filter and relative-strength scan side panel
 - [x] Add live update loop for selected cluster series in comparison view
 - [x] Verify comparison workflows and document results
 
@@ -18,7 +18,7 @@
 - Scope is a functional MVP that reproduces the interaction model and visual framing from the reference screenshots.
 - Stack decision: plain HTML/CSS/JS to keep setup friction near zero in an empty repo.
 - Data decision: deterministic synthetic universe matching target scale exactly.
-- Comparison v1 scope: compare any combination of clusters from all 175 micro-clusters, render normalized series, support timeframe/exchange filters, and show momentum scan for selected set.
+- Comparison v1 scope: compare any combination of clusters from all 175 micro-clusters, render normalized series, support timeframe/exchange filters, and show a relative-strength scan for selected set.
 - Out of scope for this step: real market feed integration and backend APIs.
 
 ## Review
@@ -42,5 +42,23 @@
   - confirmed initial cluster chips render and normalized chart canvas is visible
   - confirmed timeframe toggle (`5D`) and exchange filter (`NSE`) update comparison meta
   - confirmed cluster search (`Defence`) returns suggestions and adds selected cluster chip
-  - confirmed momentum scan panel updates and live tick increments (`tick #9` -> `tick #10`)
+  - confirmed relative-strength scan panel updates and live tick increments (`tick #9` -> `tick #10`)
   - confirmed browser console has zero errors during comparison interactions
+
+## Branding Cleanup Plan (2026-03-01)
+- [x] Identify borrowed or third-party style labels in UI and docs.
+- [x] Replace visible UI copy with project-owned terminology in `index.html` and runtime strings.
+- [x] Align project docs (`README.md`, `lessons.md`, `memories.md`, `tasks/todo.md`) with the new naming.
+- [x] Verify no targeted borrowed labels remain in the repo.
+
+## Branding Cleanup Verify Plan Check-In
+- Scope: copy-only cleanup, no behavioral logic changes.
+- Safety: preserve element IDs, data attributes, and JS hooks so navigation and interactions remain intact.
+
+## Branding Cleanup Review
+- Verified removal of legacy borrowed labels using a repo-wide case-insensitive keyword sweep.
+- Spot-checked UI labels in `index.html` after edits:
+  - brand now `PORTFOLIO TRACKER`
+  - nav labels now use `Sectors` and `Signals`
+  - hero heading now `Thematic Map`
+  - comparison heading now `Cluster Comparison`

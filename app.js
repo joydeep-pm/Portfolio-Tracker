@@ -784,7 +784,7 @@ function drawCompareChart() {
 
 function renderMomentumScan() {
   if (!compareState.selectedClusterIds.length) {
-    momentumScanList.innerHTML = `<div class="scan-empty">Momentum scan appears after selecting clusters.</div>`;
+    momentumScanList.innerHTML = `<div class="scan-empty">Relative strength list appears after selecting clusters.</div>`;
     scanMeta.textContent = "No active selection";
     return;
   }
