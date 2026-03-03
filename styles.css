@@ -470,13 +470,18 @@ body[data-ui-variant="classic"] .legend {
 }
 
 .cluster-name {
-  display: block;
+  display: -webkit-box;
   font-size: 0.67rem;
   font-weight: 700;
   text-transform: none;
-  white-space: nowrap;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
+  line-height: 1.22;
+  max-height: calc(1.22em * 2);
+  overflow-wrap: anywhere;
 }
 
 .cluster-count {

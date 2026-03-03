@@ -26,3 +26,5 @@
 - Preventive rule: for dense metric chips, always enforce `white-space: nowrap`, fixed min-height, centered flex alignment, and tested min column widths across desktop/mobile breakpoints.
 - User correction: themes grid columns still spilled outside card bounds on large desktop layout.
 - Preventive rule: for dense table-like rows, prefer fixed-width metric columns with a flexible first column (`minmax(0,1fr)`) and ellipsis truncation, rather than multi-`fr` metric columns that can overflow unpredictably.
+- User correction: post-fix micro-cluster names became too aggressively truncated.
+- Preventive rule: when truncating taxonomy labels, prefer 2-line clamp before single-line ellipsis so scanability and semantic readability both hold.
