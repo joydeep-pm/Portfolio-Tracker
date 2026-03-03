@@ -2,10 +2,9 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const mockMarket = require("../api/_lib/mockMarket");
-const bootstrapHandler = require("../api/v1/market/bootstrap");
-const pollHandler = require("../api/v1/market/poll");
-const comparisonHandler = require("../api/v1/comparison/series");
-const angelHealthHandler = require("../api/angel/health");
+const marketHandler = require("../api/v1/market/[action]");
+const comparisonHandler = require("../api/v1/comparison/[action]");
+const angelHandler = require("../api/angel/[action]");
 
 function createRes() {
   return {
@@ -36,10 +35,10 @@ test("mock market view returns expected scale for all exchange", () => {
 });
 
 test("bootstrap endpoint returns contract payload", async () => {
-  const req = { method: "GET", query: { exchange: "all" } };
+  const req = { method: "GET", query: { action: "bootstrap", exchange: "all" } };
   const res = createRes();
 
-  await bootstrapHandler(req, res);
+  await marketHandler(req, res);
 
   assert.equal(res.statusCode, 200);
   assert.equal(Array.isArray(res.body.heads), true);
@@ -51,10 +50,10 @@ test("bootstrap endpoint returns contract payload", async () => {
 
 test("poll endpoint ticks cursor and returns update envelope", async () => {
   const before = mockMarket.state.cursor;
-  const req = { method: "GET", query: { exchange: "nse" } };
+  const req = { method: "GET", query: { action: "poll", exchange: "nse" } };
   const res = createRes();
 
-  await pollHandler(req, res);
+  await marketHandler(req, res);
 
   assert.equal(res.statusCode, 200);
   assert.equal(typeof res.body.cursor, "string");
@@ -71,6 +70,7 @@ test("comparison series endpoint maps requested cluster IDs", async () => {
   const req = {
     method: "GET",
     query: {
+      action: "series",
       clusterIds,
       window: "1M",
       exchange: "all",
@@ -102,9 +102,8 @@ test("angel health endpoint marks missing env vars", async () => {
   delete process.env.ANGEL_PIN;
   delete process.env.ANGEL_TOTP_SECRET;
 
-  const req = { method: "GET", query: {} };
   const res = createRes();
-  await angelHealthHandler(req, res);
+  await angelHandler({ method: "GET", query: { action: "health" } }, res);
 
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.ready, false);
