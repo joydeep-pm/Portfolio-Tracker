@@ -21,6 +21,7 @@
         <a href="#" class="muted">Universe</a>
         <a href="#" class="muted">Sectors</a>
         <a href="#" class="active" data-app-view-target="themes">Themes</a>
+        <a href="#" class="muted" data-app-view-target="portfolio">Portfolio</a>
         <a href="#" class="muted">Signals</a>
         <a href="#" class="muted" data-app-view-target="comparison">Comparison</a>
       </nav>
@@ -125,6 +126,70 @@
               <p id="scanMeta"></p>
             </header>
             <div id="momentumScanList" class="scan-list"></div>
+          </aside>
+        </section>
+      </section>
+
+      <section id="portfolioView" class="app-view">
+        <section class="hero portfolio-hero">
+          <div>
+            <p class="kicker">Connected Broker Portfolio (India)</p>
+            <h1>Portfolio <span>Signals</span></h1>
+            <p class="subhead">
+              Zerodha holdings/positions heatmap with explainable Buy/Sell/Accumulate/Hold/Reduce decisions.
+            </p>
+          </div>
+
+          <div class="portfolio-toolbar">
+            <div id="portfolioActionFilters" class="compare-pill-group" role="group" aria-label="Action filter">
+              <button class="compare-pill active" data-portfolio-action="all">All</button>
+              <button class="compare-pill" data-portfolio-action="buy">Buy</button>
+              <button class="compare-pill" data-portfolio-action="accumulate">Accumulate</button>
+              <button class="compare-pill" data-portfolio-action="hold">Hold</button>
+              <button class="compare-pill" data-portfolio-action="reduce">Reduce</button>
+              <button class="compare-pill" data-portfolio-action="sell">Sell</button>
+            </div>
+            <div id="portfolioExchangeGroup" class="compare-pill-group" role="group" aria-label="Portfolio exchange">
+              <button class="compare-pill active" data-portfolio-exchange="all">All</button>
+              <button class="compare-pill" data-portfolio-exchange="nse">NSE</button>
+              <button class="compare-pill" data-portfolio-exchange="bse">BSE</button>
+            </div>
+            <input id="portfolioSearchInput" type="text" placeholder="Search symbol..." />
+            <input id="portfolioConfidenceInput" type="number" min="0" max="100" step="1" value="0" />
+          </div>
+        </section>
+
+        <section id="portfolioSummaryRow" class="stats"></section>
+
+        <section class="portfolio-grid">
+          <article class="chart-card portfolio-table-card">
+            <header class="compare-card-head">
+              <h3>Portfolio Heatmap</h3>
+              <p id="portfolioMeta"></p>
+            </header>
+            <div class="portfolio-table-wrap">
+              <div class="portfolio-table-head">
+                <span>Symbol</span>
+                <span>Qty</span>
+                <span>Value</span>
+                <span>1D</span>
+                <span>1W</span>
+                <span>1M</span>
+                <span>6M</span>
+                <span>YTD</span>
+                <span>Decision</span>
+                <span></span>
+              </div>
+              <div id="portfolioRows" class="portfolio-rows"></div>
+            </div>
+          </article>
+
+          <aside class="scan-card portfolio-side-card">
+            <header class="compare-card-head">
+              <h3>Decision Explainability</h3>
+              <p id="portfolioDecisionMeta">Select a row</p>
+            </header>
+            <div id="portfolioDecisionPanel" class="portfolio-decision-panel"></div>
           </aside>
         </section>
       </section>

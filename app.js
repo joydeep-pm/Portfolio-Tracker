@@ -2,6 +2,7 @@ const WINDOWS = ["1D", "1W", "1M", "6M", "YTD"];
 const TARGET_STOCKS = 2486;
 const TARGET_CLUSTERS = 175;
 const MAX_COMPARE_SELECTION = 8;
+const PORTFOLIO_ACTIONS = ["BUY", "ACCUMULATE", "HOLD", "REDUCE", "SELL"];
 
 const CORE_HEADS = [
   "Banking & Financial Services",
@@ -168,6 +169,25 @@ let compareState = {
   seriesRequestId: 0,
 };
 
+let portfolioState = {
+  rows: [],
+  summary: null,
+  decisions: [],
+  cursor: "",
+  asOf: "",
+  connected: false,
+  provider: "",
+  providerMode: "",
+  user: { userId: null, userName: null },
+  selectedKey: "",
+  filters: {
+    action: "all",
+    exchange: "all",
+    confidenceMin: 0,
+    search: "",
+  },
+};
+
 let runtimeState = {
   adapter: null,
   adapterMode: "synthetic",
@@ -180,10 +200,16 @@ let runtimeState = {
   health: "ok",
   healthMessage: "",
   persistentWarning: "",
+  portfolioConsecutiveFailures: 0,
+  portfolioBackoffFailures: 0,
+  portfolioPollInFlight: false,
+  portfolioLastSuccessAtMs: 0,
+  enablePortfolioView: true,
 };
 
 const themesViewEl = document.getElementById("themesView");
 const comparisonViewEl = document.getElementById("comparisonView");
+const portfolioViewEl = document.getElementById("portfolioView");
 const viewLinks = [...document.querySelectorAll("[data-app-view-target]")];
 
 const matrixEl = document.getElementById("matrix");
@@ -201,6 +227,16 @@ const compareCanvas = document.getElementById("compareCanvas");
 const momentumScanList = document.getElementById("momentumScanList");
 const compareWindowButtons = [...document.querySelectorAll("[data-compare-window]")];
 const compareExchangeButtons = [...document.querySelectorAll("[data-compare-exchange]")];
+
+const portfolioSummaryRow = document.getElementById("portfolioSummaryRow");
+const portfolioRowsEl = document.getElementById("portfolioRows");
+const portfolioMeta = document.getElementById("portfolioMeta");
+const portfolioDecisionMeta = document.getElementById("portfolioDecisionMeta");
+const portfolioDecisionPanel = document.getElementById("portfolioDecisionPanel");
+const portfolioSearchInput = document.getElementById("portfolioSearchInput");
+const portfolioConfidenceInput = document.getElementById("portfolioConfidenceInput");
+const portfolioActionButtons = [...document.querySelectorAll("[data-portfolio-action]")];
+const portfolioExchangeButtons = [...document.querySelectorAll("[data-portfolio-exchange]")];
 
 const modal = document.getElementById("clusterModal");
 const modalHead = document.getElementById("modalHead");
@@ -428,6 +464,7 @@ function readRuntimeConfig() {
     dataMode: "synthetic",
     apiBaseUrl: "/api/v1",
     authToken: "",
+    enablePortfolioView: true,
   };
 
   const incoming = window.PORTFOLIO_TRACKER_CONFIG || {};
@@ -437,6 +474,8 @@ function readRuntimeConfig() {
     dataMode: dataMode === "backend" ? "backend" : "synthetic",
     apiBaseUrl: typeof incoming.apiBaseUrl === "string" && incoming.apiBaseUrl.trim() ? incoming.apiBaseUrl : defaultConfig.apiBaseUrl,
     authToken: typeof incoming.authToken === "string" ? incoming.authToken : defaultConfig.authToken,
+    enablePortfolioView:
+      typeof incoming.enablePortfolioView === "boolean" ? incoming.enablePortfolioView : defaultConfig.enablePortfolioView,
   };
 }
 
@@ -514,6 +553,145 @@ function currentStateAsAdapterDTO() {
   };
 }
 
+function money(value) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(value || 0);
+}
+
+function syntheticPortfolioBootstrapPayload() {
+  const topRows = [...state.stocks]
+    .sort((a, b) => b.returns["1M"] - a.returns["1M"])
+    .slice(0, 18)
+    .map((stock, index) => {
+      const qty = 4 + (index % 6);
+      const avg = 120 + index * 37;
+      const last = avg * (1 + stock.returns["1D"] / 100);
+      const invested = qty * avg;
+      const current = qty * last;
+      const pnl = current - invested;
+      const pnlPct = invested > 0 ? (pnl / invested) * 100 : 0;
+      const weightBase = index + 1;
+
+      let action = "HOLD";
+      if (stock.returns["6M"] > 15 && stock.returns["1M"] > 3) action = "BUY";
+      else if (stock.returns["1M"] > 1) action = "ACCUMULATE";
+      else if (stock.returns["6M"] < -8) action = "SELL";
+      else if (stock.returns["1M"] < -4) action = "REDUCE";
+
+      return {
+        key: `${stock.exchange}:${stock.symbol}`,
+        symbol: stock.symbol,
+        exchange: stock.exchange,
+        quantity: qty,
+        averagePrice: Number.parseFloat(avg.toFixed(2)),
+        lastPrice: Number.parseFloat(last.toFixed(2)),
+        investedValue: Number.parseFloat(invested.toFixed(2)),
+        currentValue: Number.parseFloat(current.toFixed(2)),
+        unrealizedPnl: Number.parseFloat(pnl.toFixed(2)),
+        unrealizedPnlPct: Number.parseFloat(pnlPct.toFixed(2)),
+        weightPct: weightBase,
+        returns: cloneReturns(stock.returns),
+        product: "CNC",
+        sourceTypes: ["synthetic"],
+        decision: {
+          symbol: stock.symbol,
+          exchange: stock.exchange,
+          action,
+          confidence: Number.parseFloat(clamp(Math.abs(stock.returns["6M"]) * 3 + 42, 36, 95).toFixed(1)),
+          score: Number.parseFloat(clamp(stock.returns["6M"] * 2 + stock.returns["1M"] * 3, -100, 100).toFixed(2)),
+          reasons: [
+            `6M trend ${percent(stock.returns["6M"])}`,
+            `1M momentum ${percent(stock.returns["1M"])}`,
+            `YTD context ${percent(stock.returns.YTD)}`,
+          ],
+          riskFlags: stock.returns["1D"] < -3 ? ["Short-term downside momentum"] : [],
+          asOf: new Date().toISOString(),
+        },
+      };
+    });
+
+  const totalCurrent = topRows.reduce((acc, row) => acc + row.currentValue, 0);
+  topRows.forEach((row) => {
+    row.weightPct = totalCurrent > 0 ? Number.parseFloat(((row.currentValue / totalCurrent) * 100).toFixed(2)) : 0;
+  });
+
+  const totalInvested = topRows.reduce((acc, row) => acc + row.investedValue, 0);
+  const totalPnl = totalCurrent - totalInvested;
+  const asOf = new Date().toISOString();
+  const decisions = topRows.map((row) => row.decision);
+
+  return AdapterCore.normalizePortfolioBootstrapPayload({
+    asOf,
+    cursor: `synthetic_pf_${Date.now()}`,
+    rows: topRows,
+    summary: {
+      totalSymbols: topRows.length,
+      totalInvested: Number.parseFloat(totalInvested.toFixed(2)),
+      totalCurrent: Number.parseFloat(totalCurrent.toFixed(2)),
+      totalPnl: Number.parseFloat(totalPnl.toFixed(2)),
+      totalPnlPct: totalInvested > 0 ? Number.parseFloat(((totalPnl / totalInvested) * 100).toFixed(2)) : 0,
+      gainers: topRows.filter((row) => row.unrealizedPnl > 0).length,
+      losers: topRows.filter((row) => row.unrealizedPnl < 0).length,
+      cashAvailable: 250000,
+    },
+    decisions,
+    connected: false,
+    provider: "synthetic",
+    providerMode: "demo",
+    user: { userId: null, userName: "Demo User" },
+  });
+}
+
+function currentPortfolioStateAsAdapterDTO() {
+  return {
+    asOf: portfolioState.asOf,
+    cursor: portfolioState.cursor,
+    rows: portfolioState.rows,
+    summary: portfolioState.summary || {
+      totalSymbols: 0,
+      totalInvested: 0,
+      totalCurrent: 0,
+      totalPnl: 0,
+      totalPnlPct: 0,
+      gainers: 0,
+      losers: 0,
+      cashAvailable: 0,
+    },
+    decisions: portfolioState.decisions || [],
+    connected: portfolioState.connected,
+    provider: portfolioState.provider || "synthetic",
+    providerMode: portfolioState.providerMode || "demo",
+    user: portfolioState.user || { userId: null, userName: null },
+  };
+}
+
+function applyPortfolioBootstrap(payload) {
+  portfolioState.rows = payload.rows.map((row) => ({
+    ...row,
+    returns: cloneReturns(row.returns),
+    decision: {
+      ...row.decision,
+      reasons: [...row.decision.reasons],
+      riskFlags: [...row.decision.riskFlags],
+    },
+  }));
+  portfolioState.summary = { ...payload.summary };
+  portfolioState.decisions = payload.decisions.map((decision) => ({
+    ...decision,
+    reasons: [...decision.reasons],
+    riskFlags: [...decision.riskFlags],
+  }));
+  portfolioState.cursor = payload.cursor;
+  portfolioState.asOf = payload.asOf;
+  portfolioState.connected = payload.connected;
+  portfolioState.provider = payload.provider;
+  portfolioState.providerMode = payload.providerMode;
+  portfolioState.user = payload.user || { userId: null, userName: null };
+}
+
 function syntheticBootstrapPayload(universe) {
   return AdapterCore.normalizeBootstrapPayload({
     asOf: new Date().toISOString(),
@@ -581,6 +759,81 @@ function synthesizeStockUpdates() {
  * @returns {MarketDataAdapter}
  */
 function createSyntheticAdapter() {
+  const syntheticOrders = new Map();
+
+  function syntheticPortfolioPollPayload() {
+    const rows = portfolioState.rows.map((row) => {
+      const nextLast = clamp(row.lastPrice * (1 + (Math.random() - 0.5) * 0.018), row.lastPrice * 0.92, row.lastPrice * 1.08);
+      const nextReturns = {
+        ...row.returns,
+      };
+      nextReturns["1D"] = clamp(nextReturns["1D"] + (Math.random() - 0.5) * 0.7, -18, 18);
+      nextReturns["1W"] = clamp(nextReturns["1W"] + nextReturns["1D"] * 0.04 + (Math.random() - 0.5) * 0.22, -35, 35);
+      nextReturns["1M"] = clamp(nextReturns["1M"] + nextReturns["1D"] * 0.025 + (Math.random() - 0.5) * 0.1, -55, 55);
+      nextReturns["6M"] = clamp(nextReturns["6M"] + nextReturns["1M"] * 0.01 + (Math.random() - 0.5) * 0.07, -85, 85);
+      nextReturns.YTD = clamp(nextReturns.YTD + nextReturns["1M"] * 0.008 + (Math.random() - 0.5) * 0.05, -95, 110);
+
+      const investedValue = row.averagePrice * row.quantity;
+      const currentValue = nextLast * row.quantity;
+      const unrealizedPnl = currentValue - investedValue;
+      const unrealizedPnlPct = investedValue > 0 ? (unrealizedPnl / investedValue) * 100 : 0;
+      const score = clamp(nextReturns["6M"] * 1.9 + nextReturns["1M"] * 2.5 + nextReturns["1D"] * 0.8, -100, 100);
+      let action = "HOLD";
+      if (score >= 30) action = "BUY";
+      else if (score >= 10) action = "ACCUMULATE";
+      else if (score <= -38) action = "SELL";
+      else if (score <= -14) action = "REDUCE";
+
+      return {
+        ...row,
+        lastPrice: Number.parseFloat(nextLast.toFixed(4)),
+        investedValue: Number.parseFloat(investedValue.toFixed(2)),
+        currentValue: Number.parseFloat(currentValue.toFixed(2)),
+        unrealizedPnl: Number.parseFloat(unrealizedPnl.toFixed(2)),
+        unrealizedPnlPct: Number.parseFloat(unrealizedPnlPct.toFixed(2)),
+        returns: nextReturns,
+        decision: {
+          ...row.decision,
+          action,
+          score: Number.parseFloat(score.toFixed(2)),
+          confidence: Number.parseFloat(clamp(Math.abs(score) * 0.75 + 35, 36, 97).toFixed(1)),
+          reasons: [`6M trend ${percent(nextReturns["6M"])}`, `1M momentum ${percent(nextReturns["1M"])}`],
+          riskFlags: nextReturns["1D"] < -3 ? ["Short-term downside momentum"] : [],
+          asOf: new Date().toISOString(),
+        },
+      };
+    });
+
+    const totalCurrent = rows.reduce((acc, row) => acc + row.currentValue, 0);
+    const totalInvested = rows.reduce((acc, row) => acc + row.investedValue, 0);
+    const totalPnl = totalCurrent - totalInvested;
+    rows.forEach((row) => {
+      row.weightPct = totalCurrent > 0 ? Number.parseFloat(((row.currentValue / totalCurrent) * 100).toFixed(2)) : 0;
+    });
+
+    return AdapterCore.normalizePortfolioPollPayload({
+      asOf: new Date().toISOString(),
+      cursor: `synthetic_pf_${Date.now()}`,
+      updates: {
+        rows,
+        decisions: rows.map((row) => row.decision),
+        summary: {
+          totalSymbols: rows.length,
+          totalInvested: Number.parseFloat(totalInvested.toFixed(2)),
+          totalCurrent: Number.parseFloat(totalCurrent.toFixed(2)),
+          totalPnl: Number.parseFloat(totalPnl.toFixed(2)),
+          totalPnlPct: totalInvested > 0 ? Number.parseFloat(((totalPnl / totalInvested) * 100).toFixed(2)) : 0,
+          gainers: rows.filter((row) => row.unrealizedPnl > 0).length,
+          losers: rows.filter((row) => row.unrealizedPnl < 0).length,
+          cashAvailable: portfolioState.summary?.cashAvailable || 250000,
+        },
+      },
+      connected: false,
+      provider: "synthetic",
+      providerMode: "demo",
+    });
+  }
+
   return {
     mode: "synthetic",
     async bootstrap() {
@@ -616,6 +869,74 @@ function createSyntheticAdapter() {
         seriesByClusterId,
       });
     },
+    async fetchPortfolioBootstrap() {
+      return syntheticPortfolioBootstrapPayload();
+    },
+    async pollPortfolio() {
+      return syntheticPortfolioPollPayload();
+    },
+    async fetchPortfolioDecisions() {
+      return {
+        asOf: portfolioState.asOf || new Date().toISOString(),
+        decisions: portfolioState.rows.map((row) => row.decision),
+      };
+    },
+    async createPortfolioEodSnapshot() {
+      return {
+        stored: true,
+        mode: "memory",
+        snapshotDate: new Date().toISOString().slice(0, 10),
+      };
+    },
+    async previewOrder(payload) {
+      const quantity = Math.max(0, Math.floor(Number(payload?.quantity || 0)));
+      const row = portfolioState.rows.find(
+        (item) => item.symbol === String(payload?.symbol || "").toUpperCase() && item.exchange === String(payload?.exchange || "NSE").toUpperCase(),
+      );
+      const price = Number(payload?.price || row?.lastPrice || 0);
+      if (!quantity || !price) {
+        return { ok: false, error: "symbol/quantity/price required" };
+      }
+      return {
+        ok: true,
+        dryRun: true,
+        previewId: `synthetic_preview_${Date.now()}`,
+        symbol: String(payload?.symbol || "").toUpperCase(),
+        exchange: String(payload?.exchange || "NSE").toUpperCase(),
+        side: String(payload?.side || "BUY").toUpperCase(),
+        quantity,
+        price,
+        notionalValue: Number.parseFloat((quantity * price).toFixed(2)),
+        charges: { total: Number.parseFloat((quantity * price * 0.001).toFixed(2)) },
+        estimatedTotal: Number.parseFloat((quantity * price * 1.001).toFixed(2)),
+        guardrails: { maxOrderValue: 200000, exceedsLimit: quantity * price > 200000 },
+      };
+    },
+    async submitOrder(payload) {
+      const preview = await this.previewOrder(payload);
+      if (!preview.ok) return preview;
+      const id = `synthetic_ord_${Date.now()}`;
+      syntheticOrders.set(id, { ...preview, id, status: "DRY_RUN", createdAt: new Date().toISOString() });
+      return { submitted: false, dryRun: true, order: syntheticOrders.get(id) };
+    },
+    async fetchOrderStatus(params) {
+      const order = syntheticOrders.get(String(params?.id || ""));
+      if (!order) {
+        throw new Error("order-not-found");
+      }
+      return {
+        id: order.id,
+        status: order.status,
+        createdAt: order.createdAt,
+        symbol: order.symbol,
+        exchange: order.exchange,
+        side: order.side,
+        quantity: order.quantity,
+        notionalValue: order.notionalValue,
+        dryRun: true,
+        note: "Synthetic mode order",
+      };
+    },
   };
 }
 
@@ -632,12 +953,14 @@ function resolveAdapter() {
         adapter,
         mode: "backend",
         warning: "",
+        config,
       };
     } catch (error) {
       return {
         adapter: createSyntheticAdapter(),
         mode: "synthetic",
         warning: error.message || "Backend adapter unavailable. Using synthetic mode.",
+        config,
       };
     }
   }
@@ -646,6 +969,7 @@ function resolveAdapter() {
     adapter: createSyntheticAdapter(),
     mode: "synthetic",
     warning: "",
+    config,
   };
 }
 
@@ -1111,6 +1435,184 @@ function renderComparison() {
   renderMomentumScan();
 }
 
+function decisionClass(action) {
+  const key = String(action || "hold").toLowerCase();
+  return `decision-chip decision-${key}`;
+}
+
+function applyPortfolioButtonStates() {
+  portfolioActionButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.portfolioAction === portfolioState.filters.action);
+  });
+  portfolioExchangeButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.portfolioExchange === portfolioState.filters.exchange);
+  });
+}
+
+function portfolioRowPasses(row) {
+  const actionFilter = portfolioState.filters.action;
+  const exchangeFilter = portfolioState.filters.exchange;
+  const confidenceMin = Number(portfolioState.filters.confidenceMin || 0);
+  const search = String(portfolioState.filters.search || "").toLowerCase();
+
+  if (actionFilter !== "all" && row.decision.action.toLowerCase() !== actionFilter) return false;
+  if (exchangeFilter !== "all" && row.exchange.toLowerCase() !== exchangeFilter) return false;
+  if ((row.decision.confidence || 0) < confidenceMin) return false;
+  if (search && !`${row.symbol} ${row.exchange}`.toLowerCase().includes(search)) return false;
+  return true;
+}
+
+function filteredPortfolioRows() {
+  return portfolioState.rows.filter((row) => portfolioRowPasses(row));
+}
+
+function renderPortfolioSummary() {
+  const summary = portfolioState.summary;
+  if (!summary) {
+    portfolioSummaryRow.innerHTML = `<article class="stat-card"><p>Portfolio</p><h3>Not connected</h3></article>`;
+    return;
+  }
+
+  const cards = [
+    { label: "Portfolio Value", value: money(summary.totalCurrent) },
+    { label: "Invested", value: money(summary.totalInvested) },
+    { label: "Unrealized P&L", value: `${money(summary.totalPnl)} (${percent(summary.totalPnlPct)})` },
+    { label: "Cash Available", value: money(summary.cashAvailable) },
+    { label: "Gainers / Losers", value: `${summary.gainers} / ${summary.losers}` },
+    { label: "Symbols", value: `${summary.totalSymbols}` },
+  ];
+
+  portfolioSummaryRow.innerHTML = cards
+    .map((card) => `<article class="stat-card"><p>${card.label}</p><h3>${card.value}</h3></article>`)
+    .join("");
+}
+
+function renderPortfolioDecisionPanel() {
+  const row =
+    portfolioState.rows.find((item) => item.key === portfolioState.selectedKey) ||
+    filteredPortfolioRows()[0] ||
+    null;
+
+  if (!row) {
+    portfolioDecisionMeta.textContent = "No selection";
+    portfolioDecisionPanel.innerHTML = `<div class="scan-empty">No portfolio rows match current filters.</div>`;
+    return;
+  }
+
+  portfolioState.selectedKey = row.key;
+  const decision = row.decision;
+  portfolioDecisionMeta.textContent = `${row.exchange}:${row.symbol} • ${decision.action}`;
+  portfolioDecisionPanel.innerHTML = `
+    <article class="decision-card">
+      <h4>${row.exchange}:${row.symbol}</h4>
+      <p>Action: <strong>${decision.action}</strong> • Confidence ${decision.confidence.toFixed(1)}% • Score ${decision.score.toFixed(1)}</p>
+      <ul class="decision-list">
+        ${decision.reasons.map((reason) => `<li>${reason}</li>`).join("")}
+      </ul>
+    </article>
+    <article class="decision-card">
+      <h4>Risk Flags</h4>
+      ${
+        decision.riskFlags.length
+          ? `<ul class="decision-list">${decision.riskFlags.map((flag) => `<li>${flag}</li>`).join("")}</ul>`
+          : `<p>No active risk flags for this symbol.</p>`
+      }
+    </article>
+  `;
+}
+
+async function handlePrepareOrder(rowKey) {
+  const row = portfolioState.rows.find((item) => item.key === rowKey);
+  if (!row) return;
+
+  try {
+    const preview = await runtimeState.adapter.previewOrder({
+      symbol: row.symbol,
+      exchange: row.exchange,
+      side: row.decision.action === "SELL" || row.decision.action === "REDUCE" ? "SELL" : "BUY",
+      quantity: Math.max(1, Math.round(row.quantity * 0.2)),
+      price: row.lastPrice,
+    });
+
+    if (!preview.ok) {
+      setRuntimeHealth("error", preview.error || "Order preview failed");
+      return;
+    }
+
+    const proceed = window.confirm(
+      `Order preview\\n${preview.exchange}:${preview.symbol} ${preview.side} x${preview.quantity}\\nNotional: ${money(preview.notionalValue)}\\nEstimated total: ${money(preview.estimatedTotal)}\\n\\nSubmit dry-run order?`,
+    );
+
+    if (!proceed) return;
+    const submitted = await runtimeState.adapter.submitOrder({
+      symbol: preview.symbol,
+      exchange: preview.exchange,
+      side: preview.side,
+      quantity: preview.quantity,
+      price: preview.price,
+      confirmationText: "CONFIRM",
+    });
+
+    if (submitted?.order?.id) {
+      setRuntimeHealth("ok", `Order ${submitted.order.id} prepared (${submitted.dryRun ? "dry-run" : "live"})`);
+      renderDataStatus();
+    }
+  } catch (error) {
+    console.error("Prepare order failed", error);
+    setRuntimeHealth("error", "Order preview failed");
+  }
+}
+
+function renderPortfolioRows() {
+  const rows = filteredPortfolioRows();
+  portfolioMeta.textContent = `${rows.length}/${portfolioState.rows.length} symbols • ${portfolioState.connected ? "Connected" : "Demo"} • ${portfolioState.providerMode || "demo"}`;
+
+  if (!rows.length) {
+    portfolioRowsEl.innerHTML = `<div class="scan-empty">No holdings match the current filters.</div>`;
+    return;
+  }
+
+  portfolioRowsEl.innerHTML = rows
+    .map((row) => {
+      const cells = WINDOWS.map((windowKey) => `<span class="cell ${colorClass(row.returns[windowKey])}">${percent(row.returns[windowKey])}</span>`).join("");
+      const selectedClass = row.key === portfolioState.selectedKey ? " portfolio-row-selected" : "";
+
+      return `
+        <div class="portfolio-row${selectedClass}" data-portfolio-key="${row.key}">
+          <div class="portfolio-symbol">${row.symbol}<span class="portfolio-exchange">${row.exchange}</span></div>
+          <span class="portfolio-mini">${row.quantity}</span>
+          <span class="portfolio-mini">${money(row.currentValue)}</span>
+          ${cells}
+          <span class="${decisionClass(row.decision.action)}">${row.decision.action}</span>
+          <button class="portfolio-inline-btn" data-prepare-order="${row.key}">Prepare</button>
+        </div>
+      `;
+    })
+    .join("");
+
+  portfolioRowsEl.querySelectorAll("[data-portfolio-key]").forEach((element) => {
+    element.addEventListener("click", () => {
+      portfolioState.selectedKey = element.dataset.portfolioKey;
+      renderPortfolioDecisionPanel();
+      renderPortfolioRows();
+    });
+  });
+
+  portfolioRowsEl.querySelectorAll("[data-prepare-order]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      handlePrepareOrder(button.dataset.prepareOrder);
+    });
+  });
+}
+
+function renderPortfolio() {
+  applyPortfolioButtonStates();
+  renderPortfolioSummary();
+  renderPortfolioRows();
+  renderPortfolioDecisionPanel();
+}
+
 function freshnessLabel(nowMs) {
   if (!runtimeState.lastSuccessAtMs) return "No successful sync yet";
   const deltaSec = Math.max(0, Math.floor((nowMs - runtimeState.lastSuccessAtMs) / 1000));
@@ -1176,6 +1678,58 @@ async function refreshComparisonSeries() {
   renderComparison();
 }
 
+async function refreshPortfolioBootstrap(options = {}) {
+  if (!runtimeState.adapter?.fetchPortfolioBootstrap) return;
+  const payload = await runtimeState.adapter.fetchPortfolioBootstrap({
+    exchange: portfolioState.filters.exchange,
+    refresh: Boolean(options.forceRefresh),
+  });
+  applyPortfolioBootstrap(payload);
+  runtimeState.portfolioLastSuccessAtMs = Date.now();
+  runtimeState.portfolioConsecutiveFailures = 0;
+  runtimeState.portfolioBackoffFailures = 0;
+  if (!portfolioState.selectedKey && payload.rows.length) {
+    portfolioState.selectedKey = payload.rows[0].key;
+  }
+  renderPortfolio();
+}
+
+async function pollPortfolioAndApplyUpdates() {
+  if (!runtimeState.adapter?.pollPortfolio || runtimeState.portfolioPollInFlight) return;
+  runtimeState.portfolioPollInFlight = true;
+
+  try {
+    const payload = await runtimeState.adapter.pollPortfolio({
+      cursor: portfolioState.cursor,
+      exchange: portfolioState.filters.exchange,
+    });
+    const merged = AdapterCore.mergePortfolioState(currentPortfolioStateAsAdapterDTO(), payload);
+    applyPortfolioBootstrap(AdapterCore.normalizePortfolioBootstrapPayload(merged));
+    runtimeState.portfolioLastSuccessAtMs = Date.now();
+    runtimeState.portfolioConsecutiveFailures = 0;
+    runtimeState.portfolioBackoffFailures = 0;
+    if (state.activeView === "portfolio") {
+      renderPortfolio();
+    }
+  } catch (error) {
+    runtimeState.portfolioConsecutiveFailures += 1;
+    runtimeState.portfolioBackoffFailures += 1;
+    if (
+      AdapterCore.shouldMarkStale({
+        consecutiveFailures: runtimeState.portfolioConsecutiveFailures,
+        lastSuccessAtMs: runtimeState.portfolioLastSuccessAtMs,
+        nowMs: Date.now(),
+        marketHours: AdapterCore.isMarketHoursIst(new Date()),
+      })
+    ) {
+      setRuntimeHealth("stale", "Portfolio data delayed • retrying");
+    }
+    console.error("Portfolio poll failed", error);
+  } finally {
+    runtimeState.portfolioPollInFlight = false;
+  }
+}
+
 function applyCompareButtonStates() {
   compareWindowButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.compareWindow === compareState.window);
@@ -1186,9 +1740,13 @@ function applyCompareButtonStates() {
 }
 
 function setActiveView(target) {
+  if (target === "portfolio" && !runtimeState.enablePortfolioView) {
+    target = "themes";
+  }
   state.activeView = target;
   themesViewEl.classList.toggle("active-view", target === "themes");
   comparisonViewEl.classList.toggle("active-view", target === "comparison");
+  portfolioViewEl.classList.toggle("active-view", target === "portfolio");
 
   viewLinks.forEach((link) => {
     const active = link.dataset.appViewTarget === target;
@@ -1204,6 +1762,11 @@ function setActiveView(target) {
         console.error("Failed to refresh comparison on view switch", error);
         renderComparison();
       });
+    });
+  } else if (target === "portfolio") {
+    refreshPortfolioBootstrap({ forceRefresh: false }).catch((error) => {
+      console.error("Failed to refresh portfolio on view switch", error);
+      renderPortfolio();
     });
   }
 }
@@ -1310,6 +1873,33 @@ function attachHandlers() {
       refreshComparisonSeries().catch((error) => {
         console.error("Exchange switch series refresh failed", error);
         setRuntimeHealth("stale", "Comparison data delayed");
+      });
+    });
+  });
+
+  portfolioSearchInput.addEventListener("input", (event) => {
+    portfolioState.filters.search = event.target.value.trim();
+    renderPortfolio();
+  });
+
+  portfolioConfidenceInput.addEventListener("input", (event) => {
+    portfolioState.filters.confidenceMin = clamp(Number(event.target.value || 0), 0, 100);
+    renderPortfolio();
+  });
+
+  portfolioActionButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      portfolioState.filters.action = button.dataset.portfolioAction;
+      renderPortfolio();
+    });
+  });
+
+  portfolioExchangeButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      portfolioState.filters.exchange = button.dataset.portfolioExchange;
+      refreshPortfolioBootstrap({ forceRefresh: true }).catch((error) => {
+        console.error("Portfolio exchange refresh failed", error);
+        setRuntimeHealth("stale", "Portfolio data delayed");
       });
     });
   });
@@ -1449,6 +2039,12 @@ async function pollAndApplyUpdates() {
       });
     }
 
+    if (runtimeState.enablePortfolioView) {
+      pollPortfolioAndApplyUpdates().catch((error) => {
+        console.error("Portfolio refresh during poll failed", error);
+      });
+    }
+
     onPollSuccess(payload);
   } catch (error) {
     onPollFailure(error);
@@ -1460,6 +2056,14 @@ async function init() {
   runtimeState.adapter = resolved.adapter;
   runtimeState.adapterMode = resolved.mode;
   runtimeState.persistentWarning = resolved.warning || "";
+  runtimeState.enablePortfolioView = resolved.config?.enablePortfolioView !== false;
+
+  if (!runtimeState.enablePortfolioView) {
+    portfolioViewEl.classList.remove("active-view");
+    portfolioViewEl.classList.add("hidden");
+    const portfolioNav = viewLinks.find((link) => link.dataset.appViewTarget === "portfolio");
+    if (portfolioNav) portfolioNav.classList.add("hidden");
+  }
 
   if (resolved.warning) {
     setRuntimeHealth("error", resolved.warning);
@@ -1476,6 +2080,16 @@ async function init() {
   state.liveTick = 1;
   runtimeState.lastSuccessAtMs = Date.now();
   runtimeState.lastAsOfLabel = bootstrap.asOf;
+  if (runtimeState.enablePortfolioView) {
+    try {
+      await refreshPortfolioBootstrap({ forceRefresh: true });
+    } catch (error) {
+      console.error("Portfolio bootstrap failed", error);
+      if (runtimeState.adapterMode === "backend") {
+        setRuntimeHealth("stale", "Portfolio data unavailable");
+      }
+    }
+  }
 
   attachHandlers();
   renderMatrix();

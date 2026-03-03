@@ -126,3 +126,18 @@
   - `node --check api/v1/comparison/series.js`
   - `node --check api/angel/health.js`
   - `node --test tests/adapterCore.test.js tests/mockApi.test.js` (13/13 passing)
+
+## Zerodha Portfolio Plan (2026-03-03)
+- [ ] Add broker provider abstraction and implement `kite-direct` + `kite-mcp` (stub) providers.
+- [ ] Add Zerodha auth/session endpoints (`/api/zerodha/auth/url`, `/api/zerodha/callback`, `/api/zerodha/session/status`).
+- [ ] Add portfolio API contracts (`bootstrap`, `poll`, `decisions`, `snapshots/eod`) with decision-engine output.
+- [ ] Add Supabase-backed snapshot persistence helper with safe fallback when env is missing.
+- [ ] Add phase-2 gated order APIs (`preview`, `submit`, `status`) with dry-run default behavior.
+- [ ] Add `Portfolio` as a separate top-nav page in existing dashboard UI with heatmap, filters, and decision panel.
+- [ ] Extend frontend adapter/runtime for portfolio bootstrap/poll and status updates.
+- [ ] Add tests for decision engine, provider contract, portfolio APIs, and order gating.
+- [ ] Update README with Zerodha setup, env vars, portfolio API usage, and trading safety flags.
+
+## Zerodha Portfolio Verify Plan Check-In
+- Scope: integrate Portfolio inside current dashboard without breaking existing Themes/Comparison behavior.
+- Safety: order placement remains gated (dry-run by default), single-user model, equity-cash scope only.

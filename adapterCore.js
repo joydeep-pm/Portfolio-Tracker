@@ -12,6 +12,7 @@
   const WINDOWS = ["1D", "1W", "1M", "6M", "YTD"];
   const COMPARE_WINDOWS = ["1D", "5D", "1M", "6M", "YTD"];
   const EXCHANGES = ["NSE", "BSE"];
+  const PORTFOLIO_ACTIONS = ["BUY", "ACCUMULATE", "HOLD", "REDUCE", "SELL"];
 
   class DataValidationError extends Error {
     constructor(message) {
@@ -56,6 +57,13 @@
   function requireNumber(value, path) {
     if (typeof value !== "number" || Number.isNaN(value) || !Number.isFinite(value)) {
       throw new DataValidationError(`${path} must be a finite number`);
+    }
+    return value;
+  }
+
+  function requireBoolean(value, path) {
+    if (typeof value !== "boolean") {
+      throw new DataValidationError(`${path} must be a boolean`);
     }
     return value;
   }
@@ -190,6 +198,123 @@
     };
   }
 
+  function normalizeDecision(value, path) {
+    const record = requireObject(value, path);
+    const action = requireString(record.action, `${path}.action`).toUpperCase();
+    if (!PORTFOLIO_ACTIONS.includes(action)) {
+      throw new DataValidationError(`${path}.action must be one of ${PORTFOLIO_ACTIONS.join("/")}`);
+    }
+
+    return {
+      symbol: requireString(record.symbol, `${path}.symbol`).toUpperCase(),
+      exchange: normalizeExchange(record.exchange, `${path}.exchange`),
+      action,
+      confidence: requireNumber(record.confidence, `${path}.confidence`),
+      score: requireNumber(record.score, `${path}.score`),
+      reasons: requireArray(record.reasons || [], `${path}.reasons`).map((reason, index) =>
+        requireString(reason, `${path}.reasons[${index}]`),
+      ),
+      riskFlags: requireArray(record.riskFlags || [], `${path}.riskFlags`).map((flag, index) =>
+        requireString(flag, `${path}.riskFlags[${index}]`),
+      ),
+      asOf: requireString(record.asOf, `${path}.asOf`),
+    };
+  }
+
+  function normalizePortfolioSummary(value, path) {
+    const record = requireObject(value, path);
+    return {
+      totalSymbols: requireNumber(record.totalSymbols, `${path}.totalSymbols`),
+      totalInvested: requireNumber(record.totalInvested, `${path}.totalInvested`),
+      totalCurrent: requireNumber(record.totalCurrent, `${path}.totalCurrent`),
+      totalPnl: requireNumber(record.totalPnl, `${path}.totalPnl`),
+      totalPnlPct: requireNumber(record.totalPnlPct, `${path}.totalPnlPct`),
+      gainers: requireNumber(record.gainers, `${path}.gainers`),
+      losers: requireNumber(record.losers, `${path}.losers`),
+      cashAvailable: requireNumber(record.cashAvailable, `${path}.cashAvailable`),
+    };
+  }
+
+  function normalizePortfolioRow(value, path) {
+    const record = requireObject(value, path);
+    return {
+      key: requireString(record.key || `${record.exchange || ""}:${record.symbol || ""}`, `${path}.key`),
+      symbol: requireString(record.symbol, `${path}.symbol`).toUpperCase(),
+      exchange: normalizeExchange(record.exchange, `${path}.exchange`),
+      quantity: requireNumber(record.quantity, `${path}.quantity`),
+      averagePrice: requireNumber(record.averagePrice, `${path}.averagePrice`),
+      lastPrice: requireNumber(record.lastPrice, `${path}.lastPrice`),
+      investedValue: requireNumber(record.investedValue, `${path}.investedValue`),
+      currentValue: requireNumber(record.currentValue, `${path}.currentValue`),
+      unrealizedPnl: requireNumber(record.unrealizedPnl, `${path}.unrealizedPnl`),
+      unrealizedPnlPct: requireNumber(record.unrealizedPnlPct, `${path}.unrealizedPnlPct`),
+      weightPct: requireNumber(record.weightPct, `${path}.weightPct`),
+      returns: normalizeReturns(record.returns, `${path}.returns`),
+      product: requireString(record.product || "CNC", `${path}.product`),
+      sourceTypes: requireArray(record.sourceTypes || [], `${path}.sourceTypes`).map((sourceType, index) =>
+        requireString(sourceType, `${path}.sourceTypes[${index}]`),
+      ),
+      decision: normalizeDecision(record.decision, `${path}.decision`),
+    };
+  }
+
+  function normalizePortfolioBootstrapPayload(payload) {
+    const record = requireObject(payload, "portfolio.bootstrap");
+
+    return {
+      asOf: requireString(record.asOf, "portfolio.bootstrap.asOf"),
+      cursor: requireString(record.cursor, "portfolio.bootstrap.cursor"),
+      rows: requireArray(record.rows, "portfolio.bootstrap.rows").map((row, index) =>
+        normalizePortfolioRow(row, `portfolio.bootstrap.rows[${index}]`),
+      ),
+      summary: normalizePortfolioSummary(record.summary, "portfolio.bootstrap.summary"),
+      decisions: requireArray(record.decisions || [], "portfolio.bootstrap.decisions").map((decision, index) =>
+        normalizeDecision(decision, `portfolio.bootstrap.decisions[${index}]`),
+      ),
+      connected: requireBoolean(record.connected, "portfolio.bootstrap.connected"),
+      provider: requireString(record.provider, "portfolio.bootstrap.provider"),
+      providerMode: requireString(record.providerMode, "portfolio.bootstrap.providerMode"),
+      user: isObject(record.user)
+        ? {
+            userId: record.user.userId ? requireString(record.user.userId, "portfolio.bootstrap.user.userId") : null,
+            userName: record.user.userName ? requireString(record.user.userName, "portfolio.bootstrap.user.userName") : null,
+          }
+        : { userId: null, userName: null },
+    };
+  }
+
+  function normalizePortfolioPollPayload(payload) {
+    const record = requireObject(payload, "portfolio.poll");
+    const updates = requireObject(record.updates || {}, "portfolio.poll.updates");
+
+    return {
+      asOf: requireString(record.asOf, "portfolio.poll.asOf"),
+      cursor: requireString(record.cursor, "portfolio.poll.cursor"),
+      updates: {
+        rows: requireArray(updates.rows || [], "portfolio.poll.updates.rows").map((row, index) =>
+          normalizePortfolioRow(row, `portfolio.poll.updates.rows[${index}]`),
+        ),
+        decisions: requireArray(updates.decisions || [], "portfolio.poll.updates.decisions").map((decision, index) =>
+          normalizeDecision(decision, `portfolio.poll.updates.decisions[${index}]`),
+        ),
+        summary: updates.summary ? normalizePortfolioSummary(updates.summary, "portfolio.poll.updates.summary") : null,
+      },
+      connected: requireBoolean(record.connected, "portfolio.poll.connected"),
+      provider: requireString(record.provider, "portfolio.poll.provider"),
+      providerMode: requireString(record.providerMode, "portfolio.poll.providerMode"),
+    };
+  }
+
+  function normalizePortfolioDecisionsPayload(payload) {
+    const record = requireObject(payload, "portfolio.decisions");
+    return {
+      asOf: requireString(record.asOf, "portfolio.decisions.asOf"),
+      decisions: requireArray(record.decisions || [], "portfolio.decisions.decisions").map((decision, index) =>
+        normalizeDecision(decision, `portfolio.decisions.decisions[${index}]`),
+      ),
+    };
+  }
+
   function getIstParts(date) {
     const formatter = new Intl.DateTimeFormat("en-US", {
       timeZone: "Asia/Kolkata",
@@ -302,6 +427,50 @@
     };
   }
 
+  function mergePortfolioState(currentState, pollPayload) {
+    const stateRecord = requireObject(currentState, "portfolio.state");
+    const normalizedPoll = normalizePortfolioPollPayload(pollPayload);
+    const rowMap = new Map(
+      requireArray(stateRecord.rows || [], "portfolio.state.rows").map((row) => {
+        const normalized = normalizePortfolioRow(row, `portfolio.state.rows.${row.key || "unknown"}`);
+        return [normalized.key, normalized];
+      }),
+    );
+
+    normalizedPoll.updates.rows.forEach((row) => {
+      rowMap.set(row.key, row);
+    });
+
+    const decisionMap = new Map();
+    normalizedPoll.updates.decisions.forEach((decision) => {
+      const key = `${decision.exchange}:${decision.symbol}`;
+      decisionMap.set(key, decision);
+    });
+
+    const rows = [...rowMap.values()]
+      .map((row) => {
+        const key = `${row.exchange}:${row.symbol}`;
+        if (!decisionMap.has(key)) return row;
+        return {
+          ...row,
+          decision: decisionMap.get(key),
+        };
+      })
+      .sort((a, b) => b.currentValue - a.currentValue);
+
+    return {
+      asOf: normalizedPoll.asOf,
+      cursor: normalizedPoll.cursor,
+      rows,
+      decisions: rows.map((row) => row.decision),
+      summary: normalizedPoll.updates.summary || normalizePortfolioSummary(stateRecord.summary, "portfolio.state.summary"),
+      connected: normalizedPoll.connected,
+      provider: normalizedPoll.provider,
+      providerMode: normalizedPoll.providerMode,
+      user: stateRecord.user || { userId: null, userName: null },
+    };
+  }
+
   function toQueryString(params) {
     const search = new URLSearchParams();
     Object.keys(params || {}).forEach((key) => {
@@ -326,16 +495,19 @@
       throw new DataAdapterError("Missing auth token for backend adapter");
     }
 
-    async function request(pathname, query) {
+    async function request(pathname, query, options = {}) {
       const queryString = toQueryString(query);
       const url = `${apiBaseUrl}${pathname}${queryString ? `?${queryString}` : ""}`;
 
+      const method = options.method || "GET";
       const response = await fetchImpl(url, {
-        method: "GET",
+        method,
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${authToken}`,
+          ...(method !== "GET" ? { "Content-Type": "application/json" } : {}),
         },
+        ...(options.body ? { body: JSON.stringify(options.body) } : {}),
       });
 
       if (!response.ok) {
@@ -371,6 +543,45 @@
         });
         return normalizeComparisonPayload(payload);
       },
+      async fetchPortfolioBootstrap(params) {
+        const payload = await request("/portfolio/bootstrap", {
+          exchange: params?.exchange || "all",
+          refresh: params?.refresh ? "true" : "",
+        });
+        return normalizePortfolioBootstrapPayload(payload);
+      },
+      async pollPortfolio(params) {
+        const payload = await request("/portfolio/poll", {
+          cursor: params?.cursor || "",
+          exchange: params?.exchange || "all",
+        });
+        return normalizePortfolioPollPayload(payload);
+      },
+      async fetchPortfolioDecisions(params) {
+        const payload = await request("/portfolio/decisions", {
+          exchange: params?.exchange || "all",
+          asOf: params?.asOf || "",
+        });
+        return normalizePortfolioDecisionsPayload(payload);
+      },
+      async createPortfolioEodSnapshot(params) {
+        return request("/portfolio/snapshots/eod", {}, {
+          method: "POST",
+          body: {
+            snapshotDate: params?.snapshotDate || "",
+          },
+        });
+      },
+      async previewOrder(payload) {
+        return request("/orders/preview", {}, { method: "POST", body: payload || {} });
+      },
+      async submitOrder(payload) {
+        return request("/orders/submit", {}, { method: "POST", body: payload || {} });
+      },
+      async fetchOrderStatus(params) {
+        const orderId = requireString(params?.id || "", "order.id");
+        return request(`/orders/${encodeURIComponent(orderId)}/status`, {});
+      },
     };
   }
 
@@ -383,8 +594,12 @@
     normalizeBootstrapPayload,
     normalizePollPayload,
     normalizeComparisonPayload,
+    normalizePortfolioBootstrapPayload,
+    normalizePortfolioPollPayload,
+    normalizePortfolioDecisionsPayload,
     mapComparisonSeries,
     mergeMarketState,
+    mergePortfolioState,
     isMarketHoursIst,
     getAdaptivePollIntervalMs,
     nextBackoffMs,
