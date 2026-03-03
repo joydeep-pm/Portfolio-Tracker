@@ -35,7 +35,7 @@ function estimateCharges(notionalValue) {
   };
 }
 
-async function buildPreview(input = {}) {
+async function buildPreview(input = {}, options = {}) {
   const symbol = String(input.symbol || "").toUpperCase();
   const exchange = normalizeExchange(input.exchange);
   const side = normalizeSide(input.side);
@@ -48,7 +48,11 @@ async function buildPreview(input = {}) {
     };
   }
 
-  const snapshot = await bootstrapPortfolio({ exchange: "all", forceRefresh: false });
+  const snapshot = await bootstrapPortfolio({
+    exchange: "all",
+    forceRefresh: false,
+    sessionOverride: options.sessionOverride || null,
+  });
   const row = snapshot.rows.find((item) => item.symbol === symbol && item.exchange === exchange);
   const price = toNumber(input.price, toNumber(row?.lastPrice, 0));
 

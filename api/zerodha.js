@@ -1,7 +1,7 @@
 const crypto = require("node:crypto");
 
 const { getSession, setSession } = require("./_lib/zerodhaSession");
-const { getQuery, json, methodNotAllowed } = require("./_lib/http");
+const { getQuery, json, methodNotAllowed, parseCookies, setCookie } = require("./_lib/http");
 
 const KITE_API_BASE = "https://api.kite.trade";
 
@@ -19,13 +19,16 @@ function buildRedirectUrl(req) {
 async function handleAuthUrl(req, res) {
   if (req.method !== "GET") return methodNotAllowed(res);
 
+  const cookies = parseCookies(req);
+  const connectedByCookie = Boolean(String(cookies.kite_access_token || "").trim());
+  const session = getSession();
   const apiKey = process.env.KITE_API_KEY || "";
   const redirectUrl = buildRedirectUrl(req);
 
   if (!apiKey) {
     return json(res, 200, {
       ready: false,
-      connected: Boolean(getSession().connected),
+      connected: connectedByCookie || Boolean(session.connected),
       authUrl: "",
       message: "Set KITE_API_KEY to generate Zerodha auth URL",
       redirectUrl,
@@ -40,7 +43,7 @@ async function handleAuthUrl(req, res) {
 
   return json(res, 200, {
     ready: true,
-    connected: Boolean(getSession().connected),
+    connected: connectedByCookie || Boolean(session.connected),
     authUrl: `https://kite.zerodha.com/connect/login?${query.toString()}`,
     redirectUrl,
   });
@@ -122,6 +125,26 @@ async function handleCallback(req, res) {
     provider: "kite-direct",
   });
 
+  const secureCookie = !String(req?.headers?.host || "").includes("localhost");
+  setCookie(res, "kite_access_token", session.accessToken || "", {
+    maxAge: 60 * 60 * 8,
+    secure: secureCookie,
+    sameSite: "Lax",
+    httpOnly: true,
+  });
+  setCookie(res, "kite_user_id", session.userId || "", {
+    maxAge: 60 * 60 * 8,
+    secure: secureCookie,
+    sameSite: "Lax",
+    httpOnly: false,
+  });
+  setCookie(res, "kite_user_name", session.userName || "", {
+    maxAge: 60 * 60 * 8,
+    secure: secureCookie,
+    sameSite: "Lax",
+    httpOnly: false,
+  });
+
   return json(res, 200, {
     connected: true,
     provider: session.provider,
@@ -136,17 +159,31 @@ async function handleCallback(req, res) {
 async function handleSessionStatus(req, res) {
   if (req.method !== "GET") return methodNotAllowed(res);
 
+  const cookies = parseCookies(req);
   const session = getSession();
+  const cookieToken = String(cookies.kite_access_token || "").trim();
+  const cookieUserId = String(cookies.kite_user_id || "").trim();
+  const cookieUserName = String(cookies.kite_user_name || "").trim();
+
+  const effective = cookieToken
+    ? {
+        ...session,
+        connected: true,
+        accessToken: cookieToken,
+        userId: cookieUserId || session.userId || null,
+        userName: cookieUserName || session.userName || null,
+      }
+    : session;
   return json(res, 200, {
-    connected: Boolean(session.connected && session.accessToken),
-    provider: session.provider || "kite-direct",
+    connected: Boolean(effective.connected && effective.accessToken),
+    provider: effective.provider || "kite-direct",
     user: {
-      userId: session.userId || null,
-      userName: session.userName || null,
+      userId: effective.userId || null,
+      userName: effective.userName || null,
     },
-    loginTime: session.loginTime || null,
-    hasAccessToken: Boolean(session.accessToken),
-    hasRequestToken: Boolean(session.requestToken),
+    loginTime: effective.loginTime || null,
+    hasAccessToken: Boolean(effective.accessToken),
+    hasRequestToken: Boolean(effective.requestToken),
     warnings: [
       !process.env.KITE_API_KEY ? "KITE_API_KEY is missing" : null,
       !process.env.KITE_API_SECRET ? "KITE_API_SECRET is missing" : null,

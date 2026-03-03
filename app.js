@@ -460,10 +460,11 @@ function buildUniverse() {
 }
 
 function readRuntimeConfig() {
+  const defaultMode = window.location && window.location.hostname.includes("vercel.app") ? "backend" : "synthetic";
   const defaultConfig = {
-    dataMode: "synthetic",
+    dataMode: defaultMode,
     apiBaseUrl: "/api/v1",
-    authToken: "",
+    authToken: "public-client-token",
     enablePortfolioView: true,
   };
 

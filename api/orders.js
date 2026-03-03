@@ -1,14 +1,31 @@
 const { buildPreview, saveSubmittedOrder, getOrderById } = require("./_lib/orderService");
-const { json, methodNotAllowed, parseJsonBody } = require("./_lib/http");
+const { json, methodNotAllowed, parseJsonBody, parseCookies } = require("./_lib/http");
+
+function sessionFromRequest(req) {
+  const cookies = parseCookies(req);
+  const accessToken = String(cookies.kite_access_token || "").trim();
+  const userId = String(cookies.kite_user_id || "").trim();
+  const userName = String(cookies.kite_user_name || "").trim();
+
+  if (!accessToken) return null;
+  return {
+    connected: true,
+    accessToken,
+    userId: userId || null,
+    userName: userName || null,
+    provider: "kite-direct",
+  };
+}
 
 module.exports = async function handler(req, res) {
   const route = String(req.query?.route || "").toLowerCase();
+  const sessionOverride = sessionFromRequest(req);
 
   if (route === "preview") {
     if (req.method !== "POST") return methodNotAllowed(res);
 
     const body = await parseJsonBody(req);
-    const preview = await buildPreview(body);
+    const preview = await buildPreview(body, { sessionOverride });
 
     if (!preview.ok) {
       return json(res, 400, preview);
@@ -21,7 +38,7 @@ module.exports = async function handler(req, res) {
     if (req.method !== "POST") return methodNotAllowed(res);
 
     const body = await parseJsonBody(req);
-    const preview = await buildPreview(body);
+    const preview = await buildPreview(body, { sessionOverride });
 
     if (!preview.ok) {
       return json(res, 400, preview);

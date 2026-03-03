@@ -245,7 +245,10 @@ async function updateSnapshotQuotes(provider) {
 
 async function ensureSnapshot(options = {}) {
   const forceRefresh = Boolean(options.forceRefresh);
-  const session = getSession();
+  const session = {
+    ...getSession(),
+    ...(options.sessionOverride || {}),
+  };
   const provider = createBrokerProvider({ session });
 
   const nowMs = Date.now();
@@ -276,13 +279,19 @@ async function ensureSnapshot(options = {}) {
 
 async function bootstrapPortfolio(options = {}) {
   const exchange = normalizeExchange(options.exchange);
-  const { snapshot } = await ensureSnapshot({ forceRefresh: Boolean(options.forceRefresh) });
+  const { snapshot } = await ensureSnapshot({
+    forceRefresh: Boolean(options.forceRefresh),
+    sessionOverride: options.sessionOverride || null,
+  });
   return filterSnapshotByExchange(snapshot, exchange);
 }
 
 async function pollPortfolio(options = {}) {
   const exchange = normalizeExchange(options.exchange);
-  const { snapshot, previousSnapshot } = await ensureSnapshot({ forceRefresh: false });
+  const { snapshot, previousSnapshot } = await ensureSnapshot({
+    forceRefresh: false,
+    sessionOverride: options.sessionOverride || null,
+  });
   const filteredSnapshot = filterSnapshotByExchange(snapshot, exchange);
   const filteredPrevious = previousSnapshot ? filterSnapshotByExchange(previousSnapshot, exchange) : null;
 
@@ -298,7 +307,11 @@ async function pollPortfolio(options = {}) {
 
 async function getDecisions(options = {}) {
   const exchange = normalizeExchange(options.exchange);
-  const snapshot = await bootstrapPortfolio({ exchange, forceRefresh: false });
+  const snapshot = await bootstrapPortfolio({
+    exchange,
+    forceRefresh: false,
+    sessionOverride: options.sessionOverride || null,
+  });
   return {
     asOf: snapshot.asOf,
     decisions: snapshot.rows.map((row) => row.decision),

@@ -50,6 +50,35 @@ function exchangeKey(rawValue) {
   return "all";
 }
 
+function parseCookies(req) {
+  const header = req?.headers?.cookie || req?.headers?.Cookie || "";
+  if (!header || typeof header !== "string") return {};
+
+  return header.split(";").reduce((acc, part) => {
+    const [rawKey, ...rest] = part.split("=");
+    const key = String(rawKey || "").trim();
+    if (!key) return acc;
+    const value = rest.join("=").trim();
+    acc[key] = decodeURIComponent(value || "");
+    return acc;
+  }, {});
+}
+
+function setCookie(res, name, value, options = {}) {
+  const attrs = [`${name}=${encodeURIComponent(String(value || ""))}`];
+  attrs.push(`Path=${options.path || "/"}`);
+  if (Number.isFinite(options.maxAge)) attrs.push(`Max-Age=${Math.max(0, Math.floor(options.maxAge))}`);
+  if (options.httpOnly !== false) attrs.push("HttpOnly");
+  if (options.sameSite) attrs.push(`SameSite=${options.sameSite}`);
+  if (options.secure) attrs.push("Secure");
+
+  const existing = res.getHeader ? res.getHeader("Set-Cookie") : null;
+  const next = Array.isArray(existing) ? existing.concat(attrs.join("; ")) : [attrs.join("; ")];
+  if (res.setHeader) {
+    res.setHeader("Set-Cookie", next);
+  }
+}
+
 module.exports = {
   toNumber,
   getQuery,
@@ -57,4 +86,6 @@ module.exports = {
   methodNotAllowed,
   parseJsonBody,
   exchangeKey,
+  parseCookies,
+  setCookie,
 };

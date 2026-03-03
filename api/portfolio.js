@@ -1,9 +1,26 @@
 const { bootstrapPortfolio, pollPortfolio, getDecisions } = require("./_lib/portfolioService");
 const { saveEodSnapshot } = require("./_lib/snapshots");
-const { exchangeKey, json, methodNotAllowed, parseJsonBody } = require("./_lib/http");
+const { exchangeKey, json, methodNotAllowed, parseJsonBody, parseCookies } = require("./_lib/http");
+
+function sessionFromRequest(req) {
+  const cookies = parseCookies(req);
+  const accessToken = String(cookies.kite_access_token || "").trim();
+  const userId = String(cookies.kite_user_id || "").trim();
+  const userName = String(cookies.kite_user_name || "").trim();
+
+  if (!accessToken) return null;
+  return {
+    connected: true,
+    accessToken,
+    userId: userId || null,
+    userName: userName || null,
+    provider: "kite-direct",
+  };
+}
 
 module.exports = async function handler(req, res) {
   const route = String(req.query?.route || "").toLowerCase();
+  const sessionOverride = sessionFromRequest(req);
 
   if (route === "bootstrap") {
     if (req.method !== "GET") return methodNotAllowed(res);
@@ -12,6 +29,7 @@ module.exports = async function handler(req, res) {
       const payload = await bootstrapPortfolio({
         exchange: exchangeKey(req.query?.exchange),
         forceRefresh: String(req.query?.refresh || "").toLowerCase() === "true",
+        sessionOverride,
       });
 
       return json(res, 200, payload);
@@ -30,6 +48,7 @@ module.exports = async function handler(req, res) {
       const payload = await pollPortfolio({
         cursor: req.query?.cursor || "",
         exchange: exchangeKey(req.query?.exchange),
+        sessionOverride,
       });
 
       return json(res, 200, payload);
@@ -47,6 +66,7 @@ module.exports = async function handler(req, res) {
     try {
       const payload = await getDecisions({
         exchange: exchangeKey(req.query?.exchange),
+        sessionOverride,
       });
 
       return json(res, 200, payload);

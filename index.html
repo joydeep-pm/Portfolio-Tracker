@@ -209,9 +209,10 @@
 
     <script>
       window.PORTFOLIO_TRACKER_CONFIG = window.PORTFOLIO_TRACKER_CONFIG || {
-        dataMode: "synthetic",
+        dataMode: "backend",
         apiBaseUrl: "/api/v1",
-        authToken: "",
+        authToken: "public-client-token",
+        enablePortfolioView: true,
       };
     </script>
     <script src="adapterCore.js"></script>

@@ -12,3 +12,8 @@
 - User correction: operational setup guidance was too technical for the user’s current workflow.
 - Preventive rule: when guiding third-party onboarding steps (broker/API dashboards), default to short, action-only checklists with minimal jargon first.
 - Preventive rule: sequence instructions by immediate user action (what to click and where) before architecture details, and defer technical internals until asked.
+
+## 2026-03-03
+- User correction: production deployment succeeded but API URLs still returned 404.
+- Preventive rule: on Vercel Hobby/non-Next setups, validate runtime route resolution on production domain after any routing refactor before asking user to test.
+- Preventive rule: prefer stable function filenames plus `vercel.json` rewrites over bracket dynamic filenames for API routing portability.
