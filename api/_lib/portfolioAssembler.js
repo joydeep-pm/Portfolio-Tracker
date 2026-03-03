@@ -18,6 +18,7 @@ function normalizeHolding(holding) {
     exchange: String(holding.exchange || "NSE").toUpperCase(),
     quantity: toNumber(holding.quantity, 0),
     averagePrice: toNumber(holding.average_price ?? holding.averagePrice, 0),
+    lastPrice: toNumber(holding.last_price ?? holding.lastPrice, 0),
     instrumentToken: toNumber(holding.instrument_token ?? holding.instrumentToken, 0),
     product: String(holding.product || "CNC").toUpperCase(),
     source: "holding",
@@ -30,6 +31,7 @@ function normalizePosition(position) {
     exchange: String(position.exchange || "NSE").toUpperCase(),
     quantity: toNumber(position.quantity ?? position.net_quantity, 0),
     averagePrice: toNumber(position.average_price ?? position.averagePrice, 0),
+    lastPrice: toNumber(position.last_price ?? position.lastPrice, 0),
     instrumentToken: toNumber(position.instrument_token ?? position.instrumentToken, 0),
     product: String(position.product || "MIS").toUpperCase(),
     source: "position",
@@ -66,9 +68,20 @@ function assemblePortfolioSnapshot(input = {}) {
         instrumentToken: item.instrumentToken || 0,
         quantity: item.quantity,
         averagePrice: item.averagePrice,
+        lastPrice: item.lastPrice,
         product: item.product,
         sourceTypes: [item.source],
       });
+      return;
+    }
+
+    // Zerodha may surface CNC in both holdings and positions views; avoid double-counting.
+    const isPotentialCncDuplicate =
+      item.source === "position" &&
+      item.product === "CNC" &&
+      existing.sourceTypes.includes("holding");
+    if (isPotentialCncDuplicate) {
+      if (!existing.lastPrice && item.lastPrice) existing.lastPrice = item.lastPrice;
       return;
     }
 
@@ -78,6 +91,7 @@ function assemblePortfolioSnapshot(input = {}) {
     existing.averagePrice = combinedQty !== 0 ? invested / combinedQty : existing.averagePrice;
     if (!existing.sourceTypes.includes(item.source)) existing.sourceTypes.push(item.source);
     if (!existing.instrumentToken && item.instrumentToken) existing.instrumentToken = item.instrumentToken;
+    if (!existing.lastPrice && item.lastPrice) existing.lastPrice = item.lastPrice;
     existing.product = existing.product === item.product ? existing.product : `${existing.product}+${item.product}`;
   };
 
@@ -89,7 +103,7 @@ function assemblePortfolioSnapshot(input = {}) {
     .map((row) => {
       const quote = quotesByKey[row.key] || {};
       const returns = safeReturns(returnsByKey[row.key]);
-      const lastPrice = toNumber(quote.lastPrice ?? quote.last_price, row.averagePrice);
+      const lastPrice = toNumber(quote.lastPrice ?? quote.last_price, toNumber(row.lastPrice, row.averagePrice));
       const investedValue = toNumber(row.averagePrice * row.quantity, 0);
       const currentValue = toNumber(lastPrice * row.quantity, 0);
       const unrealizedPnl = toNumber(currentValue - investedValue, 0);

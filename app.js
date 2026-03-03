@@ -2081,24 +2081,26 @@ async function init() {
   state.liveTick = 1;
   runtimeState.lastSuccessAtMs = Date.now();
   runtimeState.lastAsOfLabel = bootstrap.asOf;
-  if (runtimeState.enablePortfolioView) {
-    try {
-      await refreshPortfolioBootstrap({ forceRefresh: true });
-    } catch (error) {
-      console.error("Portfolio bootstrap failed", error);
-      if (runtimeState.adapterMode === "backend") {
-        setRuntimeHealth("stale", "Portfolio data unavailable");
-      }
-    }
-  }
 
   attachHandlers();
   renderMatrix();
+  if (runtimeState.enablePortfolioView) {
+    renderPortfolio();
+  }
   await initializeComparisonState();
   setActiveView("themes");
   renderDataStatus();
   scheduleNextPoll(baseIntervalMs());
   window.setInterval(renderDataStatus, 1000);
+
+  if (runtimeState.enablePortfolioView) {
+    refreshPortfolioBootstrap({ forceRefresh: true }).catch((error) => {
+      console.error("Portfolio bootstrap failed", error);
+      if (runtimeState.adapterMode === "backend") {
+        setRuntimeHealth("stale", "Portfolio data unavailable");
+      }
+    });
+  }
 }
 
 init().catch((error) => {

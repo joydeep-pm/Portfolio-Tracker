@@ -131,12 +131,8 @@ function createKiteDirectProvider(options = {}) {
       return createDemoPortfolioRows();
     }
 
-    try {
-      const payload = await kiteGet("/portfolio/holdings");
-      return Array.isArray(payload.data) ? payload.data : [];
-    } catch (_error) {
-      return createDemoPortfolioRows();
-    }
+    const payload = await kiteGet("/portfolio/holdings");
+    return Array.isArray(payload.data) ? payload.data : [];
   }
 
   async function getPositions() {

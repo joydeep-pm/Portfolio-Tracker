@@ -259,7 +259,19 @@ async function ensureSnapshot(options = {}) {
     nowMs - runtime.lastStructureSyncMs > 60_000;
 
   const previousSnapshot = runtime.snapshot;
-  const nextSnapshot = requiresStructureSync ? await buildFullSnapshot(provider) : await updateSnapshotQuotes(provider);
+  let nextSnapshot;
+  try {
+    nextSnapshot = requiresStructureSync ? await buildFullSnapshot(provider) : await updateSnapshotQuotes(provider);
+  } catch (error) {
+    if (previousSnapshot) {
+      nextSnapshot = {
+        ...previousSnapshot,
+        asOf: new Date().toISOString(),
+      };
+    } else {
+      throw error;
+    }
+  }
   if (requiresStructureSync) runtime.lastStructureSyncMs = nowMs;
 
   runtime.snapshot = nextSnapshot;
