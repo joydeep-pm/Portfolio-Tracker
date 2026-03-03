@@ -1069,11 +1069,23 @@ function renderStats(visibleClustersByHead) {
     .join("");
 }
 
+function displayClusterLabel(cluster) {
+  const full = String(cluster?.name || "").trim();
+  const head = String(cluster?.headName || "").trim();
+  if (!full || !head) return full;
+  const fullLower = full.toLowerCase();
+  const headLower = head.toLowerCase();
+  if (!fullLower.startsWith(headLower)) return full;
+  const trimmed = full.slice(head.length).replace(/^[\s\-:&|]+/, "").trim();
+  return trimmed || full;
+}
+
 function clusterRowHtml(cluster) {
   const cells = WINDOWS.map((w) => `<span class="cell ${colorClass(cluster.momentum[w])}">${percent(cluster.momentum[w])}</span>`).join("");
+  const displayName = displayClusterLabel(cluster);
   return `
     <button class="cluster-row" data-cluster-id="${cluster.id}" aria-label="Open ${cluster.name}">
-      <span class="cluster-name">${cluster.name}</span>
+      <span class="cluster-name" title="${cluster.name}">${displayName}</span>
       <span class="cluster-count">(${cluster.stocks.length})</span>
       ${cells}
     </button>
