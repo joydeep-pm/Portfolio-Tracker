@@ -435,8 +435,8 @@ body[data-ui-variant="classic"] .legend {
 .table-head,
 .cluster-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px repeat(5, minmax(56px, 1fr));
-  gap: 0.28rem;
+  grid-template-columns: minmax(0, 1fr) 34px repeat(5, minmax(48px, 1fr));
+  gap: 0.22rem;
   align-items: center;
 }
 
@@ -478,17 +478,17 @@ body[data-ui-variant="classic"] .legend {
 .cluster-name {
   display: block;
   justify-self: start;
-  font-size: 0.67rem;
-  font-weight: 700;
+  font-size: clamp(0.54rem, 0.62vw, 0.67rem);
+  font-weight: 600;
   text-transform: none;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   line-height: 1.2;
 }
 
 .cluster-count {
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   color: var(--muted);
   text-align: right;
 }
@@ -496,13 +496,13 @@ body[data-ui-variant="classic"] .legend {
 .cell {
   border: 1px solid rgba(230, 238, 248, 0.1);
   border-radius: 6px;
-  font-size: 0.56rem;
+  font-size: 0.52rem;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 0.22rem 0.18rem;
-  min-height: 22px;
+  padding: 0.2rem 0.12rem;
+  min-height: 20px;
   line-height: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -1111,7 +1111,7 @@ body[data-ui-variant="classic"] #compareCanvas {
 
   .table-head,
   .cluster-row {
-    grid-template-columns: minmax(0, 1fr) 36px repeat(5, minmax(48px, 1fr));
+    grid-template-columns: minmax(0, 1fr) 30px repeat(5, minmax(44px, 1fr));
   }
 
   .portfolio-table-head,

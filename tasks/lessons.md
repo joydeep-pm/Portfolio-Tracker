@@ -34,3 +34,8 @@
 - Preventive rule: when rows are rendered as `<button>`, explicitly set `text-align: left` and `justify-self` for key grid children to avoid default centering artifacts.
 - User correction: themes heatmap must align directly under period headers, and cluster text should remain one-line.
 - Preventive rule: do not introduce multi-line/two-tier row structures for period heatmaps unless explicitly requested; keep row schema identical to header schema for visual alignment.
+- User correction: one-line labels still clipped after alignment restore.
+- Preventive rule: when one-line full labels are required in dense heatmaps, first tighten metric-column footprint and use responsive label font sizing before changing row structure.
+- User correction: roadmap template existed but was perceived as non-actionable because progress/evidence and active execution items were missing.
+- Preventive rule: when creating a tracking roadmap, always include a live execution board, per-item sub-steps, and immediate status/evidence updates in the same turn.
+- Preventive rule: after creating any planning artifact, begin at least one concrete implementation item and mark it with verification evidence to avoid a static checklist impression.
