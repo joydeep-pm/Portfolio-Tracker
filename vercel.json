@@ -1,0 +1,24 @@
+{
+  "rewrites": [
+    { "source": "/api/angel/callback", "destination": "/api/angel?route=callback" },
+    { "source": "/api/angel/postback", "destination": "/api/angel?route=postback" },
+    { "source": "/api/angel/health", "destination": "/api/angel?route=health" },
+
+    { "source": "/api/zerodha/auth/url", "destination": "/api/zerodha?route=auth-url" },
+    { "source": "/api/zerodha/callback", "destination": "/api/zerodha?route=callback" },
+    { "source": "/api/zerodha/session/status", "destination": "/api/zerodha?route=session-status" },
+
+    { "source": "/api/v1/market/bootstrap", "destination": "/api/market?route=bootstrap" },
+    { "source": "/api/v1/market/poll", "destination": "/api/market?route=poll" },
+    { "source": "/api/v1/comparison/series", "destination": "/api/comparison?route=series" },
+
+    { "source": "/api/v1/portfolio/bootstrap", "destination": "/api/portfolio?route=bootstrap" },
+    { "source": "/api/v1/portfolio/poll", "destination": "/api/portfolio?route=poll" },
+    { "source": "/api/v1/portfolio/decisions", "destination": "/api/portfolio?route=decisions" },
+    { "source": "/api/v1/portfolio/snapshots/eod", "destination": "/api/portfolio?route=snapshots-eod" },
+
+    { "source": "/api/v1/orders/preview", "destination": "/api/orders?route=preview" },
+    { "source": "/api/v1/orders/submit", "destination": "/api/orders?route=submit" },
+    { "source": "/api/v1/orders/:id/status", "destination": "/api/orders?route=status&id=:id" }
+  ]
+}

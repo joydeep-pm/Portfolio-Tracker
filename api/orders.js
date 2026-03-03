@@ -1,17 +1,10 @@
-const { buildPreview, saveSubmittedOrder, getOrderById } = require("../../_lib/orderService");
-const { json, methodNotAllowed, parseJsonBody } = require("../../_lib/http");
-
-function pathParts(req) {
-  const raw = req.query?.action;
-  if (Array.isArray(raw)) return raw.map((part) => String(part).toLowerCase());
-  if (!raw) return [];
-  return [String(raw).toLowerCase()];
-}
+const { buildPreview, saveSubmittedOrder, getOrderById } = require("./_lib/orderService");
+const { json, methodNotAllowed, parseJsonBody } = require("./_lib/http");
 
 module.exports = async function handler(req, res) {
-  const parts = pathParts(req);
+  const route = String(req.query?.route || "").toLowerCase();
 
-  if (parts.length === 1 && parts[0] === "preview") {
+  if (route === "preview") {
     if (req.method !== "POST") return methodNotAllowed(res);
 
     const body = await parseJsonBody(req);
@@ -24,7 +17,7 @@ module.exports = async function handler(req, res) {
     return json(res, 200, preview);
   }
 
-  if (parts.length === 1 && parts[0] === "submit") {
+  if (route === "submit") {
     if (req.method !== "POST") return methodNotAllowed(res);
 
     const body = await parseJsonBody(req);
@@ -79,10 +72,10 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  if (parts.length === 2 && parts[1] === "status") {
+  if (route === "status") {
     if (req.method !== "GET") return methodNotAllowed(res);
 
-    const orderId = String(parts[0] || "");
+    const orderId = String(req.query?.id || "");
     const order = getOrderById(orderId);
 
     if (!order) {

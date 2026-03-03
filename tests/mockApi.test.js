@@ -2,9 +2,9 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const mockMarket = require("../api/_lib/mockMarket");
-const marketHandler = require("../api/v1/market/[action]");
-const comparisonHandler = require("../api/v1/comparison/[action]");
-const angelHandler = require("../api/angel/[action]");
+const marketHandler = require("../api/market");
+const comparisonHandler = require("../api/comparison");
+const angelHandler = require("../api/angel");
 
 function createRes() {
   return {
@@ -35,7 +35,7 @@ test("mock market view returns expected scale for all exchange", () => {
 });
 
 test("bootstrap endpoint returns contract payload", async () => {
-  const req = { method: "GET", query: { action: "bootstrap", exchange: "all" } };
+  const req = { method: "GET", query: { route: "bootstrap", exchange: "all" } };
   const res = createRes();
 
   await marketHandler(req, res);
@@ -50,7 +50,7 @@ test("bootstrap endpoint returns contract payload", async () => {
 
 test("poll endpoint ticks cursor and returns update envelope", async () => {
   const before = mockMarket.state.cursor;
-  const req = { method: "GET", query: { action: "poll", exchange: "nse" } };
+  const req = { method: "GET", query: { route: "poll", exchange: "nse" } };
   const res = createRes();
 
   await marketHandler(req, res);
@@ -70,7 +70,7 @@ test("comparison series endpoint maps requested cluster IDs", async () => {
   const req = {
     method: "GET",
     query: {
-      action: "series",
+      route: "series",
       clusterIds,
       window: "1M",
       exchange: "all",
@@ -103,7 +103,7 @@ test("angel health endpoint marks missing env vars", async () => {
   delete process.env.ANGEL_TOTP_SECRET;
 
   const res = createRes();
-  await angelHandler({ method: "GET", query: { action: "health" } }, res);
+  await angelHandler({ method: "GET", query: { route: "health" } }, res);
 
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.ready, false);

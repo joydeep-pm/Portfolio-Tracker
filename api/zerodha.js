@@ -1,7 +1,7 @@
 const crypto = require("node:crypto");
 
-const { getSession, setSession } = require("../_lib/zerodhaSession");
-const { getQuery, json, methodNotAllowed } = require("../_lib/http");
+const { getSession, setSession } = require("./_lib/zerodhaSession");
+const { getQuery, json, methodNotAllowed } = require("./_lib/http");
 
 const KITE_API_BASE = "https://api.kite.trade";
 
@@ -14,13 +14,6 @@ function buildRedirectUrl(req) {
   const host = req?.headers?.host || "127.0.0.1:4173";
   const protocol = host.includes("localhost") || host.startsWith("127.0.0.1") ? "http" : "https";
   return `${protocol}://${host}/api/zerodha/callback`;
-}
-
-function pathParts(req) {
-  const raw = req.query?.action;
-  if (Array.isArray(raw)) return raw.map((part) => String(part).toLowerCase());
-  if (!raw) return [];
-  return [String(raw).toLowerCase()];
 }
 
 async function handleAuthUrl(req, res) {
@@ -162,16 +155,11 @@ async function handleSessionStatus(req, res) {
 }
 
 module.exports = async function handler(req, res) {
-  const parts = pathParts(req);
-  if (parts.length === 1 && parts[0] === "callback") {
-    return handleCallback(req, res);
-  }
-  if (parts.length === 2 && parts[0] === "auth" && parts[1] === "url") {
-    return handleAuthUrl(req, res);
-  }
-  if (parts.length === 2 && parts[0] === "session" && parts[1] === "status") {
-    return handleSessionStatus(req, res);
-  }
+  const route = String(req.query?.route || "").toLowerCase();
+
+  if (route === "auth-url") return handleAuthUrl(req, res);
+  if (route === "callback") return handleCallback(req, res);
+  if (route === "session-status") return handleSessionStatus(req, res);
 
   return json(res, 404, { error: "Not found" });
 };

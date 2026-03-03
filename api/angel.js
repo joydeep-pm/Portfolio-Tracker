@@ -1,7 +1,7 @@
 module.exports = async function handler(req, res) {
-  const action = String(req.query?.action || "").toLowerCase();
+  const route = String(req.query?.route || "").toLowerCase();
 
-  if (action === "callback") {
+  if (route === "callback") {
     if (req.method !== "GET") {
       return res.status(405).json({ error: "Method not allowed" });
     }
@@ -22,7 +22,7 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  if (action === "postback") {
+  if (route === "postback") {
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method not allowed" });
     }
@@ -34,7 +34,7 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  if (action === "health") {
+  if (route === "health") {
     if (req.method !== "GET") {
       return res.status(405).json({ error: "Method not allowed" });
     }

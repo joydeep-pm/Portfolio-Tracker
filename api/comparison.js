@@ -1,9 +1,9 @@
-const mockMarket = require("../../_lib/mockMarket");
+const mockMarket = require("./_lib/mockMarket");
 
 module.exports = async function handler(req, res) {
-  const action = String(req.query?.action || "").toLowerCase();
+  const route = String(req.query?.route || "").toLowerCase();
 
-  if (action !== "series") {
+  if (route !== "series") {
     return res.status(404).json({ error: "Not found" });
   }
 

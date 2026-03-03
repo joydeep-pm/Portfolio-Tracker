@@ -1,18 +1,11 @@
-const { bootstrapPortfolio, pollPortfolio, getDecisions } = require("../../_lib/portfolioService");
-const { saveEodSnapshot } = require("../../_lib/snapshots");
-const { exchangeKey, json, methodNotAllowed, parseJsonBody } = require("../../_lib/http");
-
-function pathParts(req) {
-  const raw = req.query?.action;
-  if (Array.isArray(raw)) return raw.map((part) => String(part).toLowerCase());
-  if (!raw) return [];
-  return [String(raw).toLowerCase()];
-}
+const { bootstrapPortfolio, pollPortfolio, getDecisions } = require("./_lib/portfolioService");
+const { saveEodSnapshot } = require("./_lib/snapshots");
+const { exchangeKey, json, methodNotAllowed, parseJsonBody } = require("./_lib/http");
 
 module.exports = async function handler(req, res) {
-  const parts = pathParts(req);
+  const route = String(req.query?.route || "").toLowerCase();
 
-  if (parts.length === 1 && parts[0] === "bootstrap") {
+  if (route === "bootstrap") {
     if (req.method !== "GET") return methodNotAllowed(res);
 
     try {
@@ -30,7 +23,7 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  if (parts.length === 1 && parts[0] === "poll") {
+  if (route === "poll") {
     if (req.method !== "GET") return methodNotAllowed(res);
 
     try {
@@ -48,7 +41,7 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  if (parts.length === 1 && parts[0] === "decisions") {
+  if (route === "decisions") {
     if (req.method !== "GET") return methodNotAllowed(res);
 
     try {
@@ -65,7 +58,7 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  if (parts.length === 2 && parts[0] === "snapshots" && parts[1] === "eod") {
+  if (route === "snapshots-eod") {
     if (req.method !== "POST") return methodNotAllowed(res);
 
     try {

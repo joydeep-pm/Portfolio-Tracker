@@ -1,9 +1,9 @@
-const mockMarket = require("../../_lib/mockMarket");
+const mockMarket = require("./_lib/mockMarket");
 
 module.exports = async function handler(req, res) {
-  const action = String(req.query?.action || "").toLowerCase();
+  const route = String(req.query?.route || "").toLowerCase();
 
-  if (action === "bootstrap") {
+  if (route === "bootstrap") {
     if (req.method !== "GET") {
       return res.status(405).json({ error: "Method not allowed" });
     }
@@ -13,7 +13,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json(payload);
   }
 
-  if (action === "poll") {
+  if (route === "poll") {
     if (req.method !== "GET") {
       return res.status(405).json({ error: "Method not allowed" });
     }
