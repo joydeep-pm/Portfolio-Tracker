@@ -420,6 +420,7 @@ body[data-ui-variant="classic"] .legend {
   border-radius: 12px;
   padding: 0.62rem;
   background: var(--panel);
+  overflow: hidden;
 }
 
 .head-title {
@@ -434,7 +435,7 @@ body[data-ui-variant="classic"] .legend {
 .table-head,
 .cluster-row {
   display: grid;
-  grid-template-columns: minmax(200px, 1fr) 52px repeat(5, minmax(64px, 1fr));
+  grid-template-columns: minmax(0, 1fr) 42px repeat(5, 56px);
   gap: 0.28rem;
   align-items: center;
 }
@@ -445,6 +446,10 @@ body[data-ui-variant="classic"] .legend {
   letter-spacing: 0.04rem;
   margin-bottom: 0.2rem;
   font-weight: 700;
+}
+
+.table-head span {
+  white-space: nowrap;
 }
 
 .cluster-row {
@@ -465,9 +470,13 @@ body[data-ui-variant="classic"] .legend {
 }
 
 .cluster-name {
+  display: block;
   font-size: 0.67rem;
   font-weight: 700;
   text-transform: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cluster-count {
@@ -1094,7 +1103,7 @@ body[data-ui-variant="classic"] #compareCanvas {
 
   .table-head,
   .cluster-row {
-    grid-template-columns: minmax(140px, 1fr) 42px repeat(5, minmax(48px, 1fr));
+    grid-template-columns: minmax(0, 1fr) 36px repeat(5, 48px);
   }
 
   .portfolio-table-head,
