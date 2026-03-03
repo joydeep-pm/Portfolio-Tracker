@@ -435,24 +435,48 @@ body[data-ui-variant="classic"] .legend {
 .table-head,
 .cluster-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px repeat(5, 56px);
+  grid-template-columns: minmax(0, 1fr) 42px;
   gap: 0.28rem;
   align-items: center;
 }
 
 .table-head {
+  grid-template-areas:
+    "cluster count"
+    "windows windows";
   color: var(--muted);
   font-size: 0.56rem;
   letter-spacing: 0.04rem;
   margin-bottom: 0.2rem;
   font-weight: 700;
+  row-gap: 0.16rem;
 }
 
-.table-head span {
+.table-head-cluster {
+  grid-area: cluster;
+}
+
+.table-head-count {
+  grid-area: count;
+  text-align: right;
+}
+
+.table-head-windows {
+  grid-area: windows;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(56px, 1fr));
+  gap: 0.28rem;
+}
+
+.table-head-windows span {
+  text-align: center;
   white-space: nowrap;
 }
 
 .cluster-row {
+  grid-template-areas:
+    "name count"
+    "metrics metrics";
   border: 1px solid transparent;
   border-radius: 8px;
   padding: 0.14rem;
@@ -462,6 +486,7 @@ body[data-ui-variant="classic"] .legend {
   color: var(--text);
   font-family: inherit;
   overflow: hidden;
+  row-gap: 0.2rem;
 }
 
 .cluster-row:hover {
@@ -470,6 +495,7 @@ body[data-ui-variant="classic"] .legend {
 }
 
 .cluster-name {
+  grid-area: name;
   display: -webkit-box;
   font-size: 0.67rem;
   font-weight: 700;
@@ -485,9 +511,18 @@ body[data-ui-variant="classic"] .legend {
 }
 
 .cluster-count {
+  grid-area: count;
+  align-self: start;
   font-size: 0.62rem;
   color: var(--muted);
   text-align: right;
+}
+
+.cluster-metrics {
+  grid-area: metrics;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(56px, 1fr));
+  gap: 0.28rem;
 }
 
 .cell {
@@ -1108,7 +1143,12 @@ body[data-ui-variant="classic"] #compareCanvas {
 
   .table-head,
   .cluster-row {
-    grid-template-columns: minmax(0, 1fr) 36px repeat(5, 48px);
+    grid-template-columns: minmax(0, 1fr) 36px;
+  }
+
+  .table-head-windows,
+  .cluster-metrics {
+    grid-template-columns: repeat(5, minmax(48px, 1fr));
   }
 
   .portfolio-table-head,

@@ -28,3 +28,5 @@
 - Preventive rule: for dense table-like rows, prefer fixed-width metric columns with a flexible first column (`minmax(0,1fr)`) and ellipsis truncation, rather than multi-`fr` metric columns that can overflow unpredictably.
 - User correction: post-fix micro-cluster names became too aggressively truncated.
 - Preventive rule: when truncating taxonomy labels, prefer 2-line clamp before single-line ellipsis so scanability and semantic readability both hold.
+- User correction: even with truncation tweaks, single-row theme layout still forced tradeoff between readable labels and boxed metrics.
+- Preventive rule: for dense analytics rows with long labels, split into a two-tier row structure (label/meta row + metrics row) instead of forcing all fields into one horizontal grid.

@@ -1075,7 +1075,7 @@ function clusterRowHtml(cluster) {
     <button class="cluster-row" data-cluster-id="${cluster.id}" aria-label="Open ${cluster.name}">
       <span class="cluster-name">${cluster.name}</span>
       <span class="cluster-count">(${cluster.stocks.length})</span>
-      ${cells}
+      <span class="cluster-metrics">${cells}</span>
     </button>
   `;
 }
@@ -1099,7 +1099,9 @@ function renderMatrix() {
         <article class="head-card">
           <h3 class="head-title">${head.name}</h3>
           <div class="table-head">
-            <span>Cluster</span><span></span>${WINDOWS.map((w) => `<span>${w}</span>`).join("")}
+            <span class="table-head-cluster">Cluster</span>
+            <span class="table-head-count">#</span>
+            <span class="table-head-windows">${WINDOWS.map((w) => `<span>${w}</span>`).join("")}</span>
           </div>
           ${rows}
         </article>

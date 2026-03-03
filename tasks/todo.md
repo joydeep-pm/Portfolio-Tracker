@@ -177,3 +177,9 @@
   - `node --test tests/adapterCore.test.js tests/mockApi.test.js tests/portfolioAssembler.test.js` (15/15 passing)
 - Manual-browser note:
   - Automated Playwright smoke could not be run in this environment because Chrome persistent context failed to launch (`Opening in existing browser session`).
+
+## Themes Grid Spillover Hotfix Plan (2026-03-04)
+- [x] Convert Themes rows to two-tier structure (label/count + metrics strip) to avoid single-row compression.
+- [x] Keep metric chips boxed and aligned via dedicated metrics grid wrapper.
+- [x] Preserve row click behavior and existing modal drill-down hook.
+- [x] Record corrective lesson for layout architecture.
