@@ -30,3 +30,5 @@
 - Preventive rule: when truncating taxonomy labels, prefer 2-line clamp before single-line ellipsis so scanability and semantic readability both hold.
 - User correction: even with truncation tweaks, single-row theme layout still forced tradeoff between readable labels and boxed metrics.
 - Preventive rule: for dense analytics rows with long labels, split into a two-tier row structure (label/meta row + metrics row) instead of forcing all fields into one horizontal grid.
+- User correction: themes heatmap looked misaligned after two-tier refactor due centered button text behavior.
+- Preventive rule: when rows are rendered as `<button>`, explicitly set `text-align: left` and `justify-self` for key grid children to avoid default centering artifacts.

@@ -485,6 +485,7 @@ body[data-ui-variant="classic"] .legend {
   background: transparent;
   color: var(--text);
   font-family: inherit;
+  text-align: left;
   overflow: hidden;
   row-gap: 0.2rem;
 }
@@ -497,6 +498,7 @@ body[data-ui-variant="classic"] .legend {
 .cluster-name {
   grid-area: name;
   display: -webkit-box;
+  justify-self: start;
   font-size: 0.67rem;
   font-weight: 700;
   text-transform: none;
@@ -520,6 +522,7 @@ body[data-ui-variant="classic"] .legend {
 
 .cluster-metrics {
   grid-area: metrics;
+  justify-self: stretch;
   display: grid;
   grid-template-columns: repeat(5, minmax(56px, 1fr));
   gap: 0.28rem;
