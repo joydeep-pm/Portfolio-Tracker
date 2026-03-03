@@ -22,3 +22,5 @@
 - User correction: dark-theme rebrand shipped with unreadable table text in production.
 - Preventive rule: for any UI refactor, run a contrast and readability pass on all interactive elements (`button`, `a`, inputs) to catch browser default color inheritance.
 - Preventive rule: explicitly set `color` and `font-family` on clickable row controls that use `button` elements in dark themes.
+- User correction: some return values overflowed outside heatmap chips after typography/theme change.
+- Preventive rule: for dense metric chips, always enforce `white-space: nowrap`, fixed min-height, centered flex alignment, and tested min column widths across desktop/mobile breakpoints.
