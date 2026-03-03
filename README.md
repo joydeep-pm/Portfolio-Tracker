@@ -32,6 +32,25 @@ Open:
 - Exchange filters (`All`, `NSE`, `BSE`)
 - Normalized real-time line chart and relative-strength scan panel
 
+## UI Variant & Branding
+
+Themes and Portfolio now ship with the `data-command` visual variant (Slate + Teal, Satoshi, scan-first layout) to keep the product identity distinct and operational.
+
+Runtime UI config:
+
+```html
+<script>
+  window.PORTFOLIO_TRACKER_CONFIG = {
+    uiVariant: "data-command",        // "data-command" | "classic"
+    enableComparisonClassic: true     // keep Comparison mostly unchanged in this phase
+  };
+</script>
+```
+
+Scope in this phase:
+- Redesigned: `Themes`, `Portfolio`, shared top shell tokens
+- Mostly unchanged: `Comparison` behavior/layout (inherits shell token updates only)
+
 ## Backend Integration (NSE/BSE Adapter Hooks v1)
 
 The app supports two runtime data modes through a global config object:
@@ -41,7 +60,9 @@ The app supports two runtime data modes through a global config object:
   window.PORTFOLIO_TRACKER_CONFIG = {
     dataMode: "backend", // "backend" | "synthetic"
     apiBaseUrl: "/api/v1",
-    authToken: "YOUR_BEARER_TOKEN"
+    authToken: "YOUR_BEARER_TOKEN",
+    uiVariant: "data-command", // "data-command" | "classic"
+    enableComparisonClassic: true
   };
 </script>
 ```
@@ -49,7 +70,9 @@ The app supports two runtime data modes through a global config object:
 Defaults (when omitted) are:
 - `dataMode: "synthetic"`
 - `apiBaseUrl: "/api/v1"`
-- `authToken: ""`
+- `authToken: "public-client-token"`
+- `uiVariant: "data-command"`
+- `enableComparisonClassic: true`
 
 If `dataMode` is `backend` but token/config is invalid, the UI shows an adapter warning and automatically falls back to synthetic mode.
 

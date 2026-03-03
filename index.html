@@ -4,19 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Indian Thematic Market Tracker</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&display=swap"
-      rel="stylesheet"
-    />
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
+  <body data-ui-variant="data-command" data-comparison-style="classic">
     <div class="bg-noise" aria-hidden="true"></div>
     <header class="topbar">
-      <div class="brand">PORTFOLIO TRACKER</div>
+      <div class="brand">INDIA MARKET COMMAND</div>
       <nav class="nav-links">
         <a href="#" class="muted">Universe</a>
         <a href="#" class="muted">Sectors</a>
@@ -34,15 +29,28 @@
 
     <main>
       <section id="themesView" class="app-view active-view">
-        <section class="hero">
+        <section class="themes-header">
           <div>
-            <p class="kicker">Deep thematic mapping (India)</p>
-            <h1>Thematic <span>Map</span></h1>
+            <p class="kicker">India Market Intelligence Layer</p>
+            <h1>Theme <span>Command Grid</span></h1>
             <p class="subhead">
-              India-only theme tracking across 2,486 stocks, 26 core heads, and 175 micro-clusters.
+              Fast scanning across 2,486 stocks, 26 core heads, and 175 micro-clusters.
             </p>
           </div>
 
+          <section class="legend return-bands" aria-label="Return bands">
+            <span>Return Bands</span>
+            <div class="legend-scale">
+              <span class="l1">-8%</span>
+              <span class="l2">-2%</span>
+              <span class="l3">0%</span>
+              <span class="l4">+2%</span>
+              <span class="l5">+8%</span>
+            </div>
+          </section>
+        </section>
+
+        <section class="themes-command-bar">
           <div class="controls">
             <input id="searchInput" type="text" placeholder="Find NSE/BSE stocks, clusters, themes..." />
             <button data-mode="all" class="mode-btn active">Show All</button>
@@ -52,18 +60,7 @@
           </div>
         </section>
 
-        <section class="stats" id="statsRow"></section>
-
-        <section class="legend" aria-label="Performance legend">
-          <span>Performance Analytics</span>
-          <div class="legend-scale">
-            <span class="l1">-8%</span>
-            <span class="l2">-2%</span>
-            <span class="l3">0%</span>
-            <span class="l4">+2%</span>
-            <span class="l5">+8%</span>
-          </div>
-        </section>
+        <section class="stats snapshot-strip" id="statsRow"></section>
 
         <section id="matrix" class="matrix"></section>
       </section>
@@ -122,7 +119,7 @@
 
           <aside class="scan-card">
             <header class="compare-card-head">
-              <h3>Relative Strength Scan</h3>
+              <h3>Momentum Radar</h3>
               <p id="scanMeta"></p>
             </header>
             <div id="momentumScanList" class="scan-list"></div>
@@ -131,7 +128,7 @@
       </section>
 
       <section id="portfolioView" class="app-view">
-        <section class="hero portfolio-hero">
+        <section class="portfolio-header">
           <div>
             <p class="kicker">Connected Broker Portfolio (India)</p>
             <h1>Portfolio <span>Signals</span></h1>
@@ -139,7 +136,13 @@
               Zerodha holdings/positions heatmap with explainable Buy/Sell/Accumulate/Hold/Reduce decisions.
             </p>
           </div>
+          <div class="portfolio-status-chips">
+            <span id="portfolioSourceChip" class="status-pill status-pill-muted">Source: --</span>
+            <span id="portfolioConnectionChip" class="status-pill status-pill-muted">Disconnected</span>
+          </div>
+        </section>
 
+        <section class="portfolio-command-bar">
           <div class="portfolio-toolbar">
             <div id="portfolioActionFilters" class="compare-pill-group" role="group" aria-label="Action filter">
               <button class="compare-pill active" data-portfolio-action="all">All</button>
@@ -159,7 +162,7 @@
           </div>
         </section>
 
-        <section id="portfolioSummaryRow" class="stats"></section>
+        <section id="portfolioSummaryRow" class="stats snapshot-strip"></section>
 
         <section class="portfolio-grid">
           <article class="chart-card portfolio-table-card">
@@ -186,7 +189,7 @@
 
           <aside class="scan-card portfolio-side-card">
             <header class="compare-card-head">
-              <h3>Decision Explainability</h3>
+              <h3>Signal Rationale</h3>
               <p id="portfolioDecisionMeta">Select a row</p>
             </header>
             <div id="portfolioDecisionPanel" class="portfolio-decision-panel"></div>
@@ -213,6 +216,8 @@
         apiBaseUrl: "/api/v1",
         authToken: "public-client-token",
         enablePortfolioView: true,
+        uiVariant: "data-command",
+        enableComparisonClassic: true,
       };
     </script>
     <script src="adapterCore.js"></script>

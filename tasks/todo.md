@@ -141,3 +141,39 @@
 ## Zerodha Portfolio Verify Plan Check-In
 - Scope: integrate Portfolio inside current dashboard without breaking existing Themes/Comparison behavior.
 - Safety: order placement remains gated (dry-run by default), single-user model, equity-cash scope only.
+
+## Data Command Rebrand Plan (2026-03-04)
+- [x] Add UI variant runtime contract (`uiVariant`, `enableComparisonClassic`) and wire root variant hook.
+- [x] Restructure `Themes` page IA: command bar, snapshot strip, return bands dock, compact sector blocks.
+- [x] Restructure `Portfolio` page IA: command bar with source chips, snapshot tiles, compact holdings grid, rationale panel.
+- [x] Replace shared visual tokens and typography with Data Command system (Slate + Teal, Satoshi, border-first).
+- [x] Update app rendering templates/classes and copy labels for legal distinctiveness and scan clarity.
+- [x] Keep `Comparison` behavior intact while inheriting shared shell token updates only.
+- [x] Update `README.md` with UI variant/branding section and runtime config details.
+- [x] Add redesign validation notes to `tasks/todo.md` review section after checks.
+
+## Data Command Verify Plan Check-In
+- Scope: redesign Themes and Portfolio only; preserve backend contracts, decision logic, and data adapters.
+- Safety: maintain existing IDs/event hooks where required to avoid interaction regressions.
+- Rollback: preserve a `classic` variant path through runtime config for quick fallback.
+
+## Data Command Review
+- Updated page structure:
+  - Themes now uses `themes-header` + `themes-command-bar` + `snapshot-strip` + matrix workspace.
+  - Portfolio now uses `portfolio-header` + source/connection chips + `portfolio-command-bar` + compact holdings grid + rationale panel.
+- Updated identity system:
+  - Satoshi typography via Fontshare.
+  - Slate + Teal token system in `styles.css` with border-first surfaces.
+  - Removed old premium-minimal copy style patterns and renamed key labels (`Theme Command Grid`, `Return Bands`, `Momentum Radar`, `Signal Rationale`).
+- Runtime UI hooks:
+  - Added `uiVariant` and `enableComparisonClassic` parsing in `readRuntimeConfig()`.
+  - Added body dataset binding in `applyUiVariantConfig()`.
+  - Added portfolio source/connection chip rendering and scan-priority row sorting (`action_then_confidence`).
+- Validation:
+  - `node --check app.js`
+  - `node --check adapterCore.js`
+  - `node --check api/_lib/portfolioAssembler.js`
+  - `node --check api/_lib/decisionEngine.js`
+  - `node --test tests/adapterCore.test.js tests/mockApi.test.js tests/portfolioAssembler.test.js` (15/15 passing)
+- Manual-browser note:
+  - Automated Playwright smoke could not be run in this environment because Chrome persistent context failed to launch (`Opening in existing browser session`).

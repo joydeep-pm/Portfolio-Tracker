@@ -156,6 +156,7 @@ let state = {
   activeView: "themes",
   cursor: "",
   asOf: "",
+  uiVariant: "data-command",
 };
 
 let compareState = {
@@ -167,6 +168,10 @@ let compareState = {
   colorByCluster: new Map(),
   resizeRaf: null,
   seriesRequestId: 0,
+};
+
+let themesState = {
+  compactDensity: true,
 };
 
 let portfolioState = {
@@ -186,6 +191,7 @@ let portfolioState = {
     confidenceMin: 0,
     search: "",
   },
+  scanSort: "action_then_confidence",
 };
 
 let runtimeState = {
@@ -205,6 +211,7 @@ let runtimeState = {
   portfolioPollInFlight: false,
   portfolioLastSuccessAtMs: 0,
   enablePortfolioView: true,
+  enableComparisonClassic: true,
 };
 
 const themesViewEl = document.getElementById("themesView");
@@ -233,6 +240,8 @@ const portfolioRowsEl = document.getElementById("portfolioRows");
 const portfolioMeta = document.getElementById("portfolioMeta");
 const portfolioDecisionMeta = document.getElementById("portfolioDecisionMeta");
 const portfolioDecisionPanel = document.getElementById("portfolioDecisionPanel");
+const portfolioSourceChip = document.getElementById("portfolioSourceChip");
+const portfolioConnectionChip = document.getElementById("portfolioConnectionChip");
 const portfolioSearchInput = document.getElementById("portfolioSearchInput");
 const portfolioConfidenceInput = document.getElementById("portfolioConfidenceInput");
 const portfolioActionButtons = [...document.querySelectorAll("[data-portfolio-action]")];
@@ -279,6 +288,14 @@ function colorClass(value) {
   if (value < 8) return "c-pos";
   return "c-pos-strong";
 }
+
+const PORTFOLIO_SCAN_ACTION_RANK = {
+  BUY: 0,
+  ACCUMULATE: 1,
+  REDUCE: 2,
+  SELL: 3,
+  HOLD: 4,
+};
 
 function hashString(text) {
   let hash = 2166136261;
@@ -466,10 +483,16 @@ function readRuntimeConfig() {
     apiBaseUrl: "/api/v1",
     authToken: "public-client-token",
     enablePortfolioView: true,
+    uiVariant: "data-command",
+    enableComparisonClassic: true,
   };
 
   const incoming = window.PORTFOLIO_TRACKER_CONFIG || {};
   const dataMode = typeof incoming.dataMode === "string" ? incoming.dataMode.toLowerCase() : defaultConfig.dataMode;
+  const uiVariant =
+    typeof incoming.uiVariant === "string" && incoming.uiVariant.toLowerCase() === "classic"
+      ? "classic"
+      : defaultConfig.uiVariant;
 
   return {
     dataMode: dataMode === "backend" ? "backend" : "synthetic",
@@ -477,7 +500,19 @@ function readRuntimeConfig() {
     authToken: typeof incoming.authToken === "string" ? incoming.authToken : defaultConfig.authToken,
     enablePortfolioView:
       typeof incoming.enablePortfolioView === "boolean" ? incoming.enablePortfolioView : defaultConfig.enablePortfolioView,
+    uiVariant,
+    enableComparisonClassic:
+      typeof incoming.enableComparisonClassic === "boolean"
+        ? incoming.enableComparisonClassic
+        : defaultConfig.enableComparisonClassic,
   };
+}
+
+function applyUiVariantConfig(config) {
+  state.uiVariant = config.uiVariant || "data-command";
+  runtimeState.enableComparisonClassic = config.enableComparisonClassic !== false;
+  document.body.dataset.uiVariant = state.uiVariant;
+  document.body.dataset.comparisonStyle = runtimeState.enableComparisonClassic ? "classic" : "data-command";
 }
 
 function cloneReturns(returns) {
@@ -1048,6 +1083,7 @@ function clusterRowHtml(cluster) {
 function renderMatrix() {
   const grouped = getVisibleClustersByHead();
   renderStats(grouped);
+  matrixEl.classList.toggle("matrix-compact", themesState.compactDensity);
 
   const headHtml = state.heads
     .map((head) => {
@@ -1278,6 +1314,10 @@ function drawCompareChart() {
   const ctx = compareCanvas.getContext("2d");
   const width = compareCanvas.clientWidth;
   const height = compareCanvas.clientHeight;
+  const styles = getComputedStyle(document.body);
+  const mutedColor = styles.getPropertyValue("--muted").trim() || "#9bb0c9";
+  const lineColor = styles.getPropertyValue("--line").trim() || "#26364c";
+  const textColor = styles.getPropertyValue("--text").trim() || "#e6eef8";
 
   ctx.clearRect(0, 0, width, height);
 
@@ -1293,8 +1333,8 @@ function drawCompareChart() {
     .filter((item) => item.points.length);
 
   if (!selectedSeries.length) {
-    ctx.fillStyle = "#6f6655";
-    ctx.font = "600 13px Manrope";
+    ctx.fillStyle = mutedColor;
+    ctx.font = "600 13px Satoshi, sans-serif";
     ctx.fillText("Select clusters to start comparison", left, top + 24);
     return;
   }
@@ -1310,7 +1350,7 @@ function drawCompareChart() {
   const pointsCount = selectedSeries[0].points.length;
   const mapX = (index) => left + (index / Math.max(pointsCount - 1, 1)) * chartWidth;
 
-  ctx.strokeStyle = "rgba(123,112,83,0.16)";
+  ctx.strokeStyle = lineColor;
   ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i += 1) {
     const yValue = yMax - ((yMax - yMin) * i) / 4;
@@ -1320,14 +1360,14 @@ function drawCompareChart() {
     ctx.lineTo(left + chartWidth, y);
     ctx.stroke();
 
-    ctx.fillStyle = "#756d5e";
-    ctx.font = "600 10px Manrope";
+    ctx.fillStyle = mutedColor;
+    ctx.font = "600 10px Satoshi, sans-serif";
     ctx.fillText(percent(yValue), 6, y + 3);
   }
 
   const zeroY = mapY(0);
   ctx.setLineDash([5, 5]);
-  ctx.strokeStyle = "rgba(85, 80, 69, 0.32)";
+  ctx.strokeStyle = lineColor;
   ctx.beginPath();
   ctx.moveTo(left, zeroY);
   ctx.lineTo(left + chartWidth, zeroY);
@@ -1356,8 +1396,8 @@ function drawCompareChart() {
     ctx.fill();
   });
 
-  ctx.fillStyle = "#756e5f";
-  ctx.font = "600 10px Manrope";
+  ctx.fillStyle = textColor;
+  ctx.font = "600 10px Satoshi, sans-serif";
   ctx.fillText("Start", left, height - 10);
   ctx.fillText("Mid", left + chartWidth / 2 - 9, height - 10);
   ctx.fillText("Live", left + chartWidth - 20, height - 10);
@@ -1463,8 +1503,47 @@ function portfolioRowPasses(row) {
   return true;
 }
 
+function sortPortfolioRows(rows) {
+  if (portfolioState.scanSort !== "action_then_confidence") return rows;
+  return rows.sort((a, b) => {
+    const actionRankA = PORTFOLIO_SCAN_ACTION_RANK[a.decision.action] ?? 99;
+    const actionRankB = PORTFOLIO_SCAN_ACTION_RANK[b.decision.action] ?? 99;
+    if (actionRankA !== actionRankB) return actionRankA - actionRankB;
+
+    const confidenceA = Number(a.decision.confidence || 0);
+    const confidenceB = Number(b.decision.confidence || 0);
+    if (confidenceA !== confidenceB) return confidenceB - confidenceA;
+
+    const scoreA = Math.abs(Number(a.decision.score || 0));
+    const scoreB = Math.abs(Number(b.decision.score || 0));
+    if (scoreA !== scoreB) return scoreB - scoreA;
+
+    return `${a.exchange}:${a.symbol}`.localeCompare(`${b.exchange}:${b.symbol}`);
+  });
+}
+
 function filteredPortfolioRows() {
-  return portfolioState.rows.filter((row) => portfolioRowPasses(row));
+  const rows = portfolioState.rows.filter((row) => portfolioRowPasses(row));
+  return sortPortfolioRows(rows);
+}
+
+function renderPortfolioStatusChips() {
+  if (!portfolioSourceChip || !portfolioConnectionChip) return;
+  const providerLabel = portfolioState.provider || runtimeState.adapterMode || "synthetic";
+  const modeLabel = portfolioState.providerMode || (portfolioState.connected ? "live" : "demo");
+  portfolioSourceChip.textContent = `Source: ${providerLabel} (${modeLabel})`;
+  portfolioSourceChip.classList.remove("status-pill-alert", "status-pill-warn", "status-pill-ok", "status-pill-muted");
+  portfolioSourceChip.classList.add("status-pill-muted");
+
+  if (portfolioState.connected) {
+    portfolioConnectionChip.textContent = "Connected";
+    portfolioConnectionChip.classList.remove("status-pill-alert", "status-pill-warn", "status-pill-muted");
+    portfolioConnectionChip.classList.add("status-pill-ok");
+  } else {
+    portfolioConnectionChip.textContent = "Read-only / Demo";
+    portfolioConnectionChip.classList.remove("status-pill-ok", "status-pill-warn", "status-pill-alert");
+    portfolioConnectionChip.classList.add("status-pill-muted");
+  }
 }
 
 function renderPortfolioSummary() {
@@ -1566,7 +1645,8 @@ async function handlePrepareOrder(rowKey) {
 
 function renderPortfolioRows() {
   const rows = filteredPortfolioRows();
-  portfolioMeta.textContent = `${rows.length}/${portfolioState.rows.length} symbols • ${portfolioState.connected ? "Connected" : "Demo"} • ${portfolioState.providerMode || "demo"}`;
+  const asOfLabel = portfolioState.asOf ? new Date(portfolioState.asOf).toLocaleTimeString("en-IN") : "--";
+  portfolioMeta.textContent = `${rows.length}/${portfolioState.rows.length} symbols • ${portfolioState.connected ? "Connected" : "Demo"} • as of ${asOfLabel}`;
 
   if (!rows.length) {
     portfolioRowsEl.innerHTML = `<div class="scan-empty">No holdings match the current filters.</div>`;
@@ -1609,6 +1689,7 @@ function renderPortfolioRows() {
 
 function renderPortfolio() {
   applyPortfolioButtonStates();
+  renderPortfolioStatusChips();
   renderPortfolioSummary();
   renderPortfolioRows();
   renderPortfolioDecisionPanel();
@@ -2054,6 +2135,7 @@ async function pollAndApplyUpdates() {
 
 async function init() {
   const resolved = resolveAdapter();
+  applyUiVariantConfig(resolved.config || {});
   runtimeState.adapter = resolved.adapter;
   runtimeState.adapterMode = resolved.mode;
   runtimeState.persistentWarning = resolved.warning || "";
