@@ -32,3 +32,5 @@
 - Preventive rule: for dense analytics rows with long labels, split into a two-tier row structure (label/meta row + metrics row) instead of forcing all fields into one horizontal grid.
 - User correction: themes heatmap looked misaligned after two-tier refactor due centered button text behavior.
 - Preventive rule: when rows are rendered as `<button>`, explicitly set `text-align: left` and `justify-self` for key grid children to avoid default centering artifacts.
+- User correction: themes heatmap must align directly under period headers, and cluster text should remain one-line.
+- Preventive rule: do not introduce multi-line/two-tier row structures for period heatmaps unless explicitly requested; keep row schema identical to header schema for visual alignment.

@@ -435,48 +435,29 @@ body[data-ui-variant="classic"] .legend {
 .table-head,
 .cluster-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px;
+  grid-template-columns: minmax(0, 1fr) 42px repeat(5, minmax(56px, 1fr));
   gap: 0.28rem;
   align-items: center;
 }
 
 .table-head {
-  grid-template-areas:
-    "cluster count"
-    "windows windows";
   color: var(--muted);
   font-size: 0.56rem;
   letter-spacing: 0.04rem;
   margin-bottom: 0.2rem;
   font-weight: 700;
-  row-gap: 0.16rem;
 }
 
-.table-head-cluster {
-  grid-area: cluster;
-}
-
-.table-head-count {
-  grid-area: count;
-  text-align: right;
-}
-
-.table-head-windows {
-  grid-area: windows;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(56px, 1fr));
-  gap: 0.28rem;
-}
-
-.table-head-windows span {
+.table-head span {
   text-align: center;
   white-space: nowrap;
 }
 
+.table-head span:first-child {
+  text-align: left;
+}
+
 .cluster-row {
-  grid-template-areas:
-    "name count"
-    "metrics metrics";
   border: 1px solid transparent;
   border-radius: 8px;
   padding: 0.14rem;
@@ -487,7 +468,6 @@ body[data-ui-variant="classic"] .legend {
   font-family: inherit;
   text-align: left;
   overflow: hidden;
-  row-gap: 0.2rem;
 }
 
 .cluster-row:hover {
@@ -496,36 +476,21 @@ body[data-ui-variant="classic"] .legend {
 }
 
 .cluster-name {
-  grid-area: name;
-  display: -webkit-box;
+  display: block;
   justify-self: start;
   font-size: 0.67rem;
   font-weight: 700;
   text-transform: none;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  white-space: normal;
+  white-space: nowrap;
   overflow: hidden;
-  text-overflow: clip;
-  line-height: 1.22;
-  max-height: calc(1.22em * 2);
-  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  line-height: 1.2;
 }
 
 .cluster-count {
-  grid-area: count;
-  align-self: start;
   font-size: 0.62rem;
   color: var(--muted);
   text-align: right;
-}
-
-.cluster-metrics {
-  grid-area: metrics;
-  justify-self: stretch;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(56px, 1fr));
-  gap: 0.28rem;
 }
 
 .cell {
@@ -1146,12 +1111,7 @@ body[data-ui-variant="classic"] #compareCanvas {
 
   .table-head,
   .cluster-row {
-    grid-template-columns: minmax(0, 1fr) 36px;
-  }
-
-  .table-head-windows,
-  .cluster-metrics {
-    grid-template-columns: repeat(5, minmax(48px, 1fr));
+    grid-template-columns: minmax(0, 1fr) 36px repeat(5, minmax(48px, 1fr));
   }
 
   .portfolio-table-head,
