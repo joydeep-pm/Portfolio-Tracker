@@ -17,3 +17,8 @@
 - User correction: production deployment succeeded but API URLs still returned 404.
 - Preventive rule: on Vercel Hobby/non-Next setups, validate runtime route resolution on production domain after any routing refactor before asking user to test.
 - Preventive rule: prefer stable function filenames plus `vercel.json` rewrites over bracket dynamic filenames for API routing portability.
+
+## 2026-03-04
+- User correction: dark-theme rebrand shipped with unreadable table text in production.
+- Preventive rule: for any UI refactor, run a contrast and readability pass on all interactive elements (`button`, `a`, inputs) to catch browser default color inheritance.
+- Preventive rule: explicitly set `color` and `font-family` on clickable row controls that use `button` elements in dark themes.

@@ -454,6 +454,8 @@ body[data-ui-variant="classic"] .legend {
   cursor: pointer;
   transition: border 130ms ease, background 130ms ease;
   background: transparent;
+  color: var(--text);
+  font-family: inherit;
 }
 
 .cluster-row:hover {
