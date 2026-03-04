@@ -218,6 +218,41 @@
 - [x] Add idempotency test for EOD snapshot persistence in memory mode.
 - [x] Verify EOD runner with sample date output.
 
+## Phase 1 Macro Harvester Plan (2026-03-04)
+- [x] Add modular harvester service for RBI/SEBI RSS ingestion with clean field extraction (`title`, `link`, `pubDate`, `description`).
+- [x] Add RBI feed discovery from `https://www.rbi.org.in/Scripts/rss.aspx` and parse Press Releases + Notifications feeds.
+- [x] Add SQLite storage (`macro_events.db`) with `market_news` table + dedupe via unique `url`.
+- [x] Add hard-priority tagger (`RBI`, `SEBI`, `NBFC`, `digital lending`, `KYC`, `payments`, `capital markets`).
+- [x] Add manual run interface (`scripts/harvest-macro-news.js`) plus API route (`/api/v1/macro/harvest`, `/api/v1/macro/latest`).
+- [x] Add automated tests for parsing, dedupe, tagging, and route behavior.
+- [x] Update README/env template with usage and operational notes.
+
+## Phase 1 Macro Harvester Verify Plan Check-In
+- Scope: asynchronous external context ingestion only (no live-tick dependency, no order flow changes).
+- Safety: read-only external fetch + SQLite writes in `data/macro_events.db`; no mutation of portfolio execution paths.
+- Fallback: if one source feed fails, throw explicit fetch error; dedupe safety retained via `INSERT OR IGNORE`.
+
+## Phase 1 Macro Harvester Review
+- Code updates:
+  - `api/_lib/macroHarvester.js`
+  - `api/macro.js`
+  - `scripts/harvest-macro-news.js`
+  - `tests/macroHarvester.test.js`
+  - `tests/macroApi.test.js`
+  - `api/_lib/contracts.js`
+  - `vercel.json`
+  - `.env.example`
+  - `README.md`
+  - `package.json` + `package-lock.json` (`rss-parser`, `better-sqlite3`)
+- Validation:
+  - `node --check api/_lib/macroHarvester.js`
+  - `node --check api/macro.js`
+  - `node --check scripts/harvest-macro-news.js`
+  - `node --test tests/macroHarvester.test.js tests/macroApi.test.js` (7/7 pass)
+  - `node --test tests/*.test.js` (72/72 pass)
+  - Manual live run 1: `node scripts/harvest-macro-news.js --format table --per-source 5 --limit 5` => `Inserted>0 Duplicates=0`
+  - Manual live run 2: same command => `Inserted=0 Duplicates>0` (dedupe proven)
+
 ## Wave 1 Foundation Follow-up Review
 - Validation:
   - `node --check scripts/run-eod-snapshot.js`
@@ -514,3 +549,64 @@
   - `node --test tests/*.test.js`
 - Outcome:
   - Theme cards now render in 2-per-row layout on constrained desktop widths, keeping the full return-band columns visible.
+
+## Macro Agent Phase Move (2026-03-04)
+- [x] Phase 1 approved and completed as foundation.
+- [x] Move posted to Phase 2 execution (LLM sentiment + macro context mapping).
+
+## Phase 2 Macro Context Node Plan (2026-03-04)
+- [x] Add macro context analysis engine over SQLite `market_news` (sentiment score, catalyst, impacted clusters, rationale summary).
+- [x] Add API contract for macro context analysis (`/api/v1/macro/context`) with symbol/theme targeting.
+- [x] Add manual CLI runner for macro context analysis to validate Phase 2 without UI.
+- [x] Wire Portfolio `Signal Rationale` UI with a new `Macro & Regulatory Context` tab and fetch on row selection.
+- [x] Add/update tests for macro context engine + API + adapter payload normalization.
+- [x] Update docs, roadmap evidence, and `What's New` feed with Phase 2 changes.
+
+## Phase 2 Macro Context Verify Plan Check-In
+- Scope: asynchronous macro/regulatory context only; no dependency on live broker tick stream.
+- Safety: read-only analysis of harvested news + read-only portfolio context; no changes to order execution path.
+- UX: additive tab inside existing `Signal Rationale` card, preserving current decision panel behavior.
+
+## Phase 2 Macro Context Review
+- Code updates:
+  - `api/_lib/macroContextEngine.js`
+  - `api/macro-context.js`
+  - `scripts/macro-context-analyze.js`
+  - `adapterCore.js`
+  - `app.js`
+  - `index.html`
+  - `styles.css`
+  - `vercel.json`
+  - `api/_lib/contracts.js`
+  - `README.md`
+  - `tests/macroContextEngine.test.js`
+  - `tests/macroContextApi.test.js`
+  - `tests/adapterCore.test.js`
+  - `tests/cliContracts.test.js`
+- Validation:
+  - `node --check api/_lib/macroContextEngine.js`
+  - `node --check api/macro-context.js`
+  - `node --check scripts/macro-context-analyze.js`
+  - `node --check app.js`
+  - `node --check adapterCore.js`
+  - `node --test tests/macroContextEngine.test.js tests/macroContextApi.test.js tests/adapterCore.test.js tests/cliContracts.test.js` (18/18 pass)
+  - `node --test tests/*.test.js` (78/78 pass)
+  - `node scripts/macro-context-analyze.js --format table --exchange all --include-processed --limit 10`
+
+## Phase 3 Next.js UI Integration Plan (2026-03-04)
+- [x] Add drop-in Next.js API route (`/api/v1/macro-context`) that queries SQLite `llm_analysis` and returns normalized payload.
+- [x] Add drop-in `MacroContextPanel` React component with native semantic Tailwind classes only (no custom color/font system).
+- [x] Implement loading skeleton + null/fallback state + source/timestamp footer behavior.
+- [x] Add integration notes for mounting the panel inside existing Signal Rationale layout.
+
+## Phase 3 Next.js UI Verify Plan Check-In
+- Scope: provide Next.js-ready route/component files without modifying current non-Next runtime in this repo.
+- Safety: route reads SQLite only; no write path and no broker/order side effects.
+
+## Phase 3 Next.js UI Review
+- Code updates:
+  - `app/api/v1/macro-context/route.ts`
+  - `components/MacroContextPanel.tsx`
+- Validation:
+  - Structural verification only (repo is non-Next and has no TypeScript toolchain installed).
+  - `npx tsc --version` failed due missing `typescript` package in this workspace.

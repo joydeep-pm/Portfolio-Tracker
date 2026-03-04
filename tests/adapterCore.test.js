@@ -9,6 +9,7 @@ const {
   nextBackoffMs,
   shouldMarkStale,
   mergeMarketState,
+  normalizeMacroContextPayload,
   DataValidationError,
 } = require("../adapterCore.js");
 
@@ -195,4 +196,44 @@ test("mapComparisonSeries converts payload to chart points and tolerates empty c
   assert.equal(mapped.get("cluster-1").length, 2);
   assert.equal(mapped.get("cluster-1")[1].y, 0.9);
   assert.equal(mapped.get("cluster-2").length, 0);
+});
+
+test("normalizeMacroContextPayload validates macro context schema", () => {
+  const payload = normalizeMacroContextPayload({
+    asOf: "2026-03-04T10:20:00+05:30",
+    exchange: "all",
+    symbol: "SBIN",
+    sentiment_score: -0.24,
+    key_catalyst: "RBI tightens unsecured lending norms",
+    impacted_clusters: [
+      {
+        cluster_id: "cluster-1",
+        cluster_name: "Banking & Financial Services PSU Chain",
+        head_name: "Banking & Financial Services",
+        impact_score: 0.88,
+      },
+    ],
+    rationale_summary: "Catalyst turned defensive. Banking clusters are most exposed.",
+    considered_events: 5,
+    processed_count: 5,
+    sources: ["RBI_RSS", "SEBI_RSS"],
+    source_events: [
+      {
+        id: 101,
+        source_type: "RBI_RSS",
+        title: "Circular",
+        url: "https://www.rbi.org.in/test",
+        published_date: "2026-03-04T10:00:00.000Z",
+        priority_tags: ["RBI", "NBFC"],
+        sentiment: -0.4,
+        relevance_score: 1.2,
+        impact_score: 1.1,
+      },
+    ],
+    model: "heuristic-v1",
+  });
+
+  assert.equal(payload.symbol, "SBIN");
+  assert.equal(payload.impacted_clusters.length, 1);
+  assert.equal(payload.source_events.length, 1);
 });

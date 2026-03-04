@@ -315,6 +315,55 @@
     };
   }
 
+  function normalizeMacroCluster(value, path) {
+    const record = requireObject(value, path);
+    return {
+      cluster_id: requireString(record.cluster_id, `${path}.cluster_id`),
+      cluster_name: requireString(record.cluster_name, `${path}.cluster_name`),
+      head_name: requireString(record.head_name, `${path}.head_name`),
+      impact_score: requireNumber(record.impact_score, `${path}.impact_score`),
+    };
+  }
+
+  function normalizeMacroContextPayload(payload) {
+    const record = requireObject(payload, "macro.context");
+    return {
+      asOf: requireString(record.asOf, "macro.context.asOf"),
+      exchange: requireString(record.exchange || "all", "macro.context.exchange").toLowerCase(),
+      symbol: record.symbol ? requireString(record.symbol, "macro.context.symbol").toUpperCase() : null,
+      theme_hint: record.theme_hint ? requireString(record.theme_hint, "macro.context.theme_hint") : null,
+      sentiment_score: requireNumber(record.sentiment_score, "macro.context.sentiment_score"),
+      key_catalyst: requireString(record.key_catalyst, "macro.context.key_catalyst"),
+      impacted_clusters: requireArray(record.impacted_clusters || [], "macro.context.impacted_clusters").map((cluster, index) =>
+        normalizeMacroCluster(cluster, `macro.context.impacted_clusters[${index}]`),
+      ),
+      rationale_summary: requireString(record.rationale_summary, "macro.context.rationale_summary"),
+      considered_events: requireNumber(record.considered_events || 0, "macro.context.considered_events"),
+      processed_count: requireNumber(record.processed_count || 0, "macro.context.processed_count"),
+      sources: requireArray(record.sources || [], "macro.context.sources").map((source, index) =>
+        requireString(source, `macro.context.sources[${index}]`),
+      ),
+      source_events: requireArray(record.source_events || [], "macro.context.source_events").map((item, index) => {
+        const itemPath = `macro.context.source_events[${index}]`;
+        const sourceRecord = requireObject(item, itemPath);
+        return {
+          id: requireNumber(sourceRecord.id, `${itemPath}.id`),
+          source_type: requireString(sourceRecord.source_type, `${itemPath}.source_type`),
+          title: requireString(sourceRecord.title, `${itemPath}.title`),
+          url: requireString(sourceRecord.url, `${itemPath}.url`),
+          published_date: sourceRecord.published_date ? requireString(sourceRecord.published_date, `${itemPath}.published_date`) : "",
+          priority_tags: requireArray(sourceRecord.priority_tags || [], `${itemPath}.priority_tags`).map((tag, tagIndex) =>
+            requireString(tag, `${itemPath}.priority_tags[${tagIndex}]`),
+          ),
+          sentiment: requireNumber(sourceRecord.sentiment || 0, `${itemPath}.sentiment`),
+          relevance_score: requireNumber(sourceRecord.relevance_score || 0, `${itemPath}.relevance_score`),
+          impact_score: requireNumber(sourceRecord.impact_score || 0, `${itemPath}.impact_score`),
+        };
+      }),
+      model: record.model ? requireString(record.model, "macro.context.model") : "unknown",
+    };
+  }
+
   function getIstParts(date) {
     const formatter = new Intl.DateTimeFormat("en-US", {
       timeZone: "Asia/Kolkata",
@@ -582,6 +631,16 @@
         const orderId = requireString(params?.id || "", "order.id");
         return request(`/orders/${encodeURIComponent(orderId)}/status`, {});
       },
+      async fetchMacroContext(params) {
+        const payload = await request("/macro/context", {
+          symbol: params?.symbol || "",
+          theme: params?.theme || "",
+          exchange: params?.exchange || "all",
+          limit: params?.limit || 30,
+          includeProcessed: params?.includeProcessed ? "true" : "",
+        });
+        return normalizeMacroContextPayload(payload);
+      },
     };
   }
 
@@ -597,6 +656,7 @@
     normalizePortfolioBootstrapPayload,
     normalizePortfolioPollPayload,
     normalizePortfolioDecisionsPayload,
+    normalizeMacroContextPayload,
     mapComparisonSeries,
     mergeMarketState,
     mergePortfolioState,

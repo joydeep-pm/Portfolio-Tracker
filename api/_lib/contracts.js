@@ -6,11 +6,15 @@ const CONTRACTS = {
   comparison: "2026-03-04.comparison.v1",
   hotspots: "2026-03-04.hotspots.v1",
   agents: "2026-03-04.agents.v1",
+  macro: "2026-03-04.macro.v1",
+  macroContext: "2026-03-04.macro-context.v1",
   cliPortfolioSnapshot: "2026-03-04.cli.portfolio-snapshot.v1",
   cliEodSnapshot: "2026-03-04.cli.run-eod-snapshot.v1",
   cliHotspotsSnapshot: "2026-03-04.cli.hotspots-snapshot.v1",
   cliAgentsAnalyze: "2026-03-04.cli.agents-analyze.v1",
   cliReplayBackfill: "2026-03-04.cli.replay-backfill.v1",
+  cliMacroHarvest: "2026-03-04.cli.harvest-macro-news.v1",
+  cliMacroContextAnalyze: "2026-03-04.cli.macro-context-analyze.v1",
 };
 
 module.exports = {

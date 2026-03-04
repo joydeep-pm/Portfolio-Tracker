@@ -59,3 +59,12 @@ test("replay-backfill CLI output includes contract metadata", () => {
   assert.equal(typeof payload.meta?.generatedAt, "string");
   assert.equal(Array.isArray(payload.results), true);
 });
+
+test("macro-context CLI output includes contract metadata", () => {
+  const result = runScript("macro-context-analyze.js", ["--format", "json", "--exchange", "all", "--include-processed"]);
+  assert.equal(result.status, 0, result.stderr);
+  const payload = JSON.parse(result.stdout);
+  assert.equal(typeof payload.meta?.contractVersion, "string");
+  assert.equal(typeof payload.meta?.generatedAt, "string");
+  assert.equal(typeof payload.sentiment_score, "number");
+});

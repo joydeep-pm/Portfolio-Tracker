@@ -143,6 +143,13 @@ const COMPARE_COLOR_PALETTE = [
 const WHATS_NEW_FEED = [
   {
     date: "2026-03-04",
+    title: "Macro & Regulatory Context Tab",
+    detail:
+      "Signal Rationale now includes a dedicated macro/regulatory view powered by RBI/SEBI news ingestion with sentiment, catalyst, and impacted micro-cluster mapping.",
+    targetView: "portfolio",
+  },
+  {
+    date: "2026-03-04",
     title: "Theme Grid Width Fix",
     detail: "Theme heatmap cards now use wider minimum widths so 6M/YTD columns stay fully visible; layout switches to two cards per row on laptop screens.",
     targetView: "themes",
@@ -290,6 +297,9 @@ let portfolioState = {
   providerMode: "",
   user: { userId: null, userName: null },
   selectedKey: "",
+  rationaleTab: "decision",
+  macroContextByKey: new Map(),
+  macroContextRequestId: 0,
   filters: {
     action: "all",
     exchange: "all",
@@ -348,6 +358,8 @@ const portfolioRowsEl = document.getElementById("portfolioRows");
 const portfolioMeta = document.getElementById("portfolioMeta");
 const portfolioDecisionMeta = document.getElementById("portfolioDecisionMeta");
 const portfolioDecisionPanel = document.getElementById("portfolioDecisionPanel");
+const portfolioMacroPanel = document.getElementById("portfolioMacroPanel");
+const portfolioRationaleTabs = [...document.querySelectorAll("[data-rationale-tab]")];
 const portfolioSourceChip = document.getElementById("portfolioSourceChip");
 const portfolioConnectionChip = document.getElementById("portfolioConnectionChip");
 const portfolioSearchInput = document.getElementById("portfolioSearchInput");
@@ -834,6 +846,13 @@ function applyPortfolioBootstrap(payload) {
   portfolioState.provider = payload.provider;
   portfolioState.providerMode = payload.providerMode;
   portfolioState.user = payload.user || { userId: null, userName: null };
+
+  const validKeys = new Set(portfolioState.rows.map((row) => row.key));
+  [...portfolioState.macroContextByKey.keys()].forEach((key) => {
+    if (!validKeys.has(key)) {
+      portfolioState.macroContextByKey.delete(key);
+    }
+  });
 }
 
 function syntheticBootstrapPayload(universe) {
@@ -1024,6 +1043,20 @@ function createSyntheticAdapter() {
         asOf: portfolioState.asOf || new Date().toISOString(),
         decisions: portfolioState.rows.map((row) => row.decision),
       };
+    },
+    async fetchMacroContext(params) {
+      const symbol = String(params?.symbol || "").toUpperCase();
+      const exchange = String(params?.exchange || "all").toUpperCase();
+      const row = portfolioState.rows.find(
+        (item) => item.symbol === symbol && (exchange === "ALL" || item.exchange === exchange),
+      );
+      return syntheticMacroContextForRow(
+        row || {
+          symbol,
+          exchange,
+          returns: { "1D": 0, "1W": 0, "1M": 0, "6M": 0, YTD: 0 },
+        },
+      );
     },
     async createPortfolioEodSnapshot() {
       return {
@@ -1687,6 +1720,194 @@ function renderPortfolioSummary() {
     .join("");
 }
 
+function setRationaleTab(nextTab) {
+  const tab = nextTab === "macro" ? "macro" : "decision";
+  portfolioState.rationaleTab = tab;
+
+  portfolioRationaleTabs.forEach((button) => {
+    const active = button.dataset.rationaleTab === tab;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", active ? "true" : "false");
+  });
+
+  if (portfolioDecisionPanel) {
+    portfolioDecisionPanel.classList.toggle("hidden", tab !== "decision");
+  }
+  if (portfolioMacroPanel) {
+    portfolioMacroPanel.classList.toggle("hidden", tab !== "macro");
+  }
+}
+
+function macroScoreClass(score) {
+  if (score >= 0.2) return "pos";
+  if (score <= -0.2) return "neg";
+  return "neu";
+}
+
+function syntheticMacroContextForRow(row) {
+  const oneDay = Number(row?.returns?.["1D"] || 0);
+  const oneMonth = Number(row?.returns?.["1M"] || 0);
+  const score = clamp((oneDay * 0.1 + oneMonth * 0.03) / 1.5, -1, 1);
+  const catalyst =
+    score >= 0.2
+      ? "Policy and liquidity commentary remains constructive for current trend."
+      : score <= -0.2
+        ? "Recent policy headlines indicate tighter risk control for leveraged pockets."
+        : "Regulatory and macro signals remain balanced without a single dominant catalyst.";
+
+  return AdapterCore.normalizeMacroContextPayload({
+    asOf: new Date().toISOString(),
+    exchange: String(row?.exchange || "all").toLowerCase(),
+    symbol: row?.symbol || null,
+    theme_hint: null,
+    sentiment_score: Number.parseFloat(score.toFixed(4)),
+    key_catalyst: catalyst,
+    impacted_clusters: [
+      {
+        cluster_id: "synthetic-cluster-1",
+        cluster_name: "Fintech & Payments India Policy Beneficiaries",
+        head_name: "Fintech & Payments India",
+        impact_score: Number.parseFloat(clamp(Math.abs(score) + 0.25, 0.2, 0.95).toFixed(4)),
+      },
+      {
+        cluster_id: "synthetic-cluster-2",
+        cluster_name: "Banking & Financial Services PSU Chain",
+        head_name: "Banking & Financial Services",
+        impact_score: Number.parseFloat(clamp(Math.abs(score) + 0.15, 0.18, 0.9).toFixed(4)),
+      },
+    ],
+    rationale_summary:
+      "Synthetic mode is active, so macro context is inferred from portfolio momentum instead of live regulatory feed polling. Switch to backend mode to use SQLite-harvested RBI/SEBI context.",
+    considered_events: 0,
+    processed_count: 0,
+    sources: ["SYNTHETIC"],
+    source_events: [],
+    model: "synthetic",
+  });
+}
+
+function renderMacroContextPanel(row) {
+  if (!portfolioMacroPanel) return;
+  if (!row) {
+    portfolioMacroPanel.innerHTML = `<div class="scan-empty">Select a portfolio row to load macro context.</div>`;
+    return;
+  }
+
+  const entry = portfolioState.macroContextByKey.get(row.key);
+  if (!entry || entry.status === "loading") {
+    portfolioMacroPanel.innerHTML = `<div class="scan-empty">Loading macro/regulatory context for ${row.exchange}:${row.symbol}...</div>`;
+    return;
+  }
+
+  if (entry.status === "error") {
+    portfolioMacroPanel.innerHTML = `<div class="scan-empty">${entry.error || "Macro context unavailable right now."}</div>`;
+    return;
+  }
+
+  const payload = entry.data;
+  if (!payload) {
+    portfolioMacroPanel.innerHTML = `<div class="scan-empty">No macro context payload found.</div>`;
+    return;
+  }
+
+  const scoreClass = macroScoreClass(payload.sentiment_score || 0);
+  const sentimentLabel =
+    scoreClass === "pos" ? "Constructive" : scoreClass === "neg" ? "Defensive" : "Balanced";
+  const sourceLine = (payload.sources || []).length ? payload.sources.join(", ") : "--";
+  const asOfLabel = payload.asOf ? new Date(payload.asOf).toLocaleTimeString("en-IN") : "--";
+
+  portfolioMacroPanel.innerHTML = `
+    <article class="decision-card">
+      <h4>Macro Sentiment</h4>
+      <p>
+        <span class="macro-score-chip ${scoreClass}">${sentimentLabel} ${(payload.sentiment_score || 0).toFixed(2)}</span>
+        • Sources ${sourceLine} • as of ${asOfLabel}
+      </p>
+    </article>
+    <article class="decision-card">
+      <h4>Key Catalyst</h4>
+      <p>${payload.key_catalyst || "No catalyst detected."}</p>
+    </article>
+    <article class="decision-card">
+      <h4>Impacted Micro-Clusters</h4>
+      ${
+        Array.isArray(payload.impacted_clusters) && payload.impacted_clusters.length
+          ? `<div class="macro-cluster-list">
+              ${payload.impacted_clusters
+                .slice(0, 8)
+                .map(
+                  (cluster) => `
+                    <div class="macro-cluster-item">
+                      <span class="macro-cluster-name">${cluster.cluster_name}</span>
+                      <span class="macro-cluster-meta">${cluster.head_name} • Impact ${(cluster.impact_score || 0).toFixed(2)}</span>
+                    </div>
+                  `,
+                )
+                .join("")}
+            </div>`
+          : `<p>No impacted micro-clusters detected for current context window.</p>`
+      }
+    </article>
+    <article class="decision-card">
+      <h4>Rationale Summary</h4>
+      <p>${payload.rationale_summary || "No rationale summary available."}</p>
+    </article>
+  `;
+}
+
+async function requestMacroContextForRow(row, options = {}) {
+  if (!row) return;
+  const key = row.key;
+  const cached = portfolioState.macroContextByKey.get(key);
+  const ttlMs = 3 * 60 * 1000;
+  if (!options.force && cached && cached.status === "ready" && Date.now() - cached.fetchedAtMs <= ttlMs) {
+    return;
+  }
+  if (cached && cached.status === "loading") return;
+
+  portfolioState.macroContextByKey.set(key, {
+    status: "loading",
+    fetchedAtMs: Date.now(),
+    data: null,
+    error: "",
+  });
+  renderMacroContextPanel(row);
+
+  const requestId = portfolioState.macroContextRequestId + 1;
+  portfolioState.macroContextRequestId = requestId;
+
+  try {
+    const payload = runtimeState.adapter?.fetchMacroContext
+      ? await runtimeState.adapter.fetchMacroContext({
+          symbol: row.symbol,
+          exchange: String(row.exchange || "all").toLowerCase(),
+          limit: 30,
+          includeProcessed: false,
+        })
+      : syntheticMacroContextForRow(row);
+
+    if (requestId !== portfolioState.macroContextRequestId) {
+      return;
+    }
+
+    portfolioState.macroContextByKey.set(key, {
+      status: "ready",
+      fetchedAtMs: Date.now(),
+      data: payload,
+      error: "",
+    });
+    if (portfolioState.selectedKey === key) renderMacroContextPanel(row);
+  } catch (error) {
+    portfolioState.macroContextByKey.set(key, {
+      status: "error",
+      fetchedAtMs: Date.now(),
+      data: null,
+      error: error.message || "Macro context request failed",
+    });
+    if (portfolioState.selectedKey === key) renderMacroContextPanel(row);
+  }
+}
+
 function renderPortfolioDecisionPanel() {
   const row =
     portfolioState.rows.find((item) => item.key === portfolioState.selectedKey) ||
@@ -1696,6 +1917,7 @@ function renderPortfolioDecisionPanel() {
   if (!row) {
     portfolioDecisionMeta.textContent = "No selection";
     portfolioDecisionPanel.innerHTML = `<div class="scan-empty">No portfolio rows match current filters.</div>`;
+    renderMacroContextPanel(null);
     return;
   }
 
@@ -1719,6 +1941,11 @@ function renderPortfolioDecisionPanel() {
       }
     </article>
   `;
+
+  renderMacroContextPanel(row);
+  requestMacroContextForRow(row).catch((error) => {
+    console.error("Macro context fetch failed", error);
+  });
 }
 
 async function handlePrepareOrder(rowKey) {
@@ -1813,6 +2040,7 @@ function renderPortfolio() {
   renderPortfolioSummary();
   renderPortfolioRows();
   renderPortfolioDecisionPanel();
+  setRationaleTab(portfolioState.rationaleTab);
 }
 
 function freshnessLabel(nowMs) {
@@ -2139,6 +2367,24 @@ function attachHandlers() {
   portfolioConfidenceInput.addEventListener("input", (event) => {
     portfolioState.filters.confidenceMin = clamp(Number(event.target.value || 0), 0, 100);
     renderPortfolio();
+  });
+
+  portfolioRationaleTabs.forEach((button) => {
+    button.addEventListener("click", () => {
+      const tab = button.dataset.rationaleTab;
+      setRationaleTab(tab);
+      if (tab === "macro") {
+        const selectedRow =
+          portfolioState.rows.find((item) => item.key === portfolioState.selectedKey) ||
+          filteredPortfolioRows()[0] ||
+          null;
+        if (selectedRow) {
+          requestMacroContextForRow(selectedRow, { force: true }).catch((error) => {
+            console.error("Macro context refresh failed", error);
+          });
+        }
+      }
+    });
   });
 
   portfolioActionButtons.forEach((button) => {

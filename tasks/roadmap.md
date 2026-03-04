@@ -227,6 +227,16 @@
 - [x] G5 Production readiness sign-off
   - Evidence: 2026-03-04 IST - Deployed production build via `npx vercel --prod --yes`; alias active at `https://portfolio-tracker-kappa-woad.vercel.app`; smoke checks for `zerodha session`, `portfolio bootstrap`, `hotspots snapshot`, `agents intent`, and `agents analyze` all returned HTTP 200; evidence in `artifacts/production-smoke.json`; full tests passing `63/63`.
 
+## Macro Agent Phase 2 (Post-Wave Extension)
+- [x] M2.1 Build macro/regulatory sentiment node over SQLite queue (`market_news`)
+  - Evidence: 2026-03-04 IST - Added `api/_lib/macroContextEngine.js` generating `sentiment_score`, `key_catalyst`, `impacted_clusters`, and `rationale_summary`; marks analyzed rows `processed_by_llm=1`.
+- [x] M2.2 Expose macro context API + CLI for manual execution
+  - Evidence: 2026-03-04 IST - Added `api/macro-context.js`, `scripts/macro-context-analyze.js`, `vercel.json` rewrite `/api/v1/macro/context`, contract versions in `api/_lib/contracts.js`.
+- [x] M2.3 Inject macro context into Portfolio Signal Rationale UI
+  - Evidence: 2026-03-04 IST - Updated `index.html`, `styles.css`, and `app.js` with `Macro & Regulatory Context` tab and row-triggered fetch via adapter (`adapterCore.js`).
+- [x] M2.4 Validate with automated tests and full-suite regression
+  - Evidence: 2026-03-04 IST - Added `tests/macroContextEngine.test.js`, `tests/macroContextApi.test.js`, expanded `tests/adapterCore.test.js` + `tests/cliContracts.test.js`; `node --test tests/*.test.js` passed (`78/78`).
+
 ## Decision Log
 - 2026-03-04: Program split into four sequential waves; no big-bang delivery.
 - 2026-03-04: Wave 1 kickoff started with provider contract hardening and headless CLI implementation.
@@ -235,3 +245,5 @@
 - 2026-03-04: Gates `G2`, `G3`, and `G4` marked passed after API/CLI/UI acceptance checks and full regression tests.
 - 2026-03-04: `W1.8` live-paper validation passed; `G1` marked complete.
 - 2026-03-04: Production deployment refreshed and smoke-validated; `G5` marked complete.
+- 2026-03-04: Approved to move into Macro/Regulatory Agent Phase 2 (LLM sentiment/context node) after Phase 1 harvester foundation.
+- 2026-03-04: Macro/Regulatory Phase 2 delivered with backend node, API/CLI surfaces, and Portfolio Signal Rationale UI tab integration.

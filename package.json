@@ -1,0 +1,29 @@
+{
+  "name": "portfolio-tracker",
+  "version": "1.0.0",
+  "description": "Interactive thematic engine prototype that models: - 2,486 stocks - 26 core thematic heads - 175 micro-clusters - momentum windows: `1D`, `1W`, `1M`, `6M`, `YTD`",
+  "main": "adapterCore.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "harvest:macro": "node scripts/harvest-macro-news.js --format table --per-source 40 --limit 25",
+    "analyze:macro-context": "node scripts/macro-context-analyze.js --format table --limit 30"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joydeep-pm/Portfolio-Tracker.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/joydeep-pm/Portfolio-Tracker/issues"
+  },
+  "homepage": "https://github.com/joydeep-pm/Portfolio-Tracker#readme",
+  "dependencies": {
+    "better-sqlite3": "^12.6.2",
+    "rss-parser": "^3.13.0"
+  }
+}

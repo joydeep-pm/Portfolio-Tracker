@@ -260,7 +260,16 @@
               <h3>Signal Rationale</h3>
               <p id="portfolioDecisionMeta">Select a row</p>
             </header>
+            <div class="portfolio-rationale-tabs" role="tablist" aria-label="Signal rationale views">
+              <button class="portfolio-rationale-tab active" data-rationale-tab="decision" role="tab" aria-selected="true">
+                Decision
+              </button>
+              <button class="portfolio-rationale-tab" data-rationale-tab="macro" role="tab" aria-selected="false">
+                Macro &amp; Regulatory Context
+              </button>
+            </div>
             <div id="portfolioDecisionPanel" class="portfolio-decision-panel"></div>
+            <div id="portfolioMacroPanel" class="portfolio-decision-panel hidden"></div>
           </aside>
         </section>
       </section>

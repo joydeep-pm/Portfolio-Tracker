@@ -55,6 +55,10 @@ node scripts/hotspots-snapshot.js --mode detailed --format json --exchange all -
 node scripts/agents-analyze.js --prompt "evaluate my portfolio against current PSU bank thematic momentum" --format table --exchange all
 node scripts/agents-analyze.js --prompt "evaluate my portfolio against current PSU bank thematic momentum" --format json --exchange all --export ./artifacts/agent-analysis.json
 node scripts/replay-backfill.js --from 2026-03-01 --to 2026-03-03 --exchange all --hotspot-dir ./artifacts/backfill-hotspots
+node scripts/harvest-macro-news.js --format table --per-source 40 --limit 25
+node scripts/harvest-macro-news.js --format json --per-source 40 --limit 25 --export ./artifacts/macro-harvest.json
+node scripts/macro-context-analyze.js --symbol SBIN --exchange all --format table
+node scripts/macro-context-analyze.js --symbol SBIN --exchange all --format json --export ./artifacts/macro-context.json
 ```
 
 Supported options:
@@ -80,6 +84,27 @@ For multi-agent analysis:
 
 For replay/backfill of missed windows:
 - `node scripts/replay-backfill.js --from YYYY-MM-DD [--to YYYY-MM-DD] --exchange all|nse|bse --hotspot-dir <path> [--no-skip-existing]`
+
+For macro/regulatory harvesting (RBI/SEBI RSS into SQLite):
+- `node scripts/harvest-macro-news.js --format table --per-source 40 --limit 25`
+- `node scripts/harvest-macro-news.js --format json --db ./data/macro_events.db --export <path>`
+- Uses SQLite file `./data/macro_events.db` (override with `MACRO_EVENTS_DB_PATH` or `--db`).
+- Deduplication uses `INSERT OR IGNORE` with unique `url` in table `market_news`.
+- Table schema:
+  - `id INTEGER PRIMARY KEY AUTOINCREMENT`
+  - `source_type TEXT`
+  - `title TEXT`
+  - `content_text TEXT`
+  - `url TEXT UNIQUE`
+  - `published_date TEXT`
+  - `priority_tags TEXT` (JSON string array)
+  - `processed_by_llm INTEGER DEFAULT 0`
+
+For macro/regulatory context analysis (Phase 2 node):
+- `node scripts/macro-context-analyze.js --symbol <ticker> --exchange all|nse|bse --format table|json --limit <n>`
+- The analysis reads `market_news` queue, computes `sentiment_score`, selects a `key_catalyst`, maps `impacted_clusters`, and emits a 2-sentence `rationale_summary`.
+- Queue behavior: analyzed rows are marked `processed_by_llm = 1` (use `--include-processed` to force historical fallback).
+- Use `--include-prompt-draft` only when you need the full LLM/system prompt text for debugging.
 
 JSON CLI outputs include metadata:
 - `meta.contractVersion`
@@ -258,7 +283,19 @@ If `dataMode` is `backend` but token/config is invalid, the UI shows an adapter 
 
 `POST /agents/analyze`
 - body: `{ "prompt": "<query>", "exchange": "all|nse|bse" }`
-- response includes: `summary`, `decisions[]`, `context`, `graphTrace[]`, `disclaimer`, `meta`
+- response includes: `intent`, `summary`, `decisions[]`, `graphTrace[]`, `meta`
+
+`GET /macro/harvest`
+- query: `perSource=<n>`, `limit=<n>`
+- response includes: `fetchedCount`, `insertedCount`, `duplicateCount`, `latest[]`, `dbPath`
+
+`GET /macro/latest`
+- query: `limit=<n>`
+- response includes: `items[]`, `count`, store `meta`
+
+`GET|POST /macro/context`
+- query/body: `symbol`, `exchange=all|nse|bse`, `theme|themeHint`, `limit`, `includeProcessed`, `includePromptDraft`
+- response includes: `sentiment_score`, `key_catalyst`, `impacted_clusters[]`, `rationale_summary`, `source_events[]`, `meta`
 
 Response metadata:
 - `meta.contractVersion`: payload contract identifier

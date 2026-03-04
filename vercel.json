@@ -24,6 +24,10 @@
     { "source": "/api/v1/agents/intent", "destination": "/api/agents?route=intent" },
     { "source": "/api/v1/agents/analyze", "destination": "/api/agents?route=analyze" },
 
+    { "source": "/api/v1/macro/harvest", "destination": "/api/macro?route=harvest" },
+    { "source": "/api/v1/macro/latest", "destination": "/api/macro?route=latest" },
+    { "source": "/api/v1/macro/context", "destination": "/api/macro-context?route=analyze" },
+
     { "source": "/api/v1/orders/preview", "destination": "/api/orders?route=preview" },
     { "source": "/api/v1/orders/submit", "destination": "/api/orders?route=submit" },
     { "source": "/api/v1/orders/:id/status", "destination": "/api/orders?route=status&id=:id" }

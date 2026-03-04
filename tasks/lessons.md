@@ -51,3 +51,5 @@
 - Preventive rule: when summarizing delivery, include a visible source-to-feature traceability block in-product (repo source -> module path -> UI/API surface).
 - User correction: theme heatmap columns (`6M/YTD`) were clipped at 3-cards-per-row laptop widths.
 - Preventive rule: size dense heatmap cards from required internal grid width first; set container min width so layouts gracefully step down to fewer cards per row before columns clip.
+- User correction: Phase 1 storage needed to be SQLite-backed, not JSON-file backed.
+- Preventive rule: when user specifies storage technology (e.g., SQLite), implement that exact persistence layer and schema first, and treat alternatives as non-compliant unless explicitly approved.
