@@ -79,3 +79,5 @@
 - Preventive rule: avoid shipping placeholder navigation entries without live routes; only expose top-nav items that map to functional views or explicitly marked disabled states with product sign-off.
 - User correction: macro panel showing `Balanced` across many symbols looked incorrect and reduced trust.
 - Preventive rule: when analysis data is sparse/unavailable, surface explicit fallback reason in UI and apply deterministic symbol-aware fallback instead of silent neutral defaults.
+- User correction: Vercel Hobby deployment failed when root serverless function count exceeded 12.
+- Preventive rule: before shipping new API entrypoints, count `api/*.js` and consolidate gateways early (for example route-family multiplexing) to stay within plan limits.

@@ -306,6 +306,8 @@
   - Evidence: 2026-03-05 IST - Updated `quant-engine/requirements.txt` with `pypdf`, `sentence-transformers`, `faiss-cpu`; compile validation passed via `python3 -m py_compile` for `main.py`, `routers/research.py`, and `routers/commands.py`.
 - [x] P6.6 Integrate research/chat and NLP command endpoints into Vercel gateway + vanilla JS frontend.
   - Evidence: 2026-03-05 IST - Added Node proxies (`api/research.js`, `api/commands.js`) and rewrites in `vercel.json`; extended `adapterCore.js` with `sendEarningsQuery` and `submitNlpCommand`; wired Command Palette + Copilot Chat UI in `index.html`/`styles.css`/`app.js` with keyboard/submit flows and citation rendering.
+- [x] P6.7 Consolidate Node proxy entrypoints to satisfy Vercel Hobby function limits.
+  - Evidence: 2026-03-05 IST - Merged research/commands forwarding into `api/quant.js`, rewired `/api/v1/research/*` + `/api/v1/commands/interpret` rewrites to `api/quant`, removed redundant `api/research.js` and `api/commands.js`; root function count now `12`.
 
 ## Macro Context Reliability Patch (Post-M2 Hardening)
 - [x] M2.5 Prevent misleading all-neutral macro sentiment in sparse/unavailable contexts.

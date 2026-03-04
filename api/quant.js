@@ -2,9 +2,27 @@ const { CONTRACTS } = require("./_lib/contracts");
 const { initTrace, traceLog } = require("./_lib/trace");
 const { json, methodNotAllowed, parseJsonBody } = require("./_lib/http");
 
-const ROUTE_PATHS = {
-  "optimize-allocation": "/api/v1/quant/optimize-allocation",
-  "thematic-rotation": "/api/v1/quant/backtests/thematic-rotation",
+const ROUTE_CONFIG = {
+  "optimize-allocation": {
+    path: "/api/v1/quant/optimize-allocation",
+    contractVersion: CONTRACTS.quant,
+  },
+  "thematic-rotation": {
+    path: "/api/v1/quant/backtests/thematic-rotation",
+    contractVersion: CONTRACTS.quant,
+  },
+  "earnings-chat": {
+    path: "/api/v1/research/earnings/chat",
+    contractVersion: CONTRACTS.research,
+  },
+  "earnings-sync": {
+    path: "/api/v1/research/earnings/sync",
+    contractVersion: CONTRACTS.research,
+  },
+  interpret: {
+    path: "/api/v1/commands/interpret",
+    contractVersion: CONTRACTS.commands,
+  },
 };
 
 function quantEngineBaseUrl() {
@@ -12,11 +30,11 @@ function quantEngineBaseUrl() {
   return raw.replace(/\/$/, "");
 }
 
-function withMeta(payload, traceId) {
+function withMeta(payload, traceId, contractVersion) {
   return {
     ...(payload || {}),
     meta: {
-      contractVersion: CONTRACTS.quant,
+      contractVersion: contractVersion || CONTRACTS.quant,
       traceId,
     },
   };
@@ -63,7 +81,9 @@ async function forwardQuantRequest(pathname, body, traceId) {
 module.exports = async function handler(req, res) {
   const trace = initTrace(req, res, "quant-proxy-api");
   const route = String(req.query?.route || "").toLowerCase();
-  const targetPath = ROUTE_PATHS[route];
+  const routeConfig = ROUTE_CONFIG[route];
+  const targetPath = routeConfig?.path;
+  const contractVersion = routeConfig?.contractVersion || CONTRACTS.quant;
 
   if (!targetPath) {
     return json(
@@ -72,9 +92,10 @@ module.exports = async function handler(req, res) {
       withMeta(
         {
           error: "not-found",
-          message: "Supported routes: optimize-allocation, thematic-rotation",
+          message: "Supported routes: optimize-allocation, thematic-rotation, earnings-chat, earnings-sync, interpret",
         },
         trace.traceId,
+        contractVersion,
       ),
     );
   }
@@ -88,7 +109,7 @@ module.exports = async function handler(req, res) {
       route,
       status: forwarded.status,
     });
-    return json(res, forwarded.status, withMeta(forwarded.payload, trace.traceId));
+    return json(res, forwarded.status, withMeta(forwarded.payload, trace.traceId, contractVersion));
   } catch (error) {
     const timedOut = error?.name === "AbortError";
     const statusCode = timedOut ? 504 : 502;
@@ -103,6 +124,7 @@ module.exports = async function handler(req, res) {
           message,
         },
         trace.traceId,
+        contractVersion,
       ),
     );
   }

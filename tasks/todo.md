@@ -1083,3 +1083,27 @@
   - Command Palette and Copilot Chat frontend wiring is now fully active (`Cmd/Ctrl+K`, Enter submit, modal close, loading/error states).
   - Placeholder top-nav items (`Universe`, `Sectors`, `Signals`) removed.
   - Macro context now preserves backend `reason` metadata and applies symbol-level synthetic fallback when backend context is unavailable/empty, with explicit UI note to avoid misleading all-neutral interpretation.
+
+## Vercel Hobby Function-Limit Hotfix Plan (2026-03-05)
+- [x] Consolidate Python worker proxy routes into existing `api/quant.js` to reduce root serverless entrypoints.
+- [x] Update `vercel.json` rewrites for research/commands to route through `api/quant`.
+- [x] Remove redundant root serverless files `api/research.js` and `api/commands.js`.
+- [x] Run syntax and regression checks to ensure no API contract breakage.
+- [x] Document outcome and deployment-unblock evidence.
+
+## Vercel Hobby Function-Limit Hotfix Review
+- Code updates:
+  - `api/quant.js`
+  - `vercel.json`
+  - deleted `api/research.js`
+  - deleted `api/commands.js`
+- Validation:
+  - Root serverless entrypoints count: `12` (`api/*.js`)
+  - `node --check api/quant.js` (pass)
+  - `node --check app.js` (pass)
+  - `node --check adapterCore.js` (pass)
+  - `python3 -m json.tool vercel.json` (pass)
+  - `node --test tests/*.test.js` (pass, `97/97`)
+- Outcome:
+  - Deployment blocker resolved for Vercel Hobby function cap (`<=12`).
+  - Public API paths remain unchanged (`/api/v1/research/*`, `/api/v1/commands/interpret` now rewrite through `api/quant`).

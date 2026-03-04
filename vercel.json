@@ -131,15 +131,15 @@
     },
     {
       "source": "/api/v1/research/earnings/chat",
-      "destination": "/api/research?route=earnings-chat"
+      "destination": "/api/quant?route=earnings-chat"
     },
     {
       "source": "/api/v1/research/earnings/sync",
-      "destination": "/api/research?route=earnings-sync"
+      "destination": "/api/quant?route=earnings-sync"
     },
     {
       "source": "/api/v1/commands/interpret",
-      "destination": "/api/commands?route=interpret"
+      "destination": "/api/quant?route=interpret"
     }
   ]
 }
