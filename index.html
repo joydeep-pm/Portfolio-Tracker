@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Indian Thematic Market Tracker</title>
     <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap" />
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -13,12 +14,9 @@
     <header class="topbar">
       <div class="brand">INDIA MARKET COMMAND</div>
       <nav class="nav-links">
-        <a href="#" class="muted">Universe</a>
-        <a href="#" class="muted">Sectors</a>
         <a href="#" class="active" data-app-view-target="themes">Themes</a>
         <a href="#" class="muted" data-app-view-target="whatsnew">What's New</a>
         <a href="#" class="muted" data-app-view-target="portfolio">Portfolio</a>
-        <a href="#" class="muted">Signals</a>
         <a href="#" class="muted" data-app-view-target="comparison">Comparison</a>
         <a href="#" class="muted" data-app-view-target="network">Network</a>
       </nav>
@@ -181,7 +179,8 @@
               <p id="compareMeta"></p>
             </header>
             <div class="compare-canvas-wrap">
-              <canvas id="compareCanvas" width="1200" height="480"></canvas>
+              <div id="compareChart" class="compare-chart"></div>
+              <div id="compareLegend" class="compare-legend"></div>
             </div>
             <footer class="compare-foot">Normalized returns (%), auto-refresh every tick</footer>
           </article>
@@ -192,7 +191,34 @@
               <p id="scanMeta"></p>
             </header>
             <div id="momentumScanList" class="scan-list"></div>
+            <div class="quant-action-zone">
+              <button id="runBacktestBtn" class="portfolio-inline-btn quant-action-btn">Run 5-Year Backtest</button>
+              <div id="backtestSummaryBox" class="quant-result-box">
+                <div class="scan-empty">Run backtest to view Win Rate, Max Drawdown, and CAGR.</div>
+              </div>
+            </div>
           </aside>
+        </section>
+
+        <section class="compare-grid peer-grid">
+          <article class="chart-card peer-card">
+            <header class="compare-card-head">
+              <h3>Peer Relative Strength</h3>
+              <p id="peerMeta">Pick a stock to compare peers</p>
+            </header>
+            <div class="compare-canvas-wrap">
+              <div class="peer-controls">
+                <div class="compare-search-wrap">
+                  <input id="peerStockInput" type="text" placeholder="Select stock (NSE/BSE symbol)..." autocomplete="off" />
+                  <div id="peerSearchResults" class="compare-search-results"></div>
+                </div>
+              </div>
+              <div id="peerList" class="peer-list">
+                <div class="scan-empty">Peer list appears after selecting an anchor stock.</div>
+              </div>
+              <div id="peerChart" class="peer-chart"></div>
+            </div>
+          </article>
         </section>
       </section>
 
@@ -228,10 +254,20 @@
             </div>
             <input id="portfolioSearchInput" type="text" placeholder="Search symbol..." />
             <input id="portfolioConfidenceInput" type="number" min="0" max="100" step="1" value="0" />
+            <button id="calculateSizingBtn" class="mode-btn quant-action-btn">Calculate Optimal Sizing</button>
           </div>
         </section>
 
         <section id="portfolioSummaryRow" class="stats snapshot-strip"></section>
+        <section id="allocationSummaryCard" class="chart-card quant-allocation-card">
+          <header class="compare-card-head">
+            <h3>Optimal Sizing (Mock Capital ₹100,000)</h3>
+            <p id="allocationMeta">Awaiting buy signal selection</p>
+          </header>
+          <div id="allocationTableWrap" class="quant-allocation-wrap">
+            <div class="scan-empty">Click “Calculate Optimal Sizing” to generate weights and share counts.</div>
+          </div>
+        </section>
 
         <section class="portfolio-grid">
           <article class="chart-card portfolio-table-card">
@@ -271,6 +307,24 @@
             </div>
             <div id="portfolioDecisionPanel" class="portfolio-decision-panel"></div>
             <div id="portfolioMacroPanel" class="portfolio-decision-panel hidden"></div>
+            <section class="copilot-chat-section" aria-label="Copilot earnings chat">
+              <header class="compare-card-head">
+                <h3>Copilot Chat</h3>
+                <p id="copilotChatMeta">Ask about the selected symbol transcript</p>
+              </header>
+              <div id="copilotChatLog" class="copilot-chat-log">
+                <div class="scan-empty">Select a portfolio symbol, then ask a question.</div>
+              </div>
+              <div class="copilot-chat-controls">
+                <input
+                  id="copilotChatInput"
+                  type="text"
+                  placeholder="Ask earnings transcript question..."
+                  autocomplete="off"
+                />
+                <button id="copilotChatSend" class="portfolio-inline-btn">Send</button>
+              </div>
+            </section>
           </aside>
         </section>
       </section>
@@ -331,6 +385,19 @@
       </div>
       <div id="modalTableWrap" class="modal-table-wrap"></div>
     </dialog>
+
+    <div id="commandPaletteOverlay" class="command-palette-overlay hidden" aria-hidden="true">
+      <div class="command-palette-panel" role="dialog" aria-modal="true" aria-label="Command palette">
+        <div class="command-palette-head">
+          <span class="kicker">Command Palette</span>
+          <span class="status-pill status-pill-muted">Cmd/Ctrl + K</span>
+        </div>
+        <input id="commandInput" type="text" placeholder="Type a command (e.g., Rotate 10% of IT cluster into PSU Banks)" autocomplete="off" />
+        <div id="commandResults" class="command-results">
+          <div class="scan-empty">Enter a natural-language portfolio command and press Enter.</div>
+        </div>
+      </div>
+    </div>
 
     <script>
       window.PORTFOLIO_TRACKER_CONFIG = window.PORTFOLIO_TRACKER_CONFIG || {

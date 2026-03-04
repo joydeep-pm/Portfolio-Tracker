@@ -79,6 +79,79 @@ async function supabaseInsertDecisionAudit(snapshotDate, snapshot) {
   });
 }
 
+async function supabaseListDecisionAuditEvents(options = {}) {
+  const symbol = String(options.symbol || "").toUpperCase();
+  const exchange = String(options.exchange || "").toUpperCase();
+  const limit = Math.max(1, Math.min(200, Number.parseInt(String(options.limit || 60), 10) || 60));
+  const search = new URLSearchParams();
+  search.set("select", "snapshot_date,symbol,exchange,action,confidence,score,as_of,created_at");
+  search.set("order", "as_of.desc");
+  search.set("limit", String(limit));
+  if (symbol) search.set("symbol", `eq.${symbol}`);
+  if (exchange) search.set("exchange", `eq.${exchange}`);
+
+  const url = `${process.env.SUPABASE_URL}/rest/v1/decision_audit_events?${search.toString()}`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: supabaseHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error(`Supabase decision audit read failed (${response.status})`);
+  }
+
+  const payload = await response.json();
+  const rows = Array.isArray(payload) ? payload : [];
+  return rows.map((row) => ({
+    snapshotDate: row.snapshot_date || null,
+    symbol: String(row.symbol || "").toUpperCase(),
+    exchange: String(row.exchange || "").toUpperCase(),
+    action: String(row.action || "HOLD").toUpperCase(),
+    confidence: Number(row.confidence || 0),
+    score: Number(row.score || 0),
+    asOf: row.as_of || row.created_at || null,
+    createdAt: row.created_at || null,
+  }));
+}
+
+async function listDecisionAuditEvents(options = {}) {
+  const symbol = String(options.symbol || "").toUpperCase();
+  const exchange = String(options.exchange || "").toUpperCase();
+  const limit = Math.max(1, Math.min(200, Number.parseInt(String(options.limit || 60), 10) || 60));
+
+  if (supabaseReady()) {
+    try {
+      return await supabaseListDecisionAuditEvents({
+        symbol,
+        exchange,
+        limit,
+      });
+    } catch (_error) {
+      // Fall through to memory mode.
+    }
+  }
+
+  const filtered = memoryDecisionAudit
+    .filter((entry) => {
+      if (symbol && String(entry.symbol || "").toUpperCase() !== symbol) return false;
+      if (exchange && String(entry.exchange || "").toUpperCase() !== exchange) return false;
+      return true;
+    })
+    .sort((a, b) => String(b.asOf || b.createdAt || "").localeCompare(String(a.asOf || a.createdAt || "")))
+    .slice(0, limit)
+    .map((entry) => ({
+      snapshotDate: entry.snapshotDate || null,
+      symbol: String(entry.symbol || "").toUpperCase(),
+      exchange: String(entry.exchange || "").toUpperCase(),
+      action: String(entry.action || "HOLD").toUpperCase(),
+      confidence: Number(entry.confidence || 0),
+      score: Number(entry.score || 0),
+      asOf: entry.asOf || entry.createdAt || null,
+      createdAt: entry.createdAt || null,
+    }));
+
+  return filtered;
+}
+
 async function saveEodSnapshot(options = {}) {
   const snapshotDate = options.snapshotDate || toIsoDate(new Date());
   const snapshot = options.snapshot || (await bootstrapPortfolio({ exchange: "all", forceRefresh: true }));
@@ -115,6 +188,7 @@ async function saveEodSnapshot(options = {}) {
         confidence: entry.decision?.confidence || 0,
         score: entry.decision?.score || 0,
         asOf: snapshot.asOf,
+        createdAt: new Date().toISOString(),
       });
     });
 
@@ -153,4 +227,5 @@ async function saveEodSnapshot(options = {}) {
 
 module.exports = {
   saveEodSnapshot,
+  listDecisionAuditEvents,
 };

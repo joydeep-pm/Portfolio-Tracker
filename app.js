@@ -386,8 +386,32 @@ let compareState = {
   search: "",
   seriesByCluster: new Map(),
   colorByCluster: new Map(),
-  resizeRaf: null,
   seriesRequestId: 0,
+  markerRequestId: 0,
+  markerByCluster: new Map(),
+  markerSymbolByCluster: new Map(),
+  peerAnchor: null,
+  peerPayload: null,
+  peerRequestId: 0,
+  peerSeriesBySymbol: new Map(),
+  peerSearch: "",
+  backtestLoading: false,
+  backtestResult: null,
+  backtestError: "",
+  backtestClusterId: "",
+};
+
+let compareChartState = {
+  chart: null,
+  seriesByCluster: new Map(),
+  markerHashByCluster: new Map(),
+  resizeObserver: null,
+};
+
+let peerChartState = {
+  chart: null,
+  seriesBySymbol: new Map(),
+  resizeObserver: null,
 };
 
 let themesState = {
@@ -417,6 +441,17 @@ let portfolioState = {
     search: "",
   },
   scanSort: "action_then_confidence",
+  allocationLoading: false,
+  allocationResult: null,
+  allocationError: "",
+  allocationTickers: [],
+  copilotByKey: new Map(),
+  copilotLoading: false,
+};
+
+let commandPaletteState = {
+  isOpen: false,
+  loading: false,
 };
 
 let networkState = {
@@ -477,8 +512,16 @@ const compareClusterInput = document.getElementById("compareClusterInput");
 const compareSearchResults = document.getElementById("compareSearchResults");
 const compareMeta = document.getElementById("compareMeta");
 const scanMeta = document.getElementById("scanMeta");
-const compareCanvas = document.getElementById("compareCanvas");
+const compareChart = document.getElementById("compareChart");
+const compareLegend = document.getElementById("compareLegend");
 const momentumScanList = document.getElementById("momentumScanList");
+const runBacktestBtn = document.getElementById("runBacktestBtn");
+const backtestSummaryBox = document.getElementById("backtestSummaryBox");
+const peerStockInput = document.getElementById("peerStockInput");
+const peerSearchResults = document.getElementById("peerSearchResults");
+const peerMeta = document.getElementById("peerMeta");
+const peerList = document.getElementById("peerList");
+const peerChart = document.getElementById("peerChart");
 const compareWindowButtons = [...document.querySelectorAll("[data-compare-window]")];
 const compareExchangeButtons = [...document.querySelectorAll("[data-compare-exchange]")];
 
@@ -493,8 +536,16 @@ const portfolioSourceChip = document.getElementById("portfolioSourceChip");
 const portfolioConnectionChip = document.getElementById("portfolioConnectionChip");
 const portfolioSearchInput = document.getElementById("portfolioSearchInput");
 const portfolioConfidenceInput = document.getElementById("portfolioConfidenceInput");
+const calculateSizingBtn = document.getElementById("calculateSizingBtn");
+const allocationSummaryCard = document.getElementById("allocationSummaryCard");
+const allocationMeta = document.getElementById("allocationMeta");
+const allocationTableWrap = document.getElementById("allocationTableWrap");
 const portfolioActionButtons = [...document.querySelectorAll("[data-portfolio-action]")];
 const portfolioExchangeButtons = [...document.querySelectorAll("[data-portfolio-exchange]")];
+const copilotChatMeta = document.getElementById("copilotChatMeta");
+const copilotChatLog = document.getElementById("copilotChatLog");
+const copilotChatInput = document.getElementById("copilotChatInput");
+const copilotChatSend = document.getElementById("copilotChatSend");
 const networkRefreshBtn = document.getElementById("networkRefreshBtn");
 const networkLastChecked = document.getElementById("networkLastChecked");
 const networkSummaryRow = document.getElementById("networkSummaryRow");
@@ -514,6 +565,9 @@ const closeModal = document.getElementById("closeModal");
 const liveSourceText = document.getElementById("liveSourceText");
 const freshnessStatus = document.getElementById("freshnessStatus");
 const healthStatus = document.getElementById("healthStatus");
+const commandPaletteOverlay = document.getElementById("commandPaletteOverlay");
+const commandInput = document.getElementById("commandInput");
+const commandResults = document.getElementById("commandResults");
 
 function mulberry32(seed) {
   return () => {
@@ -546,6 +600,32 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function prettyJson(value) {
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch (_error) {
+    return "{}";
+  }
+}
+
+function selectedPortfolioRow() {
+  return (
+    portfolioState.rows.find((item) => item.key === portfolioState.selectedKey) ||
+    filteredPortfolioRows()[0] ||
+    null
+  );
+}
+
+function getCopilotMessages(rowKey) {
+  if (!rowKey) return [];
+  return portfolioState.copilotByKey.get(rowKey) || [];
+}
+
+function setCopilotMessages(rowKey, messages) {
+  if (!rowKey) return;
+  portfolioState.copilotByKey.set(rowKey, messages);
 }
 
 function colorClass(value) {
@@ -864,6 +944,23 @@ function money(value) {
   }).format(value || 0);
 }
 
+function toQuantTicker(symbol, exchange) {
+  const normalizedSymbol = String(symbol || "").trim().toUpperCase();
+  const normalizedExchange = String(exchange || "NSE").trim().toUpperCase();
+  if (!normalizedSymbol) return "";
+  if (normalizedExchange === "BSE") return `${normalizedSymbol}.BO`;
+  return `${normalizedSymbol}.NS`;
+}
+
+function toDisplayPercent(value, options = {}) {
+  const digits = Number.isFinite(options.digits) ? options.digits : 2;
+  const asPercent = Boolean(options.asPercent);
+  const numeric = Number(value || 0);
+  const normalized = asPercent ? numeric : Math.abs(numeric) <= 1.5 ? numeric * 100 : numeric;
+  const prefix = normalized > 0 ? "+" : "";
+  return `${prefix}${normalized.toFixed(digits)}%`;
+}
+
 function syntheticPortfolioBootstrapPayload() {
   const topRows = [...state.stocks]
     .sort((a, b) => b.returns["1M"] - a.returns["1M"])
@@ -1150,6 +1247,57 @@ function createSyntheticAdapter() {
     });
   }
 
+  function syntheticMarkerStyle(action) {
+    const key = String(action || "").toUpperCase();
+    if (key === "BUY") return { position: "belowBar", shape: "arrowUp", color: "#1aa56f" };
+    if (key === "ACCUMULATE") return { position: "belowBar", shape: "circle", color: "#2da8a6" };
+    if (key === "REDUCE") return { position: "aboveBar", shape: "circle", color: "#d9a14a" };
+    if (key === "SELL") return { position: "aboveBar", shape: "arrowDown", color: "#cb4b63" };
+    return null;
+  }
+
+  function syntheticPeerSeriesFromBase(base, stock, cluster, windowKey) {
+    const momentumKey = compareWindowToMomentumKey(windowKey);
+    const clusterMomentum = Number(cluster?.momentum?.[momentumKey] || 0);
+    const stockMomentum = Number(stock?.returns?.[momentumKey] || 0);
+    const relativeBias = stockMomentum - clusterMomentum;
+    const seeded = mulberry32(hashString(`${stock.symbol}|${windowKey}|${cluster.id}`) || 1);
+    const phase = ((hashString(`${cluster.id}|${stock.symbol}`) % 628) / 100) * Math.PI;
+    return base.map((point, index) => {
+      const wave = Math.sin((index / Math.max(base.length - 1, 1)) * Math.PI * 2 + phase) * 0.35;
+      const noise = (seeded() - 0.5) * 0.3;
+      return {
+        ts: point.ts,
+        value: Number.parseFloat(clamp(point.value + relativeBias * 0.8 + wave + noise, -95, 95).toFixed(4)),
+      };
+    });
+  }
+
+  function syntheticPriceForTicker(ticker) {
+    const symbol = String(ticker || "").toUpperCase().replace(/\.NS$|\.BO$/g, "");
+    const fromPortfolio = portfolioState.rows.find((row) => row.symbol === symbol)?.lastPrice;
+    if (Number.isFinite(fromPortfolio) && fromPortfolio > 0) return Number(fromPortfolio);
+    const seeded = mulberry32(hashString(symbol) || 1);
+    return Number.parseFloat((80 + seeded() * 1320).toFixed(2));
+  }
+
+  function syntheticBacktestCurve(initialCapital, steps = 260) {
+    const seeded = mulberry32(hashString(`synthetic-backtest-${Date.now()}`) || 1);
+    const points = [];
+    let cursor = Number(initialCapital || 100000);
+    for (let i = 0; i < steps; i += 1) {
+      const drift = 0.0009;
+      const shock = (seeded() - 0.5) * 0.03;
+      cursor = Math.max(cursor * (1 + drift + shock), initialCapital * 0.4);
+      points.push({
+        timestamp: new Date(Date.now() - (steps - i) * 24 * 60 * 60 * 1000).toISOString(),
+        value: Number.parseFloat(cursor.toFixed(2)),
+      });
+    }
+    const step = Math.max(1, Math.ceil(points.length / 300));
+    return points.filter((_, index) => index % step === 0 || index === points.length - 1);
+  }
+
   return {
     mode: "synthetic",
     async bootstrap() {
@@ -1183,6 +1331,195 @@ function createSyntheticAdapter() {
         window: params?.window || compareState.window,
         exchange: params?.exchange || compareState.exchange || "all",
         seriesByClusterId,
+      });
+    },
+    async fetchChartNormalizedReturns(params) {
+      const payload = await this.fetchComparisonSeries(params);
+      return AdapterCore.normalizeChartReturnsPayload({
+        ...payload,
+        source: "synthetic",
+      });
+    },
+    async fetchDecisionMarkers(params) {
+      const clusterId = String(params?.clusterId || "");
+      const windowKey = String(params?.window || compareState.window || "1M");
+      const cluster = state.clusters.find((item) => item.id === clusterId);
+      const pointsForCluster = compareSeriesForCluster(
+        clusterId,
+        windowKey,
+        String(params?.exchange || compareState.exchange || "all"),
+      )
+        .slice(-(Number(params?.points || COMPARE_WINDOWS[windowKey]?.points || 40)))
+        .map((point, index, all) => ({
+          ts: new Date(Date.now() - (all.length - index) * 60000).toISOString(),
+          value: point.y,
+        }));
+
+      const actionKey = (() => {
+        const symbol = String(params?.symbol || "").toUpperCase();
+        const exchange = String(params?.symbolExchange || "NSE").toUpperCase();
+        const row = portfolioState.rows.find((item) => item.symbol === symbol && item.exchange === exchange);
+        return row?.decision?.action || "HOLD";
+      })();
+      const style = syntheticMarkerStyle(actionKey);
+      const latestTime = toChartTime(pointsForCluster[pointsForCluster.length - 1]?.ts);
+      const markers = style && Number.isFinite(latestTime)
+        ? [
+            {
+              time: latestTime,
+              action: actionKey,
+              confidence: 67.5,
+              text: `${actionKey} 67.5%`,
+              color: style.color,
+              shape: style.shape,
+              position: style.position,
+              source: "latest-decision",
+            },
+          ]
+        : [];
+
+      return AdapterCore.normalizeDecisionMarkersPayload({
+        asOf: new Date().toISOString(),
+        symbol: String(params?.symbol || "").toUpperCase() || null,
+        exchange: String(params?.symbolExchange || "NSE").toUpperCase(),
+        clusterId,
+        window: windowKey,
+        source: "synthetic",
+        fallbackUsed: true,
+        markers,
+      });
+    },
+    async fetchPeerRelativeStrength(params) {
+      const symbol = String(params?.symbol || "").toUpperCase();
+      const exchange = String(params?.exchange || "all").toLowerCase();
+      const windowKey = String(params?.window || compareState.window || "1M");
+      const points = Number(params?.points || COMPARE_WINDOWS[windowKey]?.points || 40);
+      const anchor = state.stocks.find((item) => {
+        if (item.symbol !== symbol) return false;
+        if (exchange === "all") return true;
+        return item.exchange.toLowerCase() === exchange;
+      });
+      if (!anchor) {
+        throw new Error("anchor-not-found");
+      }
+      const cluster = state.clusters.find((item) => item.id === anchor.clusterId);
+      if (!cluster) {
+        throw new Error("cluster-not-found");
+      }
+      const candidates = clusterStocksByExchange(cluster, exchange);
+      const sourceStocks = candidates.length ? candidates : cluster.stocks;
+      const momentumKey = compareWindowToMomentumKey(windowKey);
+      const peers = sourceStocks
+        .filter((item) => item.symbol !== symbol)
+        .map((item) => ({
+          stock: item,
+          score:
+            Math.abs(Number(item?.returns?.["1M"] || 0) - Number(anchor?.returns?.["1M"] || 0)) +
+            0.6 * Math.abs(Number(item?.returns?.YTD || 0) - Number(anchor?.returns?.YTD || 0)),
+        }))
+        .sort((left, right) => {
+          if (right.score !== left.score) return right.score - left.score;
+          return Number(right.stock?.returns?.[momentumKey] || 0) - Number(left.stock?.returns?.[momentumKey] || 0);
+        })
+        .slice(0, 3);
+
+      const base = compareSeriesForCluster(cluster.id, windowKey, exchange)
+        .slice(-points)
+        .map((point, index, all) => ({
+          ts: new Date(Date.now() - (all.length - index) * 60000).toISOString(),
+          value: Number(point.y || 0),
+        }));
+      const seriesBySymbol = {};
+      seriesBySymbol[symbol] = syntheticPeerSeriesFromBase(base, anchor, cluster, windowKey);
+      peers.forEach((entry) => {
+        seriesBySymbol[entry.stock.symbol] = syntheticPeerSeriesFromBase(base, entry.stock, cluster, windowKey);
+      });
+
+      return AdapterCore.normalizePeerRelativeStrengthPayload({
+        asOf: new Date().toISOString(),
+        exchange,
+        window: windowKey,
+        source: "synthetic",
+        cluster: {
+          id: cluster.id,
+          name: cluster.name,
+          headId: cluster.headId,
+          headName: cluster.headName,
+        },
+        anchor: {
+          symbol: anchor.symbol,
+          exchange: anchor.exchange,
+          name: anchor.name,
+          returns: cloneReturns(anchor.returns),
+        },
+        peers: peers.map((entry) => ({
+          symbol: entry.stock.symbol,
+          exchange: entry.stock.exchange,
+          name: entry.stock.name,
+          competitorScore: Number.parseFloat(entry.score.toFixed(2)),
+          returns: cloneReturns(entry.stock.returns),
+        })),
+        seriesBySymbol,
+      });
+    },
+    async fetchOptimalAllocation(tickersOrParams, capitalArg) {
+      const params =
+        tickersOrParams && typeof tickersOrParams === "object" && !Array.isArray(tickersOrParams)
+          ? tickersOrParams
+          : { tickers: tickersOrParams, capital: capitalArg };
+      const tickers = (params?.tickers || []).map((ticker) => String(ticker || "").toUpperCase()).filter(Boolean);
+      const capital = Number(params?.capital || 100000);
+      if (!tickers.length) throw new Error("no-tickers");
+      const seeded = mulberry32(hashString(`alloc-${tickers.join("|")}`) || 1);
+      const rawScores = tickers.map((ticker) => ({ ticker, score: 0.4 + seeded() }));
+      const totalScore = rawScores.reduce((sum, item) => sum + item.score, 0);
+      const weights = {};
+      rawScores.forEach((item) => {
+        weights[item.ticker] = Number.parseFloat((item.score / totalScore).toFixed(6));
+      });
+
+      const discrete_shares = {};
+      let used = 0;
+      rawScores.forEach((item) => {
+        const px = syntheticPriceForTicker(item.ticker);
+        const allocation = weights[item.ticker] * capital;
+        const qty = Math.max(0, Math.floor(allocation / Math.max(px, 1)));
+        discrete_shares[item.ticker] = qty;
+        used += qty * px;
+      });
+
+      return AdapterCore.normalizeOptimalAllocationPayload({
+        weights,
+        discrete_shares,
+        remaining_cash: Number.parseFloat(Math.max(capital - used, 0).toFixed(2)),
+        portfolio_performance: {
+          expected_annual_return: 0.168,
+          annual_volatility: 0.224,
+          sharpe_ratio: 0.75,
+        },
+      });
+    },
+    async fetchStrategyBacktest(tickersOrParams, optionsArg) {
+      const params =
+        tickersOrParams && typeof tickersOrParams === "object" && !Array.isArray(tickersOrParams)
+          ? tickersOrParams
+          : { tickers: tickersOrParams, ...(optionsArg && typeof optionsArg === "object" ? optionsArg : {}) };
+      const tickers = (params?.tickers || []).map((ticker) => String(ticker || "").toUpperCase()).filter(Boolean);
+      const lookbackYears = Number(params?.lookbackYears || 5);
+      const initialCapital = Number(params?.initialCapital || 100000);
+      if (!tickers.length) throw new Error("no-tickers");
+      const curve = syntheticBacktestCurve(initialCapital);
+      return AdapterCore.normalizeStrategyBacktestPayload({
+        tickers,
+        lookback_years: Math.max(1, Math.floor(lookbackYears)),
+        initial_capital: initialCapital,
+        metrics: {
+          win_rate: 0.57,
+          max_drawdown: -0.192,
+          cagr: 0.134,
+          sharpe_ratio: 1.02,
+        },
+        equity_curve: curve,
       });
     },
     async fetchPortfolioBootstrap() {
@@ -1524,6 +1861,13 @@ function addCompareCluster(clusterId) {
 function removeCompareCluster(clusterId) {
   compareState.selectedClusterIds = compareState.selectedClusterIds.filter((id) => id !== clusterId);
   compareState.seriesByCluster.delete(clusterId);
+  compareState.markerByCluster.delete(clusterId);
+  compareState.markerSymbolByCluster.delete(clusterId);
+
+  if (compareState.peerPayload?.cluster?.id === clusterId) {
+    compareState.peerAnchor = null;
+    compareState.peerPayload = null;
+  }
   refreshComparisonSeries().catch((error) => {
     console.error("Unable to refresh comparison series after remove", error);
     setRuntimeHealth("stale", "Comparison data delayed");
@@ -1601,112 +1945,280 @@ function renderCompareChips() {
   });
 }
 
-function resizeCompareCanvas() {
-  if (!compareCanvas) return;
-  const ctx = compareCanvas.getContext("2d");
-  const parentWidth = compareCanvas.parentElement.clientWidth;
-  const cssWidth = Math.max(300, Math.floor(parentWidth - 2));
-  const cssHeight = Math.max(260, Math.floor(cssWidth * 0.44));
-  const dpr = window.devicePixelRatio || 1;
-
-  compareCanvas.width = Math.floor(cssWidth * dpr);
-  compareCanvas.height = Math.floor(cssHeight * dpr);
-  compareCanvas.style.width = `${cssWidth}px`;
-  compareCanvas.style.height = `${cssHeight}px`;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+function getLightweightChartsApi() {
+  const api = window.LightweightCharts || null;
+  if (!api || typeof api.createChart !== "function") return null;
+  return api;
 }
 
-function drawCompareChart() {
-  const ctx = compareCanvas.getContext("2d");
-  const width = compareCanvas.clientWidth;
-  const height = compareCanvas.clientHeight;
+function toChartTime(ts) {
+  const ms = new Date(String(ts || "")).getTime();
+  if (!Number.isFinite(ms)) return null;
+  return Math.floor(ms / 1000);
+}
+
+function windowLabelToMarkerWindow() {
+  return compareState.window;
+}
+
+function markerHash(markers = []) {
+  return markers
+    .map((item) => `${item.time}:${item.action}:${item.confidence}:${item.text}`)
+    .join("|");
+}
+
+function markerClassForAction(action) {
+  const key = String(action || "").toLowerCase();
+  if (key === "buy") return "marker-pill-buy";
+  if (key === "sell") return "marker-pill-sell";
+  if (key === "accumulate") return "marker-pill-accumulate";
+  if (key === "reduce") return "marker-pill-reduce";
+  return "";
+}
+
+function disposeCompareChart() {
+  if (compareChartState.resizeObserver) {
+    compareChartState.resizeObserver.disconnect();
+    compareChartState.resizeObserver = null;
+  }
+  if (compareChartState.chart) {
+    compareChartState.chart.remove();
+    compareChartState.chart = null;
+  }
+  compareChartState.seriesByCluster.clear();
+  compareChartState.markerHashByCluster.clear();
+}
+
+function initCompareChart() {
+  const LightweightCharts = getLightweightChartsApi();
+  if (!compareChart || !LightweightCharts) return;
+  if (compareChartState.chart) return;
+
   const styles = getComputedStyle(document.body);
-  const mutedColor = styles.getPropertyValue("--muted").trim() || "#9bb0c9";
-  const lineColor = styles.getPropertyValue("--line").trim() || "#26364c";
-  const textColor = styles.getPropertyValue("--text").trim() || "#e6eef8";
+  compareChartState.chart = LightweightCharts.createChart(compareChart, {
+    width: Math.max(280, compareChart.clientWidth || compareChart.parentElement?.clientWidth || 560),
+    height: Math.max(260, compareChart.clientHeight || 360),
+    layout: {
+      background: { color: "transparent" },
+      textColor: styles.getPropertyValue("--muted").trim() || "#9bb0c9",
+      fontFamily: "Satoshi, sans-serif",
+    },
+    grid: {
+      vertLines: { color: "rgba(90, 115, 145, 0.2)" },
+      horzLines: { color: "rgba(90, 115, 145, 0.2)" },
+    },
+    rightPriceScale: {
+      borderColor: "rgba(90, 115, 145, 0.35)",
+    },
+    timeScale: {
+      borderColor: "rgba(90, 115, 145, 0.35)",
+      timeVisible: true,
+      secondsVisible: false,
+    },
+    crosshair: {
+      mode: LightweightCharts.CrosshairMode?.Normal || 0,
+    },
+    localization: {
+      priceFormatter: (price) => `${price >= 0 ? "+" : ""}${Number(price).toFixed(2)}%`,
+    },
+  });
 
-  ctx.clearRect(0, 0, width, height);
+  compareChartState.resizeObserver = new ResizeObserver(() => {
+    if (!compareChartState.chart) return;
+    compareChartState.chart.applyOptions({
+      width: Math.max(280, compareChart.clientWidth || 560),
+      height: Math.max(260, compareChart.clientHeight || 360),
+    });
+  });
+  compareChartState.resizeObserver.observe(compareChart);
+}
 
-  const left = 52;
-  const right = 18;
-  const top = 20;
-  const bottom = 30;
-  const chartWidth = width - left - right;
-  const chartHeight = height - top - bottom;
+function applyMarkersToClusterSeries(clusterId, markers) {
+  const series = compareChartState.seriesByCluster.get(clusterId);
+  if (!series || typeof series.setMarkers !== "function") return;
+  const hash = markerHash(markers);
+  if (compareChartState.markerHashByCluster.get(clusterId) === hash) return;
+  series.setMarkers(
+    (Array.isArray(markers) ? markers : []).map((item) => ({
+      time: item.time,
+      position: item.position,
+      color: item.color,
+      shape: item.shape,
+      text: item.text,
+    })),
+  );
+  compareChartState.markerHashByCluster.set(clusterId, hash);
+}
 
-  const selectedSeries = compareState.selectedClusterIds
-    .map((clusterId) => ({ clusterId, points: compareState.seriesByCluster.get(clusterId) || [] }))
-    .filter((item) => item.points.length);
-
-  if (!selectedSeries.length) {
-    ctx.fillStyle = mutedColor;
-    ctx.font = "600 13px Satoshi, sans-serif";
-    ctx.fillText("Select clusters to start comparison", left, top + 24);
+function renderCompareLegend() {
+  if (!compareLegend) return;
+  if (!compareState.selectedClusterIds.length) {
+    compareLegend.innerHTML = `<div class="scan-empty">Marker overlay appears after selecting clusters.</div>`;
     return;
   }
 
-  const allValues = selectedSeries.flatMap((item) => item.points.map((point) => point.y));
-  let yMin = Math.min(...allValues, 0);
-  let yMax = Math.max(...allValues, 0);
-  const span = Math.max(10, yMax - yMin);
-  yMin -= span * 0.14;
-  yMax += span * 0.14;
+  compareLegend.innerHTML = compareState.selectedClusterIds
+    .map((clusterId) => {
+      const cluster = state.clusters.find((item) => item.id === clusterId);
+      if (!cluster) return "";
+      const color = selectCompareColor(clusterId);
+      const markerSummary = (compareState.markerByCluster.get(clusterId) || [])
+        .map((item) => `<span class="marker-pill ${markerClassForAction(item.action)}">${item.action}</span>`)
+        .slice(-4)
+        .join("");
+      return `
+        <div class="compare-legend-item">
+          <span class="chip-dot" style="background:${color}"></span>
+          <span>${cluster.name}</span>
+          ${markerSummary ? `<span class="marker-pills">${markerSummary}</span>` : ""}
+        </div>
+      `;
+    })
+    .join("");
+}
 
-  const mapY = (value) => top + ((yMax - value) / (yMax - yMin)) * chartHeight;
-  const pointsCount = selectedSeries[0].points.length;
-  const mapX = (index) => left + (index / Math.max(pointsCount - 1, 1)) * chartWidth;
+function renderCompareSeriesToChart() {
+  initCompareChart();
+  if (!compareChartState.chart) return;
 
-  ctx.strokeStyle = lineColor;
-  ctx.lineWidth = 1;
-  for (let i = 0; i <= 4; i += 1) {
-    const yValue = yMax - ((yMax - yMin) * i) / 4;
-    const y = mapY(yValue);
-    ctx.beginPath();
-    ctx.moveTo(left, y);
-    ctx.lineTo(left + chartWidth, y);
-    ctx.stroke();
-
-    ctx.fillStyle = mutedColor;
-    ctx.font = "600 10px Satoshi, sans-serif";
-    ctx.fillText(percent(yValue), 6, y + 3);
-  }
-
-  const zeroY = mapY(0);
-  ctx.setLineDash([5, 5]);
-  ctx.strokeStyle = lineColor;
-  ctx.beginPath();
-  ctx.moveTo(left, zeroY);
-  ctx.lineTo(left + chartWidth, zeroY);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  selectedSeries.forEach(({ clusterId, points }) => {
-    const color = selectCompareColor(clusterId);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2.4;
-    ctx.beginPath();
-    points.forEach((point, index) => {
-      const x = mapX(index);
-      const y = mapY(point.y);
-      if (index === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-
-    const last = points[points.length - 1];
-    const lastX = mapX(points.length - 1);
-    const lastY = mapY(last.y);
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(lastX, lastY, 4.2, 0, Math.PI * 2);
-    ctx.fill();
+  const LightweightCharts = getLightweightChartsApi();
+  const activeIds = new Set(compareState.selectedClusterIds);
+  [...compareChartState.seriesByCluster.keys()].forEach((clusterId) => {
+    if (activeIds.has(clusterId)) return;
+    const series = compareChartState.seriesByCluster.get(clusterId);
+    if (series) compareChartState.chart.removeSeries(series);
+    compareChartState.seriesByCluster.delete(clusterId);
+    compareChartState.markerHashByCluster.delete(clusterId);
   });
 
-  ctx.fillStyle = textColor;
-  ctx.font = "600 10px Satoshi, sans-serif";
-  ctx.fillText("Start", left, height - 10);
-  ctx.fillText("Mid", left + chartWidth / 2 - 9, height - 10);
-  ctx.fillText("Live", left + chartWidth - 20, height - 10);
+  compareState.selectedClusterIds.forEach((clusterId) => {
+    const points = compareState.seriesByCluster.get(clusterId) || [];
+    let line = compareChartState.seriesByCluster.get(clusterId);
+    if (!line) {
+      line = compareChartState.chart.addLineSeries({
+        color: selectCompareColor(clusterId),
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: true,
+      });
+      compareChartState.seriesByCluster.set(clusterId, line);
+    } else {
+      line.applyOptions({ color: selectCompareColor(clusterId) });
+    }
+    const data = points
+      .map((point) => {
+        const seconds = Number.isFinite(point.time) ? point.time : toChartTime(point.ts || point.time);
+        if (!Number.isFinite(seconds)) return null;
+        return {
+          time: seconds,
+          value: Number(point.y ?? point.value ?? 0),
+        };
+      })
+      .filter(Boolean);
+    line.setData(data);
+
+    const markers = compareState.markerByCluster.get(clusterId) || [];
+    applyMarkersToClusterSeries(clusterId, markers);
+  });
+
+  const hasSeries = compareState.selectedClusterIds.some((clusterId) => {
+    const points = compareState.seriesByCluster.get(clusterId) || [];
+    return points.length > 0;
+  });
+  if (hasSeries) {
+    compareChartState.chart.timeScale().fitContent();
+  } else if (LightweightCharts) {
+    compareLegend.innerHTML = `<div class="scan-empty">Select clusters to start comparison.</div>`;
+  }
+}
+
+function resolveClusterLeaderSymbol(clusterId, exchangeKey = compareState.exchange, windowKey = compareState.window) {
+  const cluster = state.clusters.find((item) => item.id === clusterId);
+  if (!cluster) return null;
+  const momentumKey = compareWindowToMomentumKey(windowKey);
+  const filteredStocks = clusterStocksByExchange(cluster, exchangeKey);
+  const sourceStocks = filteredStocks.length ? filteredStocks : cluster.stocks;
+  if (!sourceStocks.length) return null;
+  const leader = [...sourceStocks].sort((a, b) => {
+    const left = Number(a?.returns?.[momentumKey] || 0);
+    const right = Number(b?.returns?.[momentumKey] || 0);
+    if (right !== left) return right - left;
+    return `${a.exchange}:${a.symbol}`.localeCompare(`${b.exchange}:${b.symbol}`);
+  })[0];
+
+  if (!leader) return null;
+  return {
+    symbol: leader.symbol,
+    exchange: leader.exchange,
+  };
+}
+
+async function fetchDecisionMarkersForCluster(clusterId) {
+  if (!clusterId) return;
+  const markerWindow = windowLabelToMarkerWindow();
+  const leader = resolveClusterLeaderSymbol(clusterId, compareState.exchange, markerWindow);
+  if (!leader || !leader.symbol) {
+    compareState.markerByCluster.set(clusterId, []);
+    compareState.markerSymbolByCluster.delete(clusterId);
+    return;
+  }
+  compareState.markerSymbolByCluster.set(clusterId, `${leader.exchange}:${leader.symbol}`);
+
+  let payload;
+  if (runtimeState.adapter?.fetchDecisionMarkers) {
+    payload = await runtimeState.adapter.fetchDecisionMarkers({
+      symbol: leader.symbol,
+      symbolExchange: leader.exchange,
+      clusterId,
+      exchange: compareState.exchange,
+      window: markerWindow,
+      points: COMPARE_WINDOWS[compareState.window].points,
+      limit: 60,
+    });
+  } else {
+    const response = await fetch(
+      `/api/v1/charts/decision-markers?symbol=${encodeURIComponent(leader.symbol)}&symbolExchange=${encodeURIComponent(
+        leader.exchange,
+      )}&clusterId=${encodeURIComponent(clusterId)}&exchange=${encodeURIComponent(compareState.exchange)}&window=${encodeURIComponent(
+        markerWindow,
+      )}&points=${COMPARE_WINDOWS[compareState.window].points}&limit=60`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      },
+    );
+    if (!response.ok) {
+      throw new Error(`marker-fetch-${response.status}`);
+    }
+    const raw = await response.json();
+    payload = AdapterCore.normalizeDecisionMarkersPayload(raw);
+  }
+
+  compareState.markerByCluster.set(clusterId, payload.markers || []);
+}
+
+async function refreshDecisionMarkers() {
+  const requestId = compareState.markerRequestId + 1;
+  compareState.markerRequestId = requestId;
+  const clusters = [...compareState.selectedClusterIds];
+  if (!clusters.length) {
+    compareState.markerByCluster.clear();
+    renderCompareLegend();
+    return;
+  }
+
+  await Promise.all(
+    clusters.map((clusterId) =>
+      fetchDecisionMarkersForCluster(clusterId).catch((error) => {
+        console.error("Marker fetch failed", clusterId, error);
+        compareState.markerByCluster.set(clusterId, []);
+      }),
+    ),
+  );
+
+  if (requestId !== compareState.markerRequestId) return;
+  renderCompareSeriesToChart();
+  renderCompareLegend();
 }
 
 function renderMomentumScan() {
@@ -1769,17 +2281,392 @@ function renderMomentumScan() {
     .join("");
 }
 
+function selectedClusterForBacktest() {
+  if (!compareState.selectedClusterIds.length) return null;
+  const ranked = compareState.selectedClusterIds
+    .map((clusterId) => state.clusters.find((cluster) => cluster.id === clusterId))
+    .filter(Boolean)
+    .sort((a, b) => Number(b?.momentum?.["1M"] || 0) - Number(a?.momentum?.["1M"] || 0));
+  return ranked[0] || null;
+}
+
+function clusterTickersForBacktest(cluster) {
+  if (!cluster) return [];
+  const scoped = clusterStocksByExchange(cluster, compareState.exchange);
+  const source = scoped.length ? scoped : cluster.stocks;
+  return source
+    .slice(0, 20)
+    .map((stock) => toQuantTicker(stock.symbol, stock.exchange))
+    .filter(Boolean);
+}
+
+function renderBacktestSummary() {
+  if (!runBacktestBtn || !backtestSummaryBox) return;
+  const cluster = selectedClusterForBacktest();
+  runBacktestBtn.disabled = compareState.backtestLoading || !cluster;
+
+  if (compareState.backtestLoading) {
+    backtestSummaryBox.innerHTML = `<div class="scan-empty">Running vectorbt 5-year backtest...</div>`;
+    return;
+  }
+
+  if (compareState.backtestError) {
+    backtestSummaryBox.innerHTML = `<div class="scan-empty">${escapeHtml(compareState.backtestError)}</div>`;
+    return;
+  }
+
+  if (!compareState.backtestResult) {
+    backtestSummaryBox.innerHTML = `<div class="scan-empty">Run backtest to view Win Rate, Max Drawdown, and CAGR.</div>`;
+    return;
+  }
+
+  const metrics = compareState.backtestResult.metrics || {};
+  backtestSummaryBox.innerHTML = `
+    <div class="quant-metric-grid">
+      <article class="quant-metric-item">
+        <p>Win Rate</p>
+        <h4>${toDisplayPercent(metrics.win_rate, { asPercent: false })}</h4>
+      </article>
+      <article class="quant-metric-item">
+        <p>Max Drawdown</p>
+        <h4>${toDisplayPercent(metrics.max_drawdown, { asPercent: false })}</h4>
+      </article>
+      <article class="quant-metric-item">
+        <p>CAGR</p>
+        <h4>${toDisplayPercent(metrics.cagr, { asPercent: false })}</h4>
+      </article>
+    </div>
+    <div class="quant-result-meta">
+      Cluster ${escapeHtml(compareState.backtestClusterId || "--")} • ${
+        Array.isArray(compareState.backtestResult.tickers) ? compareState.backtestResult.tickers.length : 0
+      } tickers • ${Array.isArray(compareState.backtestResult.equity_curve) ? compareState.backtestResult.equity_curve.length : 0} curve points
+    </div>
+  `;
+}
+
+async function runClusterBacktest() {
+  const cluster = selectedClusterForBacktest();
+  if (!cluster) {
+    compareState.backtestError = "Select at least one cluster to run backtest.";
+    compareState.backtestResult = null;
+    renderBacktestSummary();
+    return;
+  }
+
+  const tickers = clusterTickersForBacktest(cluster);
+  if (!tickers.length) {
+    compareState.backtestError = "No tradable tickers found for selected cluster.";
+    compareState.backtestResult = null;
+    renderBacktestSummary();
+    return;
+  }
+
+  compareState.backtestLoading = true;
+  compareState.backtestError = "";
+  compareState.backtestClusterId = cluster.id;
+  renderBacktestSummary();
+
+  try {
+    const payload = runtimeState.adapter?.fetchStrategyBacktest
+      ? await runtimeState.adapter.fetchStrategyBacktest({
+          tickers,
+          lookbackYears: 5,
+          initialCapital: 100000,
+        })
+      : null;
+    if (!payload) throw new Error("Backtest adapter unavailable");
+    compareState.backtestResult = payload;
+    compareState.backtestError = "";
+  } catch (error) {
+    compareState.backtestResult = null;
+    compareState.backtestError = error.message || "Backtest request failed";
+  } finally {
+    compareState.backtestLoading = false;
+    renderBacktestSummary();
+  }
+}
+
 function renderComparisonMeta() {
   const exchangeLabel = compareState.exchange === "all" ? "NSE + BSE" : compareState.exchange.toUpperCase();
   const clusterCount = compareState.selectedClusterIds.length;
   compareMeta.textContent = `${clusterCount}/${state.clusters.length} clusters • ${COMPARE_WINDOWS[compareState.window].label} • ${exchangeLabel}`;
 }
 
+function searchPeerStocks(query) {
+  const text = String(query || "").trim().toLowerCase();
+  if (!text) return [];
+  const selected = new Set(compareState.selectedClusterIds);
+  return state.stocks
+    .filter((stock) => (selected.size ? selected.has(stock.clusterId) : true))
+    .filter(
+      (stock) =>
+        stock.symbol.toLowerCase().includes(text) ||
+        stock.name.toLowerCase().includes(text) ||
+        `${stock.exchange}:${stock.symbol}`.toLowerCase().includes(text),
+    )
+    .slice(0, 10);
+}
+
+function renderPeerSearchResults() {
+  if (!peerSearchResults) return;
+  const matches = searchPeerStocks(compareState.peerSearch);
+  if (!matches.length) {
+    peerSearchResults.innerHTML = "";
+    return;
+  }
+
+  peerSearchResults.innerHTML = matches
+    .map(
+      (stock) => `
+      <button class="compare-search-item" data-peer-symbol="${stock.symbol}" data-peer-exchange="${stock.exchange}">
+        <strong>${stock.exchange}:${stock.symbol}</strong>
+        <span>${stock.name}</span>
+      </button>
+    `,
+    )
+    .join("");
+
+  peerSearchResults.querySelectorAll("[data-peer-symbol]").forEach((item) => {
+    item.addEventListener("click", () => {
+      setPeerAnchorStock(item.dataset.peerSymbol, item.dataset.peerExchange);
+      compareState.peerSearch = "";
+      if (peerStockInput) peerStockInput.value = "";
+      peerSearchResults.innerHTML = "";
+    });
+  });
+}
+
+function pickDefaultPeerAnchor() {
+  const ranked = compareState.selectedClusterIds
+    .map((clusterId) => {
+      const cluster = state.clusters.find((item) => item.id === clusterId);
+      if (!cluster) return null;
+      const leader = resolveClusterLeaderSymbol(clusterId, compareState.exchange, compareState.window);
+      if (!leader) return null;
+      return {
+        clusterId,
+        leader,
+        score: Number(cluster?.momentum?.[compareWindowToMomentumKey(compareState.window)] || 0),
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score);
+  return ranked[0]?.leader || null;
+}
+
+function disposePeerChart() {
+  if (peerChartState.resizeObserver) {
+    peerChartState.resizeObserver.disconnect();
+    peerChartState.resizeObserver = null;
+  }
+  if (peerChartState.chart) {
+    peerChartState.chart.remove();
+    peerChartState.chart = null;
+  }
+  peerChartState.seriesBySymbol.clear();
+}
+
+function initPeerChart() {
+  const LightweightCharts = getLightweightChartsApi();
+  if (!peerChart || !LightweightCharts) return;
+  if (peerChartState.chart) return;
+  const styles = getComputedStyle(document.body);
+  peerChartState.chart = LightweightCharts.createChart(peerChart, {
+    width: Math.max(280, peerChart.clientWidth || 540),
+    height: Math.max(240, peerChart.clientHeight || 320),
+    layout: {
+      background: { color: "transparent" },
+      textColor: styles.getPropertyValue("--muted").trim() || "#9bb0c9",
+      fontFamily: "Satoshi, sans-serif",
+    },
+    grid: {
+      vertLines: { color: "rgba(90, 115, 145, 0.2)" },
+      horzLines: { color: "rgba(90, 115, 145, 0.2)" },
+    },
+    rightPriceScale: {
+      borderColor: "rgba(90, 115, 145, 0.35)",
+    },
+    timeScale: {
+      borderColor: "rgba(90, 115, 145, 0.35)",
+      timeVisible: true,
+      secondsVisible: false,
+    },
+    localization: {
+      priceFormatter: (price) => `${price >= 0 ? "+" : ""}${Number(price).toFixed(2)}%`,
+    },
+  });
+
+  peerChartState.resizeObserver = new ResizeObserver(() => {
+    if (!peerChartState.chart) return;
+    peerChartState.chart.applyOptions({
+      width: Math.max(280, peerChart.clientWidth || 540),
+      height: Math.max(240, peerChart.clientHeight || 320),
+    });
+  });
+  peerChartState.resizeObserver.observe(peerChart);
+}
+
+function renderPeerChart() {
+  initPeerChart();
+  if (!peerChartState.chart) return;
+  const payload = compareState.peerPayload;
+  if (!payload || !payload.anchor) {
+    [...peerChartState.seriesBySymbol.keys()].forEach((symbol) => {
+      const series = peerChartState.seriesBySymbol.get(symbol);
+      if (series) peerChartState.chart.removeSeries(series);
+      peerChartState.seriesBySymbol.delete(symbol);
+    });
+    return;
+  }
+
+  const activeSymbols = new Set([payload.anchor.symbol, ...(payload.peers || []).map((item) => item.symbol)]);
+  [...peerChartState.seriesBySymbol.keys()].forEach((symbol) => {
+    if (activeSymbols.has(symbol)) return;
+    const series = peerChartState.seriesBySymbol.get(symbol);
+    if (series) peerChartState.chart.removeSeries(series);
+    peerChartState.seriesBySymbol.delete(symbol);
+  });
+
+  [payload.anchor, ...(payload.peers || [])].forEach((stock, index) => {
+    const symbol = stock.symbol;
+    let series = peerChartState.seriesBySymbol.get(symbol);
+    const color = index === 0 ? "#4bb27a" : COMPARE_COLOR_PALETTE[index % COMPARE_COLOR_PALETTE.length];
+    if (!series) {
+      series = peerChartState.chart.addLineSeries({
+        color,
+        lineWidth: index === 0 ? 3 : 2,
+        priceLineVisible: false,
+        lastValueVisible: true,
+      });
+      peerChartState.seriesBySymbol.set(symbol, series);
+    } else {
+      series.applyOptions({ color, lineWidth: index === 0 ? 3 : 2 });
+    }
+    const points = (payload.seriesBySymbol?.[symbol] || [])
+      .map((point) => {
+        const time = toChartTime(point.ts);
+        if (!Number.isFinite(time)) return null;
+        return {
+          time,
+          value: Number(point.value || 0),
+        };
+      })
+      .filter(Boolean);
+    series.setData(points);
+  });
+
+  peerChartState.chart.timeScale().fitContent();
+}
+
+function renderPeerPanel() {
+  if (!peerMeta || !peerList) return;
+  const payload = compareState.peerPayload;
+  if (!payload || !payload.anchor) {
+    peerMeta.textContent = "Pick a stock to compare peers";
+    peerList.innerHTML = `<div class="scan-empty">Peer list appears after selecting an anchor stock.</div>`;
+    renderPeerChart();
+    return;
+  }
+
+  peerMeta.textContent = `${payload.cluster.name} • ${payload.window} • ${payload.exchange === "all" ? "NSE + BSE" : payload.exchange.toUpperCase()} • ${payload.source}`;
+  const anchorLine = `
+    <div class="peer-item">
+      <div class="peer-item-left">
+        <span class="chip-dot" style="background:#4bb27a"></span>
+        <div>
+          <div class="peer-item-name">Anchor ${payload.anchor.exchange}:${payload.anchor.symbol}</div>
+          <span class="peer-item-meta">${payload.anchor.name}</span>
+        </div>
+      </div>
+      <div class="peer-item-score">${percent(payload.anchor.returns?.[compareWindowToMomentumKey(compareState.window)] || 0)}</div>
+    </div>
+  `;
+  const peers = (payload.peers || [])
+    .map((peer, index) => {
+      const color = COMPARE_COLOR_PALETTE[(index + 1) % COMPARE_COLOR_PALETTE.length];
+      return `
+      <div class="peer-item">
+        <div class="peer-item-left">
+          <span class="chip-dot" style="background:${color}"></span>
+          <div>
+            <div class="peer-item-name">${peer.exchange}:${peer.symbol}</div>
+            <span class="peer-item-meta">Score ${Number(peer.competitorScore || 0).toFixed(2)}</span>
+          </div>
+        </div>
+        <div class="peer-item-score">${percent(peer.returns?.[compareWindowToMomentumKey(compareState.window)] || 0)}</div>
+      </div>
+    `;
+    })
+    .join("");
+  peerList.innerHTML = `${anchorLine}${peers || '<div class="scan-empty">No peers available for selected anchor.</div>'}`;
+  renderPeerChart();
+}
+
+async function fetchPeerRelativeStrength() {
+  const requestId = compareState.peerRequestId + 1;
+  compareState.peerRequestId = requestId;
+  const anchor = compareState.peerAnchor || pickDefaultPeerAnchor();
+  if (!anchor || !anchor.symbol) {
+    compareState.peerPayload = null;
+    renderPeerPanel();
+    return;
+  }
+  compareState.peerAnchor = anchor;
+
+  let payload;
+  if (runtimeState.adapter?.fetchPeerRelativeStrength) {
+    payload = await runtimeState.adapter.fetchPeerRelativeStrength({
+      symbol: anchor.symbol,
+      exchange: compareState.exchange,
+      window: compareState.window,
+      points: COMPARE_WINDOWS[compareState.window].points,
+    });
+  } else {
+    const response = await fetch(
+      `/api/v1/peers/relative-strength?symbol=${encodeURIComponent(anchor.symbol)}&exchange=${encodeURIComponent(
+        compareState.exchange,
+      )}&window=${encodeURIComponent(compareState.window)}&points=${COMPARE_WINDOWS[compareState.window].points}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      },
+    );
+    if (!response.ok) {
+      throw new Error(`peer-fetch-${response.status}`);
+    }
+    const raw = await response.json();
+    payload = AdapterCore.normalizePeerRelativeStrengthPayload(raw);
+  }
+
+  if (requestId !== compareState.peerRequestId) return;
+  compareState.peerPayload = payload;
+  renderPeerPanel();
+}
+
+function setPeerAnchorStock(symbol, exchange) {
+  if (!symbol) return;
+  compareState.peerAnchor = {
+    symbol: String(symbol).toUpperCase(),
+    exchange: String(exchange || "NSE").toUpperCase(),
+  };
+  if (peerStockInput) {
+    peerStockInput.value = `${compareState.peerAnchor.exchange}:${compareState.peerAnchor.symbol}`;
+  }
+  fetchPeerRelativeStrength().catch((error) => {
+    console.error("Peer RS refresh failed", error);
+    compareState.peerPayload = null;
+    renderPeerPanel();
+  });
+}
+
 function renderComparison() {
   renderCompareChips();
   renderComparisonMeta();
-  drawCompareChart();
+  renderCompareSeriesToChart();
+  renderCompareLegend();
   renderMomentumScan();
+  renderBacktestSummary();
+  renderPeerPanel();
 }
 
 function decisionClass(action) {
@@ -1938,7 +2825,53 @@ function syntheticMacroContextForRow(row) {
     sources: ["SYNTHETIC"],
     source_events: [],
     model: "synthetic",
+    reason: "synthetic",
   });
+}
+
+function shouldUseSyntheticMacroFallback(payload) {
+  if (!payload || typeof payload !== "object") return true;
+  const reason = String(payload.reason || "").toLowerCase();
+  if (reason === "storage-unavailable" || reason === "db-unavailable") return true;
+
+  const considered = Number(payload.considered_events || 0);
+  const sentiment = Number(payload.sentiment_score || 0);
+  const sources = Array.isArray(payload.sources) ? payload.sources : [];
+  if (considered <= 0 && Math.abs(sentiment) < 0.001 && sources.length === 0) return true;
+  return false;
+}
+
+function buildMacroFallbackMessage(reason) {
+  const key = String(reason || "").toLowerCase();
+  if (!key) return "";
+  if (key.includes("storage-unavailable") || key.includes("db-unavailable")) {
+    return "Live macro storage is unavailable, so this sentiment is currently inferred from symbol momentum.";
+  }
+  if (key.includes("synthetic-fallback")) {
+    return "Macro context is sparse for this symbol right now, so a momentum-derived fallback is shown.";
+  }
+  if (key.includes("synthetic")) {
+    return "Synthetic macro mode is active for this symbol.";
+  }
+  return "";
+}
+
+function withSyntheticMacroFallback(basePayload, row, reasonTag) {
+  const synthetic = syntheticMacroContextForRow(row);
+  const base = basePayload && typeof basePayload === "object" ? basePayload : {};
+  const sourceSet = new Set([...(Array.isArray(base.sources) ? base.sources : []), ...(synthetic.sources || []), "FALLBACK"]);
+  return {
+    ...synthetic,
+    asOf: base.asOf || synthetic.asOf,
+    exchange: base.exchange || synthetic.exchange,
+    symbol: base.symbol || synthetic.symbol,
+    considered_events: Number(base.considered_events || 0),
+    processed_count: Number(base.processed_count || 0),
+    source_events: Array.isArray(base.source_events) ? base.source_events : [],
+    sources: [...sourceSet],
+    model: `${base.model || "heuristic-v1"}+synthetic`,
+    reason: `${reasonTag || base.reason || "empty-context"}|synthetic-fallback`,
+  };
 }
 
 function renderMacroContextPanel(row) {
@@ -1970,8 +2903,14 @@ function renderMacroContextPanel(row) {
     scoreClass === "pos" ? "Constructive" : scoreClass === "neg" ? "Defensive" : "Balanced";
   const sourceLine = (payload.sources || []).length ? payload.sources.join(", ") : "--";
   const asOfLabel = payload.asOf ? new Date(payload.asOf).toLocaleTimeString("en-IN") : "--";
+  const fallbackMessage = buildMacroFallbackMessage(payload.reason);
 
   portfolioMacroPanel.innerHTML = `
+    ${
+      fallbackMessage
+        ? `<article class="decision-card"><h4>Context Note</h4><p>${escapeHtml(fallbackMessage)}</p></article>`
+        : ""
+    }
     <article class="decision-card">
       <h4>Macro Sentiment</h4>
       <p>
@@ -2032,14 +2971,20 @@ async function requestMacroContextForRow(row, options = {}) {
   portfolioState.macroContextRequestId = requestId;
 
   try {
-    const payload = runtimeState.adapter?.fetchMacroContext
+    const hasMacroAdapter = Boolean(runtimeState.adapter?.fetchMacroContext);
+    const backendPayload = hasMacroAdapter
       ? await runtimeState.adapter.fetchMacroContext({
           symbol: row.symbol,
           exchange: String(row.exchange || "all").toLowerCase(),
           limit: 30,
           includeProcessed: true,
         })
-      : syntheticMacroContextForRow(row);
+      : null;
+    const payload = hasMacroAdapter
+      ? shouldUseSyntheticMacroFallback(backendPayload)
+        ? withSyntheticMacroFallback(backendPayload, row, backendPayload?.reason || "empty-context")
+        : backendPayload
+      : withSyntheticMacroFallback(null, row, "adapter-unavailable");
 
     if (requestId !== portfolioState.macroContextRequestId) {
       return;
@@ -2073,6 +3018,7 @@ function renderPortfolioDecisionPanel() {
     portfolioDecisionMeta.textContent = "No selection";
     portfolioDecisionPanel.innerHTML = `<div class="scan-empty">No portfolio rows match current filters.</div>`;
     renderMacroContextPanel(null);
+    renderCopilotChat();
     return;
   }
 
@@ -2098,9 +3044,278 @@ function renderPortfolioDecisionPanel() {
   `;
 
   renderMacroContextPanel(row);
+  renderCopilotChat();
   requestMacroContextForRow(row).catch((error) => {
     console.error("Macro context fetch failed", error);
   });
+}
+
+function buyRowsForOptimalSizing() {
+  return filteredPortfolioRows().filter((row) => String(row?.decision?.action || "").toUpperCase() === "BUY");
+}
+
+function renderOptimalSizingPanel() {
+  if (!calculateSizingBtn || !allocationSummaryCard || !allocationTableWrap || !allocationMeta) return;
+  const buyRows = buyRowsForOptimalSizing();
+  calculateSizingBtn.disabled = portfolioState.allocationLoading || buyRows.length < 2;
+  allocationSummaryCard.classList.toggle("hidden", false);
+
+  if (portfolioState.allocationLoading) {
+    allocationMeta.textContent = `Running optimization for ${portfolioState.allocationTickers.length} tickers`;
+    allocationTableWrap.innerHTML = `<div class="scan-empty">Computing max-Sharpe allocation...</div>`;
+    return;
+  }
+
+  if (portfolioState.allocationError) {
+    allocationMeta.textContent = "Sizing unavailable";
+    allocationTableWrap.innerHTML = `<div class="scan-empty">${escapeHtml(portfolioState.allocationError)}</div>`;
+    return;
+  }
+
+  const payload = portfolioState.allocationResult;
+  if (!payload) {
+    allocationMeta.textContent = buyRows.length >= 2 ? `${buyRows.length} BUY signals available` : "Need at least 2 BUY signals";
+    allocationTableWrap.innerHTML = `<div class="scan-empty">Click “Calculate Optimal Sizing” to generate weights and share counts.</div>`;
+    return;
+  }
+
+  const rows = Object.keys(payload.weights || {})
+    .map((ticker) => ({
+      ticker,
+      weight: Number(payload.weights[ticker] || 0),
+      shares: Number(payload.discrete_shares?.[ticker] || 0),
+    }))
+    .sort((a, b) => b.weight - a.weight);
+
+  allocationMeta.textContent = `${rows.length} allocations • Remaining Cash ${money(payload.remaining_cash || 0)}`;
+  allocationTableWrap.innerHTML = `
+    <table class="quant-allocation-table">
+      <thead>
+        <tr>
+          <th>Ticker</th>
+          <th>Weight</th>
+          <th>Shares</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows
+          .map(
+            (row) => `
+              <tr>
+                <td>${escapeHtml(row.ticker)}</td>
+                <td>${toDisplayPercent(row.weight, { asPercent: false })}</td>
+                <td>${Math.max(0, Math.floor(row.shares))}</td>
+              </tr>
+            `,
+          )
+          .join("")}
+      </tbody>
+    </table>
+    <div class="quant-table-footnote">
+      Expected Return ${toDisplayPercent(payload?.portfolio_performance?.expected_annual_return || 0, { asPercent: false })}
+      • Volatility ${toDisplayPercent(payload?.portfolio_performance?.annual_volatility || 0, { asPercent: false })}
+      • Sharpe ${(payload?.portfolio_performance?.sharpe_ratio || 0).toFixed(2)}
+    </div>
+  `;
+}
+
+async function handleCalculateOptimalSizing() {
+  const buyRows = buyRowsForOptimalSizing();
+  if (buyRows.length < 2) {
+    portfolioState.allocationResult = null;
+    portfolioState.allocationError = "Need at least 2 BUY signals to optimize allocation.";
+    renderOptimalSizingPanel();
+    return;
+  }
+
+  const tickers = buyRows.slice(0, 20).map((row) => toQuantTicker(row.symbol, row.exchange));
+  portfolioState.allocationTickers = tickers;
+  portfolioState.allocationLoading = true;
+  portfolioState.allocationError = "";
+  renderOptimalSizingPanel();
+
+  try {
+    const payload = runtimeState.adapter?.fetchOptimalAllocation
+      ? await runtimeState.adapter.fetchOptimalAllocation({
+          tickers,
+          capital: 100000,
+        })
+      : null;
+    if (!payload) throw new Error("Allocation adapter unavailable");
+    portfolioState.allocationResult = payload;
+    portfolioState.allocationError = "";
+  } catch (error) {
+    portfolioState.allocationResult = null;
+    portfolioState.allocationError = error.message || "Allocation request failed";
+  } finally {
+    portfolioState.allocationLoading = false;
+    renderOptimalSizingPanel();
+  }
+}
+
+function renderCommandPaletteIdle() {
+  if (!commandResults) return;
+  commandResults.innerHTML = `<div class="scan-empty">Enter a natural-language portfolio command and press Enter.</div>`;
+}
+
+function renderCommandPaletteLoading() {
+  if (!commandResults) return;
+  commandResults.innerHTML = `<div class="command-loader">Interpreting command...</div>`;
+}
+
+function renderCommandPaletteError(message) {
+  if (!commandResults) return;
+  commandResults.innerHTML = `<div class="scan-empty">${escapeHtml(message || "Command interpretation failed")}</div>`;
+}
+
+function renderCommandPaletteResult(payload) {
+  if (!commandResults) return;
+  commandResults.innerHTML = `
+    <article class="command-result-block">
+      <div class="command-result-meta">
+        Intent <strong>${escapeHtml(String(payload.intent || "").toUpperCase())}</strong> •
+        ${escapeHtml(payload.source_entity || "--")} -> ${escapeHtml(payload.target_entity || "--")} •
+        ${Number(payload.capital_pct || 0).toFixed(2)}%
+      </div>
+      <pre class="command-result-json">${escapeHtml(prettyJson(payload.mock_basket || {}))}</pre>
+    </article>
+  `;
+}
+
+function setCommandPaletteOpen(isOpen) {
+  commandPaletteState.isOpen = Boolean(isOpen);
+  if (!commandPaletteOverlay) return;
+  commandPaletteOverlay.classList.toggle("hidden", !commandPaletteState.isOpen);
+  commandPaletteOverlay.setAttribute("aria-hidden", commandPaletteState.isOpen ? "false" : "true");
+
+  if (commandPaletteState.isOpen) {
+    if (commandInput) commandInput.focus();
+  }
+}
+
+function toggleCommandPalette() {
+  setCommandPaletteOpen(!commandPaletteState.isOpen);
+  if (commandPaletteState.isOpen && commandInput) {
+    commandInput.select();
+  }
+}
+
+async function handleCommandPaletteSubmit() {
+  if (!commandInput) return;
+  if (commandPaletteState.loading) return;
+  const text = commandInput.value.trim();
+  if (!text) {
+    renderCommandPaletteIdle();
+    return;
+  }
+
+  commandPaletteState.loading = true;
+  commandInput.disabled = true;
+  renderCommandPaletteLoading();
+
+  try {
+    if (!runtimeState.adapter?.submitNlpCommand) {
+      throw new Error("Command adapter unavailable");
+    }
+    const payload = await runtimeState.adapter.submitNlpCommand(text);
+    renderCommandPaletteResult(payload);
+  } catch (error) {
+    renderCommandPaletteError(error.message || "Command interpretation failed");
+  } finally {
+    commandPaletteState.loading = false;
+    commandInput.disabled = false;
+  }
+}
+
+function renderCopilotChat() {
+  if (!copilotChatLog || !copilotChatMeta || !copilotChatInput || !copilotChatSend) return;
+  const row = selectedPortfolioRow();
+  if (!row) {
+    copilotChatMeta.textContent = "Ask about the selected symbol transcript";
+    copilotChatSend.disabled = true;
+    copilotChatLog.innerHTML = `<div class="scan-empty">Select a portfolio symbol, then ask a question.</div>`;
+    return;
+  }
+
+  const symbolLabel = `${row.exchange}:${row.symbol}`;
+  copilotChatMeta.textContent = `Transcript chat for ${symbolLabel}`;
+  copilotChatSend.disabled = portfolioState.copilotLoading;
+
+  const messages = getCopilotMessages(row.key);
+  if (!messages.length && !portfolioState.copilotLoading) {
+    copilotChatLog.innerHTML = `<div class="scan-empty">No chat history yet for ${escapeHtml(symbolLabel)}.</div>`;
+    return;
+  }
+
+  const messageHtml = messages
+    .map((message) => {
+      const citations = Array.isArray(message.citations) ? message.citations : [];
+      return `
+        <article class="copilot-message ${message.role === "user" ? "user" : "assistant"}">
+          <div class="copilot-message-role">${message.role === "user" ? "You" : "Copilot"}</div>
+          <div class="copilot-message-text">${escapeHtml(message.text || "")}</div>
+          ${
+            citations.length
+              ? `<ul class="copilot-citation-list">
+                  ${citations
+                    .map(
+                      (citation) =>
+                        `<li><strong>[C${citation.rank}]</strong> ${escapeHtml(String(citation.text || "").slice(0, 220))}${
+                          String(citation.text || "").length > 220 ? "..." : ""
+                        }</li>`,
+                    )
+                    .join("")}
+                </ul>`
+              : ""
+          }
+        </article>
+      `;
+    })
+    .join("");
+
+  copilotChatLog.innerHTML = `
+    ${messageHtml}
+    ${portfolioState.copilotLoading ? '<div class="command-loader">Retrieving grounded answer...</div>' : ""}
+  `;
+  copilotChatLog.scrollTop = copilotChatLog.scrollHeight;
+}
+
+async function handleCopilotChatSubmit() {
+  const row = selectedPortfolioRow();
+  if (!row || !copilotChatInput) return;
+  if (portfolioState.copilotLoading) return;
+  const query = copilotChatInput.value.trim();
+  if (!query) return;
+
+  const history = getCopilotMessages(row.key);
+  history.push({ role: "user", text: query, citations: [] });
+  setCopilotMessages(row.key, history);
+  copilotChatInput.value = "";
+  portfolioState.copilotLoading = true;
+  renderCopilotChat();
+
+  try {
+    if (!runtimeState.adapter?.sendEarningsQuery) {
+      throw new Error("Research adapter unavailable");
+    }
+    const payload = await runtimeState.adapter.sendEarningsQuery(row.symbol, query);
+    history.push({
+      role: "assistant",
+      text: payload.answer || "No answer returned.",
+      citations: payload.citations || [],
+    });
+    setCopilotMessages(row.key, history);
+  } catch (error) {
+    history.push({
+      role: "assistant",
+      text: error.message || "Unable to fetch transcript answer right now.",
+      citations: [],
+    });
+    setCopilotMessages(row.key, history);
+  } finally {
+    portfolioState.copilotLoading = false;
+    renderCopilotChat();
+  }
 }
 
 async function handlePrepareOrder(rowKey) {
@@ -2193,6 +3408,7 @@ function renderPortfolio() {
   applyPortfolioButtonStates();
   renderPortfolioStatusChips();
   renderPortfolioSummary();
+  renderOptimalSizingPanel();
   renderPortfolioRows();
   renderPortfolioDecisionPanel();
   setRationaleTab(portfolioState.rationaleTab);
@@ -2704,20 +3920,40 @@ async function refreshComparisonSeries() {
 
   if (!compareState.selectedClusterIds.length) {
     compareState.seriesByCluster.clear();
+    compareState.markerByCluster.clear();
+    compareState.peerPayload = null;
     renderComparison();
     return;
   }
 
-  const adapterPayload = await runtimeState.adapter.fetchComparisonSeries({
-    clusterIds: [...compareState.selectedClusterIds],
-    window: compareState.window,
-    exchange: compareState.exchange,
-    points: COMPARE_WINDOWS[compareState.window].points,
-  });
+  let adapterPayload;
+  if (runtimeState.adapter?.fetchChartNormalizedReturns) {
+    adapterPayload = await runtimeState.adapter.fetchChartNormalizedReturns({
+      clusterIds: [...compareState.selectedClusterIds],
+      window: compareState.window,
+      exchange: compareState.exchange,
+      points: COMPARE_WINDOWS[compareState.window].points,
+    });
+  } else {
+    adapterPayload = await runtimeState.adapter.fetchComparisonSeries({
+      clusterIds: [...compareState.selectedClusterIds],
+      window: compareState.window,
+      exchange: compareState.exchange,
+      points: COMPARE_WINDOWS[compareState.window].points,
+    });
+  }
 
   if (requestId !== compareState.seriesRequestId) return;
   compareState.seriesByCluster = AdapterCore.mapComparisonSeries(adapterPayload);
   renderComparison();
+  await Promise.all([
+    refreshDecisionMarkers(),
+    fetchPeerRelativeStrength().catch((error) => {
+      console.error("Peer RS refresh failed", error);
+      compareState.peerPayload = null;
+      renderPeerPanel();
+    }),
+  ]);
 }
 
 async function refreshPortfolioBootstrap(options = {}) {
@@ -2843,7 +4079,8 @@ function setActiveView(target) {
     clearNetworkRefreshTimer();
     if (modal.open) closeClusterModal();
     requestAnimationFrame(() => {
-      resizeCompareCanvas();
+      initCompareChart();
+      initPeerChart();
       refreshComparisonSeries().catch((error) => {
         console.error("Failed to refresh comparison on view switch", error);
         renderComparison();
@@ -2872,8 +4109,10 @@ async function initializeComparisonState() {
     .map((cluster) => cluster.id);
 
   compareState.selectedClusterIds = defaultSelection;
+  compareState.peerAnchor = pickDefaultPeerAnchor();
   applyCompareButtonStates();
-  resizeCompareCanvas();
+  initCompareChart();
+  initPeerChart();
   try {
     await refreshComparisonSeries();
   } catch (error) {
@@ -2937,6 +4176,21 @@ function attachHandlers() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
+  document.addEventListener("keydown", (event) => {
+    const key = String(event.key || "").toLowerCase();
+    const isPaletteToggle = key === "k" && (event.metaKey || event.ctrlKey);
+    if (isPaletteToggle) {
+      event.preventDefault();
+      toggleCommandPalette();
+      return;
+    }
+
+    if (key === "escape" && commandPaletteState.isOpen) {
+      event.preventDefault();
+      setCommandPaletteOpen(false);
+    }
+  });
+
   compareClusterInput.addEventListener("input", (event) => {
     compareState.search = event.target.value;
     renderCompareSearchResults();
@@ -2953,9 +4207,41 @@ function attachHandlers() {
     compareSearchResults.innerHTML = "";
   });
 
+  if (peerStockInput) {
+    peerStockInput.addEventListener("input", (event) => {
+      compareState.peerSearch = event.target.value;
+      renderPeerSearchResults();
+    });
+    peerStockInput.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      const first = searchPeerStocks(compareState.peerSearch)[0];
+      if (!first) return;
+      setPeerAnchorStock(first.symbol, first.exchange);
+      compareState.peerSearch = "";
+      peerStockInput.value = "";
+      if (peerSearchResults) peerSearchResults.innerHTML = "";
+    });
+  }
+
+  if (runBacktestBtn) {
+    runBacktestBtn.addEventListener("click", () => {
+      runClusterBacktest().catch((error) => {
+        console.error("Backtest run failed", error);
+        compareState.backtestLoading = false;
+        compareState.backtestResult = null;
+        compareState.backtestError = error.message || "Backtest request failed";
+        renderBacktestSummary();
+      });
+    });
+  }
+
   document.addEventListener("click", (event) => {
     if (!compareSearchResults.contains(event.target) && event.target !== compareClusterInput) {
       compareSearchResults.innerHTML = "";
+    }
+    if (peerSearchResults && !peerSearchResults.contains(event.target) && event.target !== peerStockInput) {
+      peerSearchResults.innerHTML = "";
     }
   });
 
@@ -3026,10 +4312,59 @@ function attachHandlers() {
     });
   });
 
+  if (calculateSizingBtn) {
+    calculateSizingBtn.addEventListener("click", () => {
+      handleCalculateOptimalSizing().catch((error) => {
+        console.error("Optimal sizing failed", error);
+        portfolioState.allocationLoading = false;
+        portfolioState.allocationResult = null;
+        portfolioState.allocationError = error.message || "Allocation request failed";
+        renderOptimalSizingPanel();
+      });
+    });
+  }
+
   if (networkRefreshBtn) {
     networkRefreshBtn.addEventListener("click", () => {
       refreshNetworkDashboard({ silent: false }).catch((error) => {
         console.error("Manual network refresh failed", error);
+      });
+    });
+  }
+
+  if (commandPaletteOverlay) {
+    commandPaletteOverlay.addEventListener("click", (event) => {
+      if (event.target === commandPaletteOverlay) {
+        setCommandPaletteOpen(false);
+      }
+    });
+  }
+
+  if (commandInput) {
+    commandInput.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      handleCommandPaletteSubmit().catch((error) => {
+        console.error("Command palette submit failed", error);
+        renderCommandPaletteError(error.message || "Command interpretation failed");
+      });
+    });
+  }
+
+  if (copilotChatSend) {
+    copilotChatSend.addEventListener("click", () => {
+      handleCopilotChatSubmit().catch((error) => {
+        console.error("Copilot chat send failed", error);
+      });
+    });
+  }
+
+  if (copilotChatInput) {
+    copilotChatInput.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      handleCopilotChatSubmit().catch((error) => {
+        console.error("Copilot chat submit failed", error);
       });
     });
   }
@@ -3046,12 +4381,13 @@ function attachHandlers() {
   });
 
   window.addEventListener("resize", () => {
-    if (compareState.resizeRaf) cancelAnimationFrame(compareState.resizeRaf);
-    compareState.resizeRaf = requestAnimationFrame(() => {
-      resizeCompareCanvas();
-      if (state.activeView === "comparison") drawCompareChart();
-    });
+    if (state.activeView === "comparison") {
+      renderCompareSeriesToChart();
+      renderPeerChart();
+    }
   });
+
+  renderCommandPaletteIdle();
 }
 
 function applyNormalizedUniverse(payload, options = {}) {

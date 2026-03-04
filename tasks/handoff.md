@@ -1,115 +1,116 @@
-# Portfolio Tracker Handoff
+# Portfolio Tracker Handoff (New Thread)
 
-## System Role & Objective
-You are an elite Staff Software Engineer and Quant Developer. We are building a highly sophisticated, multi-agent portfolio tracker, thematic screener, and decision-making engine for the Indian stock market (NSE/BSE). The system will interface directly with my Zerodha Kite account via the Model Context Protocol (MCP).
+## Timestamp
+- IST: 2026-03-04
+- Repo: `/Users/joy/Portfolio Tracker`
+- Branch: `main`
+- Latest commit: `f7cd67d` (`Add network connectivity dashboard tab with live API probes`)
+- Production URL: `https://portfolio-tracker-kappa-woad.vercel.app`
 
-## Product Vision
-The goal is to move beyond simple P&L tracking. This tool must act as an autonomous financial analyst, monitoring live holdings, analyzing thematic hotspots in the broader market, executing advanced technical screens, and presenting actionable, data-driven entry/exit decisions based on market sentiment and sector momentum.
+## Objective Snapshot
+Build an Indian equities command center with:
+- Zerodha as portfolio source of truth (holdings/positions)
+- Angel One as market-data engine (quotes/history) where connected
+- Macro/regulatory context agent (RBI/SEBI/news)
+- Thematic hotspot + multi-agent recommendation workflows
+- UI-first operations with headless CLI fallback
 
-## Reference Architectures & Feature Extraction
+## What Is Implemented
 
-### 1. Agentic Orchestration & LangGraph (mohdasif2294/portfolio-copilot)
-- Extract LangGraph workflow and RAG architecture.
-- Replicate multi-agent setup for:
-  - Portfolio Analysis
-  - Screener.in data integration
-  - Watchlist Suggestions
-- Use Zerodha Kite data as the account source.
+### Wave Status
+- Wave 1: complete (provider abstraction, Zerodha auth/session, CLI snapshots, EOD contract, thematic mapping)
+- Wave 2: complete (PKScreener adapter, hotspot scoring/scheduler, hotspot API+CLI)
+- Wave 3: complete (intent router, orchestrator, news RAG, weighted consensus)
+- Wave 4: complete (Streamlit dashboard + existing web UI integration)
+- Cross-wave: contracts, tracing, backfill/replay, safety guardrails all in place
 
-### 2. Real-time Research & Sentiment (rooneyrulz/agentic-stock-research-system)
-- Replicate multi-agent consensus logic.
-- Integrate workflows for:
-  - Market Data Agent
-  - News Analyst Agent
-  - Recommendation Agent
-- Produce weighted entry/exit scoring with explicit risk management.
+### Latest Shipped (important)
+1. Themes/Comparison switched to Angel live market path with fallback diagnostics.
+2. Seeded Angel symbol-token map added to avoid serverless token-discovery throttling.
+3. Macro context 500 fixed and per-symbol specificity improved.
+4. New **Network** tab added in UI to show provider/API connectivity end-to-end.
 
-### 3. Thematic Prompt Routing (mayankthole/Dhan-MCP-Trades)
-- Adapt natural language routing from Dhan flows to Zerodha MCP.
-- Support contextual commands such as:
-  - "evaluate my portfolio against current PSU bank thematic momentum"
+## Current Live Data Routing (Truth Table)
+1. Portfolio holdings/positions:
+- Primary: Zerodha session (`/api/zerodha/session/status` + portfolio bootstrap)
+- If Zerodha disconnected: read-only/demo behavior
 
-### 4. Technical Screening Engine (pkjmesra/PKScreener)
-- Integrate PKScreener as backend scanning engine.
-- Detect:
-  - Breakouts
-  - Consolidations
-  - Momentum anomalies
-- Feed technical flags into the LLM context window.
+2. Themes + Comparison market feed:
+- Primary: Angel live (`source: angel-live`) when Angel session is connected
+- Fallback: mock market payload when Angel session unavailable/fails
 
-### 5. Categorization & Indexing (debpal/BharatFinTrack)
-- Implement BharatFinTrack data structures for NSE equity index categorization.
-- Build "Thematic Hotspots" module that maps Zerodha holdings against sector/thematic performance.
+3. Portfolio market overlay (LTP/returns enrichment):
+- Uses Angel session if connected (overlay active)
+- Falls back safely when Angel unavailable
 
-### 6. Dashboard & UI (sandeepkumar0801/Ai-portfolio-analyzer-and-trading)
-- Use Streamlit architecture as frontend baseline.
-- Replicate:
-  - Real-time P&L calculations
-  - Interactive charting
-  - Sector-breakdown visuals
-- Inject multi-agent outputs into recommendation panels.
+4. Macro & Regulatory Context:
+- Uses harvested news + SQLite-backed analysis
+- Fail-open neutral payload if storage/feed unavailable
 
-### 7. Headless/CLI Fallback (sd416/zerodha-portfolio)
-- Extract lightweight data parsing logic.
-- Build modular CLI script for headless cron snapshots of portfolio day changes without Streamlit.
+## Network Dashboard (new)
+- UI path: Top nav -> `Network`
+- Shows:
+  - Provider connection cards
+  - Data-flow source cards
+  - Endpoint diagnostics table (status, HTTP, latency, source, note)
+- Auto-refresh every 30s while view is active
+- Manual refresh button included
 
-## Execution Roadmap
-Do not build everything at once. Execute in four sequential waves.
+## Key Endpoints For First-Minute Verification
+1. `GET /api/zerodha/session/status`
+2. `GET /api/angel/health`
+3. `GET /api/angel/session/status`
+4. `GET /api/v1/market/bootstrap?exchange=all&debug=1`
+5. `GET /api/v1/portfolio/bootstrap?exchange=all`
+6. `GET /api/v1/macro/context?exchange=all&limit=16&includeProcessed=1`
 
-### Wave 1: Data Pipeline & CLI (Foundation)
-- Set up Zerodha Kite connection.
-- Implement BharatFinTrack categorizations.
-- Build lightweight CLI parser (sd416/zerodha-portfolio pattern).
-- Verify live P&L data flow.
+## Expected Checks
+1. Themes live check:
+- `/api/v1/market/bootstrap?...` should show `source: "angel-live"` when Angel session is active.
+- If it shows `mock`, inspect `debug.liveFallbackReason`.
 
-### Wave 2: Screener & Hotspot Engine
-- Integrate PKScreener logic for automated NSE technical scans.
-- Cross-reference technical outputs with thematic indices.
-- Identify and rank thematic market hotspots.
+2. Portfolio truth check:
+- `/api/v1/portfolio/bootstrap` should reflect real Zerodha-connected rows when session valid.
 
-### Wave 3: Multi-Agent Decision Engine (Core)
-- Implement MCP + LangGraph orchestration.
-- Build research, sentiment, and portfolio agents (portfolio-copilot + agentic-stock-research-system patterns).
-- Feed Wave 1 + 2 data into agent reasoning.
-- Adapt Dhan NLP routing for Zerodha-triggered workflows.
+3. Macro check:
+- Macro panel should vary by selected symbol and not return identical generic output unless no events exist.
 
-### Wave 4: Streamlit Dashboard (UI)
-- Build frontend using Ai-portfolio-analyzer-and-trading style.
-- Connect UI to backend agents.
-- Render thematic hotspots, AI risk scoring, and interactive charts.
+## Known Operational Reality
+1. If Angel session cookies are absent/expired, Themes/Comparison can revert to fallback mode.
+2. Live mode depends on active session context (not just env vars).
+3. Zerodha and Angel are intentionally split: Zerodha=portfolio ownership, Angel=market data enrichment.
 
-## Current Delivery Status (2026-03-04 IST)
+## Next Thread Priority (Recommended)
+1. Enforce persistent Angel live availability:
+- Add robust server-side session refresh/warm path so Themes rarely fall back.
 
-### Completed
-- Wave 1 foundation delivered except live-paper validation:
-  - broker abstraction + provider contract tests
-  - Zerodha auth/session hardening (`auth-url`, `callback`, `session-status`, `logout`)
-  - BharatFinTrack ingestion + holdings thematic mapping
-  - headless CLI (`portfolio-snapshot`, `run-eod-snapshot`)
-- Wave 2 delivered:
-  - PKScreener-style scan adapter
-  - hotspot scheduler/cache/scoring
-  - hotspot API + CLI (`/api/v1/hotspots/*`, `scripts/hotspots-snapshot.js`)
-- Wave 3 delivered:
-  - intent router + LangGraph-style orchestrator
-  - news RAG + weighted consensus + risk controls
-  - agent API + CLI (`/api/v1/agents/*`, `scripts/agents-analyze.js`)
-- Wave 4 delivered:
-  - Streamlit dashboard (`streamlit_app.py`) with portfolio/hotspot/agent panels
-  - desktop/mobile regression snapshots captured in `artifacts/ui/`
-- Cross-wave delivered:
-  - trace IDs + contract metadata across legacy and new APIs
-  - replay/backfill engine (`api/_lib/backfillService.js`, `scripts/replay-backfill.js`)
-  - config/secrets workflow (`.env.example`, `scripts/config-health.js`)
+2. Tighten fallback visibility:
+- Add stronger UI warnings when any surface is running fallback/mock.
 
-### Test Status
-- Full automated suite passing: `node --test tests/*.test.js` -> `63/63` pass.
+3. Expand market breadth:
+- Validate/add remaining symbol tokens for consistent cluster coverage.
 
-### Remaining Blockers / Next Step
-- Live-paper validation completed on 2026-03-04 IST:
-  - `connected=true`, `providerMode=live`, `rowCount=26`
-  - artifact: `artifacts/live-paper-snapshot.json`
-- Production deployment + smoke checks completed on 2026-03-04 IST:
-  - alias: `https://portfolio-tracker-kappa-woad.vercel.app`
-  - smoke artifact: `artifacts/production-smoke.json`
-- All release gates (`G1`..`G5`) are complete.
+4. Harden ops:
+- Add cron-driven health snapshot artifact (connectivity + source mode) for audit trail.
+
+## Test/Validation Status
+- Full suite last run: `node --test tests/*.test.js` -> `87/87` passing
+- Syntax checks passed for touched API/frontend files
+- Production deployed and aliased after latest commit
+
+## Files Most Relevant For Continuation
+- `/Users/joy/Portfolio Tracker/app.js`
+- `/Users/joy/Portfolio Tracker/index.html`
+- `/Users/joy/Portfolio Tracker/styles.css`
+- `/Users/joy/Portfolio Tracker/api/market.js`
+- `/Users/joy/Portfolio Tracker/api/comparison.js`
+- `/Users/joy/Portfolio Tracker/api/portfolio.js`
+- `/Users/joy/Portfolio Tracker/api/angel.js`
+- `/Users/joy/Portfolio Tracker/api/_lib/angelLiveMarket.js`
+- `/Users/joy/Portfolio Tracker/api/_lib/macroContextEngine.js`
+- `/Users/joy/Portfolio Tracker/tasks/roadmap.md`
+- `/Users/joy/Portfolio Tracker/tasks/todo.md`
+
+## Security Note
+- Do not commit or echo secrets in logs/handoff.
+- Keep credentials only in Vercel/local env (`ANGEL_*`, `KITE_*`).

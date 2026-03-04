@@ -68,3 +68,14 @@
 - Preventive rule: when broker APIs have multiple product families, explicitly map each in-use endpoint to the user’s selected app type and flag mismatches before implementation.
 - User correction: Themes data had to be truly live, not silently falling back to mock while sessions were connected.
 - Preventive rule: for every live-data surface, expose and verify explicit source diagnostics (`live` vs `fallback`) during rollout before declaring completion.
+
+## 2026-03-05
+- User correction: Python-heavy quant/NLP stack must be isolated from Vercel Node runtime and deployed as a separate service directory.
+- Preventive rule: for mixed Node+Python architectures in this repo, keep all Vercel-bound JS/TS code in root and place heavy Python dependencies in a dedicated service folder (for example `/quant-engine`) with JSON gateway routes only.
+- Preventive rule: when planning future phases that need heavyweight libraries, lock deployment boundaries before starting implementation to avoid cross-runtime coupling.
+- User correction: during Phase 5 setup, do not modify existing Node backend routes/files (`api/`) or `package.json` for Python quant dependencies.
+- Preventive rule: for quant-engine initialization tasks, restrict all dependency/runtime edits to `quant-engine/**` and verify `git diff` excludes `api/**` and `package.json` before handoff.
+- User correction: placeholder top-nav items (`Universe`, `Sectors`, `Signals`) should be removed when feature surfaces are not yet built.
+- Preventive rule: avoid shipping placeholder navigation entries without live routes; only expose top-nav items that map to functional views or explicitly marked disabled states with product sign-off.
+- User correction: macro panel showing `Balanced` across many symbols looked incorrect and reduced trust.
+- Preventive rule: when analysis data is sparse/unavailable, surface explicit fallback reason in UI and apply deterministic symbol-aware fallback instead of silent neutral defaults.

@@ -193,6 +193,27 @@ function buildHeadClusterMap() {
   return map;
 }
 
+function deriveMomentumBias(headRanking, headClusterMap) {
+  if (!Array.isArray(headRanking) || !headRanking.length) return 0;
+
+  let weighted = 0;
+  let weightSum = 0;
+
+  headRanking.forEach(([headName, headScore]) => {
+    const clusters = headClusterMap.get(headName) || [];
+    if (!clusters.length) return;
+    const top = clusters.slice(0, 3);
+    const avgMomentum = top.reduce((acc, cluster) => acc + Number(cluster.momentum1M || 0), 0) / top.length;
+    const normalizedMomentum = clamp(avgMomentum / 12, -1, 1);
+    const weight = Math.max(0.1, Number(headScore || 0));
+    weighted += normalizedMomentum * weight;
+    weightSum += weight;
+  });
+
+  if (weightSum <= 0) return 0;
+  return Number.parseFloat(clamp(weighted / weightSum, -1, 1).toFixed(4));
+}
+
 function scoreHeadImpacts(text, tags, focusTheme) {
   const source = normalizeText(text);
   const headScores = new Map();
@@ -533,13 +554,19 @@ async function analyzeMacroContext(options = {}) {
     });
   });
 
+  const momentumBias = deriveMomentumBias(headRanking, headClusterMap);
+  let finalSentimentScore = sentimentScore;
+  if (Math.abs(finalSentimentScore) < 0.08 && Math.abs(momentumBias) >= 0.05) {
+    finalSentimentScore = Number.parseFloat(clamp(finalSentimentScore * 0.35 + momentumBias * 0.65, -1, 1).toFixed(4));
+  }
+
   const keyCatalyst = pickCatalyst(scoredItems);
   const result = {
     asOf: new Date().toISOString(),
     exchange,
     symbol: selectedSymbol || null,
     theme_hint: themeHint || null,
-    sentiment_score: sentimentScore,
+    sentiment_score: finalSentimentScore,
     key_catalyst: keyCatalyst,
     impacted_clusters: impactedClusters.slice(0, 12),
     rationale_summary: "",

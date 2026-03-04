@@ -1,39 +1,145 @@
 {
   "framework": null,
   "rewrites": [
-    { "source": "/api/angel/callback", "destination": "/api/angel?route=callback" },
-    { "source": "/api/angel/postback", "destination": "/api/angel?route=postback" },
-    { "source": "/api/angel/health", "destination": "/api/angel?route=health" },
-    { "source": "/api/angel/session", "destination": "/api/angel?route=session" },
-    { "source": "/api/angel/session/status", "destination": "/api/angel?route=session-status" },
-    { "source": "/api/angel/logout", "destination": "/api/angel?route=logout" },
-
-    { "source": "/api/zerodha/auth/url", "destination": "/api/zerodha?route=auth-url" },
-    { "source": "/api/zerodha/callback", "destination": "/api/zerodha?route=callback" },
-    { "source": "/api/zerodha/session/status", "destination": "/api/zerodha?route=session-status" },
-    { "source": "/api/zerodha/logout", "destination": "/api/zerodha?route=logout" },
-
-    { "source": "/api/v1/market/bootstrap", "destination": "/api/market?route=bootstrap" },
-    { "source": "/api/v1/market/poll", "destination": "/api/market?route=poll" },
-    { "source": "/api/v1/comparison/series", "destination": "/api/comparison?route=series" },
-
-    { "source": "/api/v1/portfolio/bootstrap", "destination": "/api/portfolio?route=bootstrap" },
-    { "source": "/api/v1/portfolio/poll", "destination": "/api/portfolio?route=poll" },
-    { "source": "/api/v1/portfolio/decisions", "destination": "/api/portfolio?route=decisions" },
-    { "source": "/api/v1/portfolio/snapshots/eod", "destination": "/api/portfolio?route=snapshots-eod" },
-
-    { "source": "/api/v1/hotspots/snapshot", "destination": "/api/hotspots?route=snapshot" },
-    { "source": "/api/v1/hotspots/poll", "destination": "/api/hotspots?route=poll" },
-
-    { "source": "/api/v1/agents/intent", "destination": "/api/agents?route=intent" },
-    { "source": "/api/v1/agents/analyze", "destination": "/api/agents?route=analyze" },
-
-    { "source": "/api/v1/macro/harvest", "destination": "/api/macro?route=harvest" },
-    { "source": "/api/v1/macro/latest", "destination": "/api/macro?route=latest" },
-    { "source": "/api/v1/macro/context", "destination": "/api/macro?route=context" },
-
-    { "source": "/api/v1/orders/preview", "destination": "/api/orders?route=preview" },
-    { "source": "/api/v1/orders/submit", "destination": "/api/orders?route=submit" },
-    { "source": "/api/v1/orders/:id/status", "destination": "/api/orders?route=status&id=:id" }
+    {
+      "source": "/api/angel/callback",
+      "destination": "/api/angel?route=callback"
+    },
+    {
+      "source": "/api/angel/postback",
+      "destination": "/api/angel?route=postback"
+    },
+    {
+      "source": "/api/angel/health",
+      "destination": "/api/angel?route=health"
+    },
+    {
+      "source": "/api/angel/session",
+      "destination": "/api/angel?route=session"
+    },
+    {
+      "source": "/api/angel/session/status",
+      "destination": "/api/angel?route=session-status"
+    },
+    {
+      "source": "/api/angel/logout",
+      "destination": "/api/angel?route=logout"
+    },
+    {
+      "source": "/api/zerodha/auth/url",
+      "destination": "/api/zerodha?route=auth-url"
+    },
+    {
+      "source": "/api/zerodha/callback",
+      "destination": "/api/zerodha?route=callback"
+    },
+    {
+      "source": "/api/zerodha/session/status",
+      "destination": "/api/zerodha?route=session-status"
+    },
+    {
+      "source": "/api/zerodha/logout",
+      "destination": "/api/zerodha?route=logout"
+    },
+    {
+      "source": "/api/v1/market/bootstrap",
+      "destination": "/api/market?route=bootstrap"
+    },
+    {
+      "source": "/api/v1/market/poll",
+      "destination": "/api/market?route=poll"
+    },
+    {
+      "source": "/api/v1/comparison/series",
+      "destination": "/api/comparison?route=series"
+    },
+    {
+      "source": "/api/v1/charts/normalized-returns",
+      "destination": "/api/charts?route=normalized-returns"
+    },
+    {
+      "source": "/api/v1/charts/decision-markers",
+      "destination": "/api/charts?route=decision-markers"
+    },
+    {
+      "source": "/api/v1/peers/relative-strength",
+      "destination": "/api/peers?route=relative-strength"
+    },
+    {
+      "source": "/api/v1/quant/optimize-allocation",
+      "destination": "/api/quant?route=optimize-allocation"
+    },
+    {
+      "source": "/api/v1/quant/backtests/thematic-rotation",
+      "destination": "/api/quant?route=thematic-rotation"
+    },
+    {
+      "source": "/api/v1/portfolio/bootstrap",
+      "destination": "/api/portfolio?route=bootstrap"
+    },
+    {
+      "source": "/api/v1/portfolio/poll",
+      "destination": "/api/portfolio?route=poll"
+    },
+    {
+      "source": "/api/v1/portfolio/decisions",
+      "destination": "/api/portfolio?route=decisions"
+    },
+    {
+      "source": "/api/v1/portfolio/snapshots/eod",
+      "destination": "/api/portfolio?route=snapshots-eod"
+    },
+    {
+      "source": "/api/v1/hotspots/snapshot",
+      "destination": "/api/hotspots?route=snapshot"
+    },
+    {
+      "source": "/api/v1/hotspots/poll",
+      "destination": "/api/hotspots?route=poll"
+    },
+    {
+      "source": "/api/v1/agents/intent",
+      "destination": "/api/agents?route=intent"
+    },
+    {
+      "source": "/api/v1/agents/analyze",
+      "destination": "/api/agents?route=analyze"
+    },
+    {
+      "source": "/api/v1/macro/harvest",
+      "destination": "/api/macro?route=harvest"
+    },
+    {
+      "source": "/api/v1/macro/latest",
+      "destination": "/api/macro?route=latest"
+    },
+    {
+      "source": "/api/v1/macro/context",
+      "destination": "/api/macro?route=context"
+    },
+    {
+      "source": "/api/v1/orders/preview",
+      "destination": "/api/orders?route=preview"
+    },
+    {
+      "source": "/api/v1/orders/submit",
+      "destination": "/api/orders?route=submit"
+    },
+    {
+      "source": "/api/v1/orders/:id/status",
+      "destination": "/api/orders?route=status&id=:id"
+    },
+    {
+      "source": "/api/v1/research/earnings/chat",
+      "destination": "/api/research?route=earnings-chat"
+    },
+    {
+      "source": "/api/v1/research/earnings/sync",
+      "destination": "/api/research?route=earnings-sync"
+    },
+    {
+      "source": "/api/v1/commands/interpret",
+      "destination": "/api/commands?route=interpret"
+    }
   ]
 }

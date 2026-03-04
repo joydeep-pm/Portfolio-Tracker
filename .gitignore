@@ -6,6 +6,11 @@ node_modules/
 .vercel
 
 __pycache__/
+.venv/
+.venv_check/
+quant-engine/.venv/
+quant-engine/.venv_check/
+quant-engine/**/__pycache__/
 artifacts/
 data/macro_harvest_store.json
 data/macro_events.db

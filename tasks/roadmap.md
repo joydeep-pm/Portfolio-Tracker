@@ -247,3 +247,66 @@
 - 2026-03-04: Production deployment refreshed and smoke-validated; `G5` marked complete.
 - 2026-03-04: Approved to move into Macro/Regulatory Agent Phase 2 (LLM sentiment/context node) after Phase 1 harvester foundation.
 - 2026-03-04: Macro/Regulatory Phase 2 delivered with backend node, API/CLI surfaces, and Portfolio Signal Rationale UI tab integration.
+
+## Phase 4 — Advanced UI & Charting Expansion (Post-Wave Extension)
+- [x] P4.1 Replace custom comparison canvas with TradingView Lightweight Charts.
+  - Evidence: 2026-03-05 IST - Updated `index.html` + `app.js` comparison renderer to use Lightweight Charts via CDN UMD with responsive chart lifecycle.
+- [x] P4.2 Add AI decision timeline markers (BUY/SELL/ACCUMULATE/REDUCE) using decision audit history with latest-decision fallback.
+  - Evidence: 2026-03-05 IST - Added `api/charts.js` marker route, `api/_lib/snapshots.js` decision-audit listing, and marker overlay pipeline in `app.js`.
+- [x] P4.3 Add BharatFinTrack-style top-3 peer relative strength panel and chart for selected symbol.
+  - Evidence: 2026-03-05 IST - Added `api/peers.js` + comparison peer panel UI in `index.html`/`styles.css`/`app.js` with top-3 competitor ranking and RS chart.
+- [x] P4.4 Add API routes/contracts for charts + peers and adapter payload validators.
+  - Evidence: 2026-03-05 IST - Added rewrites in `vercel.json`, contract keys in `api/_lib/contracts.js`, and new adapter methods/validators in `adapterCore.js`.
+- [x] P4.5 Add automated tests and full-suite regression validation.
+  - Evidence: 2026-03-05 IST - Added `tests/chartsApi.test.js`, `tests/peersApi.test.js`, `tests/adapterCoreCharts.test.js`; full suite passed (`97/97`).
+
+### Phase 4 Dependencies
+- Existing comparison/market bootstrap contracts remain stable (`/api/v1/comparison/series`, `/api/v1/market/bootstrap`).
+- Decision marker history available from `decision_audit_events` (Supabase) or memory fallback audit rows.
+- Lightweight Charts loaded via CDN UMD script in current vanilla runtime.
+
+### Phase 4 Acceptance Criteria
+- Comparison view renders normalized cluster returns via Lightweight Charts.
+- Marker overlay updates for selected cluster and excludes HOLD signals.
+- Peer panel returns anchor + top 3 cluster peers with comparative RS chart.
+- Existing views and API contracts continue to pass full regression tests.
+
+## Phase 5 — Quant Engine Isolation Kickoff
+- [x] P5.0 Create isolated Python microservice folder at repo root (`/quant-engine`).
+  - Evidence: 2026-03-05 IST - Added standalone `quant-engine/` directory with no changes to Node `api/` routing surface.
+- [x] P5.1 Scaffold FastAPI worker entrypoint and router modules.
+  - Evidence: 2026-03-05 IST - Added `quant-engine/main.py` and router placeholders (`allocation`, `backtest`, `technical`) with initial endpoint stubs.
+- [x] P5.2 Add Phase 5 quant dependency manifest.
+  - Evidence: 2026-03-05 IST - Added `quant-engine/requirements.txt` including `fastapi`, `uvicorn`, `PyPortfolioOpt`, `vectorbt`, `pandas`, `numpy`, and PKScreener-aligned dependencies.
+- [x] P5.3 Validate scaffold syntax and startup readiness prerequisites.
+  - Evidence: 2026-03-05 IST - Python compile check passed via `python3 -m py_compile` for `main.py` and all router modules.
+- [x] P5.4 Implement MPT allocation route with yfinance + PyPortfolioOpt discrete sizing.
+  - Evidence: 2026-03-05 IST - Replaced `quant-engine/routers/allocation.py` placeholder with `/api/v1/quant/optimize-allocation` endpoint using 1Y adjusted-close download, `mean_historical_return`, `sample_cov`, `max_sharpe`, `clean_weights`, and `DiscreteAllocation`; route mounted in `quant-engine/main.py`; syntax check passed.
+- [x] P5.5 Implement vectorbt thematic momentum backtest endpoint with compact equity payload.
+  - Evidence: 2026-03-05 IST - Replaced `quant-engine/routers/backtest.py` placeholder with `/api/v1/quant/backtests/thematic-rotation` endpoint using 50/200 SMA crossover signals, `Portfolio.from_signals`, key metrics extraction (win rate, max drawdown, CAGR, Sharpe), and downsampled equity curve (~300 points max); route mounted in `quant-engine/main.py`; syntax check passed.
+- [x] P5.6 Implement PKScreener candlestick technical scanner endpoint.
+  - Evidence: 2026-03-05 IST - Replaced `quant-engine/routers/technical.py` placeholder with `/api/v1/technical/candles/scan` endpoint using subprocess-based PKScreener execution (scan code 6 fallback commands), timeout-safe handling, and parsed `{symbol, pattern, signal, date}` flags from JSON/CSV/stdout outputs; route mounted in `quant-engine/main.py`; syntax check passed.
+- [x] P5.7 Wire Vercel gateway proxy and vanilla JS UI to external quant engine endpoints.
+  - Evidence: 2026-03-05 IST - Added `api/quant.js` proxy with `QUANT_ENGINE_URL`, rewrites in `vercel.json` for `/api/v1/quant/optimize-allocation` + `/api/v1/quant/backtests/thematic-rotation`, adapter methods in `adapterCore.js`, and UI hooks in `index.html`/`styles.css`/`app.js` for “Run 5-Year Backtest” and “Calculate Optimal Sizing”; syntax + full regression tests passed.
+
+### Phase 5 Boundary
+- Root Node/Vercel application remains unchanged for quant dependencies.
+- Heavy Python libraries are isolated to `/quant-engine` for separate deployment/runtime.
+
+## Phase 6 — Deep Research & NLP Execution (Quant Engine)
+- [x] P6.1 Implement transcript sync ingestion endpoint with PDF upload/URL support and FAISS indexing.
+  - Evidence: 2026-03-05 IST - Added `quant-engine/routers/research.py` endpoint `POST /earnings/sync` for PDF extraction (`pypdf`), word-overlap chunking, `sentence-transformers` embeddings, and persisted per-symbol FAISS index + metadata.
+- [x] P6.2 Implement transcript chat endpoint with similarity retrieval and exact citation chunks.
+  - Evidence: 2026-03-05 IST - Added `POST /earnings/chat` in `quant-engine/routers/research.py`; query embedding + FAISS top-k retrieval returns grounded answer and exact chunk-text citations.
+- [x] P6.3 Implement NLP command interpreter endpoint with strict mock basket output (read-only mode).
+  - Evidence: 2026-03-05 IST - Added `quant-engine/routers/commands.py` endpoint `POST /interpret` with rotate-intent parsing (`source_entity`, `target_entity`, `capital_pct`) and `mock_basket` sell/buy legs; no live execution path.
+- [x] P6.4 Register new routers in FastAPI app with versioned route prefixes.
+  - Evidence: 2026-03-05 IST - Updated `quant-engine/main.py` to mount `research` at `/api/v1/research` and `commands` at `/api/v1/commands`.
+- [x] P6.5 Add Phase 6 dependency manifest entries and validate syntax.
+  - Evidence: 2026-03-05 IST - Updated `quant-engine/requirements.txt` with `pypdf`, `sentence-transformers`, `faiss-cpu`; compile validation passed via `python3 -m py_compile` for `main.py`, `routers/research.py`, and `routers/commands.py`.
+- [x] P6.6 Integrate research/chat and NLP command endpoints into Vercel gateway + vanilla JS frontend.
+  - Evidence: 2026-03-05 IST - Added Node proxies (`api/research.js`, `api/commands.js`) and rewrites in `vercel.json`; extended `adapterCore.js` with `sendEarningsQuery` and `submitNlpCommand`; wired Command Palette + Copilot Chat UI in `index.html`/`styles.css`/`app.js` with keyboard/submit flows and citation rendering.
+
+## Macro Context Reliability Patch (Post-M2 Hardening)
+- [x] M2.5 Prevent misleading all-neutral macro sentiment in sparse/unavailable contexts.
+  - Evidence: 2026-03-05 IST - Added momentum-bias tie-breaker in `api/_lib/macroContextEngine.js` for near-neutral heuristic outputs; preserved backend `reason` in `adapterCore.js`; added symbol-level synthetic fallback + explicit context note in `app.js` when macro storage/context is unavailable.

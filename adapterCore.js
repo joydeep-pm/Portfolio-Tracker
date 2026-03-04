@@ -198,6 +198,253 @@
     };
   }
 
+  function normalizeChartReturnsPayload(payload) {
+    const record = normalizeComparisonPayload(payload);
+    return {
+      ...record,
+      source: requireString(payload.source || "unknown", "comparison.source"),
+    };
+  }
+
+  function normalizeDecisionMarker(value, path) {
+    const record = requireObject(value, path);
+    const action = requireString(record.action, `${path}.action`).toUpperCase();
+    if (!["BUY", "ACCUMULATE", "REDUCE", "SELL"].includes(action)) {
+      throw new DataValidationError(`${path}.action must be one of BUY/ACCUMULATE/REDUCE/SELL`);
+    }
+    const shape = requireString(record.shape, `${path}.shape`);
+    if (!["arrowUp", "arrowDown", "circle"].includes(shape)) {
+      throw new DataValidationError(`${path}.shape must be one of arrowUp/arrowDown/circle`);
+    }
+    const position = requireString(record.position, `${path}.position`);
+    if (!["aboveBar", "belowBar", "inBar"].includes(position)) {
+      throw new DataValidationError(`${path}.position must be one of aboveBar/belowBar/inBar`);
+    }
+    return {
+      time: requireNumber(record.time, `${path}.time`),
+      action,
+      confidence: requireNumber(record.confidence, `${path}.confidence`),
+      text: requireString(record.text, `${path}.text`),
+      color: requireString(record.color, `${path}.color`),
+      shape,
+      position,
+      source: requireString(record.source || "unknown", `${path}.source`),
+    };
+  }
+
+  function normalizeDecisionMarkersPayload(payload) {
+    const record = requireObject(payload, "charts.markers");
+    const markerExchange = record.exchange ? requireString(record.exchange, "charts.markers.exchange").toUpperCase() : null;
+    if (markerExchange && !EXCHANGES.includes(markerExchange)) {
+      throw new DataValidationError("charts.markers.exchange must be one of NSE/BSE");
+    }
+
+    const normalizedWindow = requireString(record.window || "1M", "charts.markers.window");
+    if (!COMPARE_WINDOWS.includes(normalizedWindow)) {
+      throw new DataValidationError("charts.markers.window must be one of 1D/5D/1M/6M/YTD");
+    }
+
+    return {
+      asOf: requireString(record.asOf, "charts.markers.asOf"),
+      symbol: record.symbol ? requireString(record.symbol, "charts.markers.symbol").toUpperCase() : null,
+      exchange: markerExchange,
+      clusterId: record.clusterId ? requireString(record.clusterId, "charts.markers.clusterId") : null,
+      window: normalizedWindow,
+      source: requireString(record.source || "unknown", "charts.markers.source"),
+      fallbackUsed: typeof record.fallbackUsed === "boolean" ? record.fallbackUsed : false,
+      markers: requireArray(record.markers || [], "charts.markers.markers").map((marker, index) =>
+        normalizeDecisionMarker(marker, `charts.markers.markers[${index}]`),
+      ),
+    };
+  }
+
+  function normalizePeerStock(value, path) {
+    const record = requireObject(value, path);
+    const exchange = normalizeExchange(record.exchange, `${path}.exchange`);
+    const returns = normalizeReturns(record.returns || makeZeroReturnsForPeer(), `${path}.returns`);
+    return {
+      symbol: requireString(record.symbol, `${path}.symbol`).toUpperCase(),
+      exchange,
+      name: requireString(record.name || record.symbol, `${path}.name`),
+      returns,
+      ...(record.competitorScore !== undefined
+        ? { competitorScore: requireNumber(record.competitorScore, `${path}.competitorScore`) }
+        : {}),
+    };
+  }
+
+  function makeZeroReturnsForPeer() {
+    return {
+      "1D": 0,
+      "1W": 0,
+      "1M": 0,
+      "6M": 0,
+      YTD: 0,
+    };
+  }
+
+  function normalizePeerRelativeStrengthPayload(payload) {
+    const record = requireObject(payload, "peers.relativeStrength");
+    const exchange = requireString(record.exchange || "all", "peers.relativeStrength.exchange").toLowerCase();
+    if (!["all", "nse", "bse"].includes(exchange)) {
+      throw new DataValidationError("peers.relativeStrength.exchange must be one of all/nse/bse");
+    }
+    const window = requireString(record.window || "1M", "peers.relativeStrength.window");
+    if (!COMPARE_WINDOWS.includes(window)) {
+      throw new DataValidationError("peers.relativeStrength.window must be one of 1D/5D/1M/6M/YTD");
+    }
+    const cluster = requireObject(record.cluster, "peers.relativeStrength.cluster");
+    const seriesBySymbolRaw = requireObject(record.seriesBySymbol, "peers.relativeStrength.seriesBySymbol");
+    const seriesBySymbol = {};
+    Object.keys(seriesBySymbolRaw).forEach((symbol) => {
+      seriesBySymbol[symbol] = requireArray(
+        seriesBySymbolRaw[symbol],
+        `peers.relativeStrength.seriesBySymbol.${symbol}`,
+      ).map((point, index) => normalizeSeriesPoint(point, `peers.relativeStrength.seriesBySymbol.${symbol}[${index}]`));
+    });
+
+    return {
+      asOf: requireString(record.asOf, "peers.relativeStrength.asOf"),
+      exchange,
+      window,
+      source: requireString(record.source || "unknown", "peers.relativeStrength.source"),
+      cluster: {
+        id: requireString(cluster.id, "peers.relativeStrength.cluster.id"),
+        name: requireString(cluster.name, "peers.relativeStrength.cluster.name"),
+        headId: requireString(cluster.headId, "peers.relativeStrength.cluster.headId"),
+        headName: requireString(cluster.headName, "peers.relativeStrength.cluster.headName"),
+      },
+      anchor: normalizePeerStock(record.anchor, "peers.relativeStrength.anchor"),
+      peers: requireArray(record.peers || [], "peers.relativeStrength.peers").map((peer, index) =>
+        normalizePeerStock(peer, `peers.relativeStrength.peers[${index}]`),
+      ),
+      seriesBySymbol,
+    };
+  }
+
+  function normalizeOptimalAllocationPayload(payload) {
+    const record = requireObject(payload, "quant.allocation");
+    const weightsRaw = requireObject(record.weights, "quant.allocation.weights");
+    const sharesRaw = requireObject(record.discrete_shares, "quant.allocation.discrete_shares");
+    const perfRaw = requireObject(record.portfolio_performance, "quant.allocation.portfolio_performance");
+
+    const weights = {};
+    Object.keys(weightsRaw).forEach((ticker) => {
+      const key = requireString(ticker, "quant.allocation.weights.key").toUpperCase();
+      weights[key] = requireNumber(weightsRaw[ticker], `quant.allocation.weights.${ticker}`);
+    });
+
+    const discreteShares = {};
+    Object.keys(sharesRaw).forEach((ticker) => {
+      const key = requireString(ticker, "quant.allocation.discrete_shares.key").toUpperCase();
+      const value = requireNumber(sharesRaw[ticker], `quant.allocation.discrete_shares.${ticker}`);
+      discreteShares[key] = Math.max(0, Math.floor(value));
+    });
+
+    return {
+      weights,
+      discrete_shares: discreteShares,
+      remaining_cash: requireNumber(record.remaining_cash, "quant.allocation.remaining_cash"),
+      portfolio_performance: {
+        expected_annual_return: requireNumber(
+          perfRaw.expected_annual_return,
+          "quant.allocation.portfolio_performance.expected_annual_return",
+        ),
+        annual_volatility: requireNumber(
+          perfRaw.annual_volatility,
+          "quant.allocation.portfolio_performance.annual_volatility",
+        ),
+        sharpe_ratio: requireNumber(perfRaw.sharpe_ratio, "quant.allocation.portfolio_performance.sharpe_ratio"),
+      },
+    };
+  }
+
+  function normalizeStrategyBacktestPayload(payload) {
+    const record = requireObject(payload, "quant.backtest");
+    const metrics = requireObject(record.metrics, "quant.backtest.metrics");
+    const curve = requireArray(record.equity_curve || [], "quant.backtest.equity_curve");
+
+    return {
+      tickers: requireArray(record.tickers || [], "quant.backtest.tickers").map((ticker, index) =>
+        requireString(ticker, `quant.backtest.tickers[${index}]`).toUpperCase(),
+      ),
+      lookback_years: requireNumber(record.lookback_years, "quant.backtest.lookback_years"),
+      initial_capital: requireNumber(record.initial_capital, "quant.backtest.initial_capital"),
+      metrics: {
+        win_rate: requireNumber(metrics.win_rate, "quant.backtest.metrics.win_rate"),
+        max_drawdown: requireNumber(metrics.max_drawdown, "quant.backtest.metrics.max_drawdown"),
+        cagr: requireNumber(metrics.cagr, "quant.backtest.metrics.cagr"),
+        sharpe_ratio: requireNumber(metrics.sharpe_ratio, "quant.backtest.metrics.sharpe_ratio"),
+      },
+      equity_curve: curve.map((point, index) => {
+        const row = requireObject(point, `quant.backtest.equity_curve[${index}]`);
+        return {
+          timestamp: requireString(row.timestamp, `quant.backtest.equity_curve[${index}].timestamp`),
+          value: requireNumber(row.value, `quant.backtest.equity_curve[${index}].value`),
+        };
+      }),
+    };
+  }
+
+  function normalizeEarningsCitation(value, path) {
+    const record = requireObject(value, path);
+    return {
+      rank: requireNumber(record.rank, `${path}.rank`),
+      score: requireNumber(record.score, `${path}.score`),
+      chunk_id: requireNumber(record.chunk_id, `${path}.chunk_id`),
+      text: requireString(record.text, `${path}.text`),
+    };
+  }
+
+  function normalizeEarningsChatPayload(payload) {
+    const record = requireObject(payload, "research.earningsChat");
+    return {
+      symbol: requireString(record.symbol, "research.earningsChat.symbol").toUpperCase(),
+      query: requireString(record.query, "research.earningsChat.query"),
+      answer: requireString(record.answer, "research.earningsChat.answer"),
+      model: requireString(record.model || "unknown", "research.earningsChat.model"),
+      citations: requireArray(record.citations || [], "research.earningsChat.citations").map((citation, index) =>
+        normalizeEarningsCitation(citation, `research.earningsChat.citations[${index}]`),
+      ),
+    };
+  }
+
+  function normalizeBasketLeg(value, path) {
+    const record = requireObject(value, path);
+    const action = requireString(record.action, `${path}.action`).toUpperCase();
+    if (!["SELL", "BUY"].includes(action)) {
+      throw new DataValidationError(`${path}.action must be BUY or SELL`);
+    }
+    return {
+      symbol: requireString(record.symbol, `${path}.symbol`).toUpperCase(),
+      action,
+      allocation_pct: requireNumber(record.allocation_pct, `${path}.allocation_pct`),
+    };
+  }
+
+  function normalizeNlpCommandPayload(payload) {
+    const record = requireObject(payload, "commands.interpret");
+    const intent = requireString(record.intent, "commands.interpret.intent").toLowerCase();
+    if (intent !== "rotate") {
+      throw new DataValidationError("commands.interpret.intent must be rotate");
+    }
+    const basket = requireObject(record.mock_basket, "commands.interpret.mock_basket");
+    return {
+      intent,
+      source_entity: requireString(record.source_entity, "commands.interpret.source_entity"),
+      target_entity: requireString(record.target_entity, "commands.interpret.target_entity"),
+      capital_pct: requireNumber(record.capital_pct, "commands.interpret.capital_pct"),
+      mock_basket: {
+        sell: requireArray(basket.sell || [], "commands.interpret.mock_basket.sell").map((item, index) =>
+          normalizeBasketLeg(item, `commands.interpret.mock_basket.sell[${index}]`),
+        ),
+        buy: requireArray(basket.buy || [], "commands.interpret.mock_basket.buy").map((item, index) =>
+          normalizeBasketLeg(item, `commands.interpret.mock_basket.buy[${index}]`),
+        ),
+      },
+    };
+  }
+
   function normalizeDecision(value, path) {
     const record = requireObject(value, path);
     const action = requireString(record.action, `${path}.action`).toUpperCase();
@@ -369,6 +616,8 @@
         };
       }),
       model: record.model ? requireString(record.model, "macro.context.model") : "unknown",
+      reason: record.reason ? requireString(record.reason, "macro.context.reason") : null,
+      dbPath: record.dbPath ? requireString(record.dbPath, "macro.context.dbPath") : null,
     };
   }
 
@@ -602,6 +851,103 @@
         });
         return normalizeComparisonPayload(payload);
       },
+      async fetchChartNormalizedReturns(params) {
+        const payload = await request("/charts/normalized-returns", {
+          clusterIds: (params?.clusterIds || []).join(","),
+          window: params?.window || "1M",
+          exchange: params?.exchange || "all",
+          points: params?.points || 40,
+        });
+        return normalizeChartReturnsPayload(payload);
+      },
+      async fetchDecisionMarkers(params) {
+        const payload = await request("/charts/decision-markers", {
+          symbol: params?.symbol || "",
+          symbolExchange: params?.symbolExchange || "",
+          clusterId: params?.clusterId || "",
+          window: params?.window || "1M",
+          exchange: params?.exchange || "all",
+          points: params?.points || 40,
+          limit: params?.limit || 60,
+        });
+        return normalizeDecisionMarkersPayload(payload);
+      },
+      async fetchPeerRelativeStrength(params) {
+        const payload = await request("/peers/relative-strength", {
+          symbol: params?.symbol || "",
+          exchange: params?.exchange || "all",
+          window: params?.window || "1M",
+          points: params?.points || 40,
+        });
+        return normalizePeerRelativeStrengthPayload(payload);
+      },
+      async fetchOptimalAllocation(tickersOrParams, capitalArg) {
+        const params = isObject(tickersOrParams)
+          ? tickersOrParams
+          : {
+              tickers: tickersOrParams,
+              capital: capitalArg,
+            };
+        const tickers = requireArray(params?.tickers || [], "quant.fetchOptimalAllocation.tickers").map((ticker, index) =>
+          requireString(ticker, `quant.fetchOptimalAllocation.tickers[${index}]`).toUpperCase(),
+        );
+        const totalCapital = requireNumber(params?.capital, "quant.fetchOptimalAllocation.capital");
+        const payload = await request("/quant/optimize-allocation", {}, {
+          method: "POST",
+          body: {
+            tickers,
+            total_capital: totalCapital,
+          },
+        });
+        return normalizeOptimalAllocationPayload(payload);
+      },
+      async fetchStrategyBacktest(tickersOrParams, optionsArg) {
+        const params = isObject(tickersOrParams)
+          ? tickersOrParams
+          : {
+              tickers: tickersOrParams,
+              ...(isObject(optionsArg) ? optionsArg : {}),
+            };
+        const tickers = requireArray(params?.tickers || [], "quant.fetchStrategyBacktest.tickers").map((ticker, index) =>
+          requireString(ticker, `quant.fetchStrategyBacktest.tickers[${index}]`).toUpperCase(),
+        );
+        const lookbackYears = params?.lookbackYears === undefined ? 5 : requireNumber(params.lookbackYears, "quant.fetchStrategyBacktest.lookbackYears");
+        const initialCapital = params?.initialCapital === undefined ? 100000 : requireNumber(params.initialCapital, "quant.fetchStrategyBacktest.initialCapital");
+        const payload = await request("/quant/backtests/thematic-rotation", {}, {
+          method: "POST",
+          body: {
+            tickers,
+            lookback_years: Math.max(1, Math.floor(lookbackYears)),
+            initial_capital: initialCapital,
+          },
+        });
+        return normalizeStrategyBacktestPayload(payload);
+      },
+      async sendEarningsQuery(symbol, query, optionsArg) {
+        const symbolValue = requireString(symbol, "research.sendEarningsQuery.symbol").toUpperCase();
+        const queryValue = requireString(query, "research.sendEarningsQuery.query");
+        const options = isObject(optionsArg) ? optionsArg : {};
+        const topK = options.topK === undefined ? 5 : requireNumber(options.topK, "research.sendEarningsQuery.topK");
+        const payload = await request("/research/earnings/chat", {}, {
+          method: "POST",
+          body: {
+            symbol: symbolValue,
+            query: queryValue,
+            top_k: Math.max(1, Math.floor(topK)),
+          },
+        });
+        return normalizeEarningsChatPayload(payload);
+      },
+      async submitNlpCommand(commandText) {
+        const command = requireString(commandText, "commands.submitNlpCommand.commandText");
+        const payload = await request("/commands/interpret", {}, {
+          method: "POST",
+          body: {
+            command,
+          },
+        });
+        return normalizeNlpCommandPayload(payload);
+      },
       async fetchPortfolioBootstrap(params) {
         const payload = await request("/portfolio/bootstrap", {
           exchange: params?.exchange || "all",
@@ -663,6 +1009,13 @@
     normalizeBootstrapPayload,
     normalizePollPayload,
     normalizeComparisonPayload,
+    normalizeChartReturnsPayload,
+    normalizeDecisionMarkersPayload,
+    normalizePeerRelativeStrengthPayload,
+    normalizeOptimalAllocationPayload,
+    normalizeStrategyBacktestPayload,
+    normalizeEarningsChatPayload,
+    normalizeNlpCommandPayload,
     normalizePortfolioBootstrapPayload,
     normalizePortfolioPollPayload,
     normalizePortfolioDecisionsPayload,
