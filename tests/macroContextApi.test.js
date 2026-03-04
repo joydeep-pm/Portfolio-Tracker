@@ -4,7 +4,7 @@ const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 
-const handler = require("../api/macro-context");
+const handler = require("../api/macro");
 const { openDatabase, ensureSchema } = require("../api/_lib/macroHarvester");
 
 function createRes() {
@@ -60,7 +60,7 @@ test("macro-context analyze GET returns contract payload", async () => {
       {
         method: "GET",
         query: {
-          route: "analyze",
+          route: "context",
           symbol: "SBIN",
           exchange: "all",
         },
@@ -98,7 +98,7 @@ test("macro-context analyze POST supports theme hint payload", async () => {
     await handler(
       {
         method: "POST",
-        query: { route: "analyze" },
+        query: { route: "context" },
         body: {
           exchange: "all",
           symbol: "SBIN",

@@ -143,6 +143,13 @@ const COMPARE_COLOR_PALETTE = [
 const WHATS_NEW_FEED = [
   {
     date: "2026-03-04",
+    title: "Macro Context Backend Reliability Fix",
+    detail:
+      "Macro & Regulatory Context now fails open with neutral output when storage is unavailable; production route was consolidated and redeployed to eliminate 500 errors.",
+    targetView: "portfolio",
+  },
+  {
+    date: "2026-03-04",
     title: "Macro & Regulatory Context Tab",
     detail:
       "Signal Rationale now includes a dedicated macro/regulatory view powered by RBI/SEBI news ingestion with sentiment, catalyst, and impacted micro-cluster mapping.",

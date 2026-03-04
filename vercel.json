@@ -1,4 +1,5 @@
 {
+  "framework": null,
   "rewrites": [
     { "source": "/api/angel/callback", "destination": "/api/angel?route=callback" },
     { "source": "/api/angel/postback", "destination": "/api/angel?route=postback" },
@@ -26,7 +27,7 @@
 
     { "source": "/api/v1/macro/harvest", "destination": "/api/macro?route=harvest" },
     { "source": "/api/v1/macro/latest", "destination": "/api/macro?route=latest" },
-    { "source": "/api/v1/macro/context", "destination": "/api/macro-context?route=analyze" },
+    { "source": "/api/v1/macro/context", "destination": "/api/macro?route=context" },
 
     { "source": "/api/v1/orders/preview", "destination": "/api/orders?route=preview" },
     { "source": "/api/v1/orders/submit", "destination": "/api/orders?route=submit" },

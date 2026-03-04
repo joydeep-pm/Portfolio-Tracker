@@ -644,3 +644,29 @@
   - `node --check api/_lib/macroHarvester.js api/_lib/macroContextEngine.js api/macro-context.js`
   - `node --test tests/macroContextEngine.test.js tests/macroContextApi.test.js tests/macroHarvester.test.js tests/macroApi.test.js` (11/11 pass)
   - `node --test tests/*.test.js` (78/78 pass)
+
+## Macro Context 500 Deployment Hotfix Plan (2026-03-04)
+- [x] Collapse `macro-context` serverless handler into existing `macro` handler to reduce total function count for Vercel Hobby cap.
+- [x] Update route rewrites/tests to use `/api/macro?route=context` for `/api/v1/macro/context`.
+- [x] Keep fail-open behavior for storage errors (`200` neutral payload) to prevent UI hard-fail.
+- [x] Run targeted + full test suite and verify endpoint contract locally.
+- [x] Deploy to production and verify `/api/v1/macro/context` no longer returns `500`.
+
+## Macro Context 500 Verify Plan Check-In
+- Scope: production availability hotfix only; no UI redesign and no trading execution path changes.
+- Success criterion: macro context panel stops showing backend `500`, and endpoint returns `200` with either contextual or neutral payload.
+- Risk: function consolidation may impact route-specific tests; mitigate with contract tests before deploy.
+
+## Macro Context 500 Deployment Hotfix Review
+- Code updates:
+  - `api/macro.js` (added `route=context` analyzer path and fail-open storage handling)
+  - `api/macro-context.js` (removed to reduce serverless function count)
+  - `vercel.json` (rewired `/api/v1/macro/context` to `/api/macro?route=context`)
+  - `tests/macroContextApi.test.js` (route/handler alignment)
+  - `components/MacroContextPanel.tsx` (endpoint default aligned to `/api/v1/macro/context`)
+- Validation:
+  - `node --test tests/macroContextApi.test.js tests/macroContextEngine.test.js tests/macroApi.test.js` (6/6 pass)
+  - `node --test tests/*.test.js` (78/78 pass)
+  - `npx vercel build` -> `.vercel/output/functions` count = `9`
+  - `npx vercel --prod --yes` deployed and aliased to `https://portfolio-tracker-kappa-woad.vercel.app`
+  - `curl -i https://portfolio-tracker-kappa-woad.vercel.app/api/v1/macro/context?symbol=DEEPAKNTR&exchange=all` now returns `200` (no backend `500`)

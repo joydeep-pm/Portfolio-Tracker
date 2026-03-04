@@ -93,7 +93,7 @@ export function MacroContextPanel({
   symbol,
   theme,
   className = "",
-  endpoint = "/api/v1/macro-context",
+  endpoint = "/api/v1/macro/context",
 }: MacroContextPanelProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
