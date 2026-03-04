@@ -62,3 +62,5 @@
 - Preventive rule: derive symbol-specific theme hints from holdings-to-theme mapping when explicit theme input is missing.
 - User correction: asked whether all four Angel env vars are required when pricing tier is free and focus is market feed.
 - Preventive rule: distinguish commercial pricing from auth requirements; always state the minimal credential set required by the implemented auth flow and clearly mark unused keys.
+- User correction: requested hybrid mode (Zerodha portfolio ownership + Angel market feed), not full provider switch.
+- Preventive rule: when multiple implementation options are offered, wait for explicit option selection and implement exactly that path before adding broader provider migration work.

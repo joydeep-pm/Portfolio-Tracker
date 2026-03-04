@@ -260,6 +260,8 @@
 
   function normalizePortfolioBootstrapPayload(payload) {
     const record = requireObject(payload, "portfolio.bootstrap");
+    const overlayRaw = record.angelOverlayActive;
+    const overlayEnabled = overlayRaw === undefined ? false : requireBoolean(overlayRaw, "portfolio.bootstrap.angelOverlayActive");
 
     return {
       asOf: requireString(record.asOf, "portfolio.bootstrap.asOf"),
@@ -274,6 +276,8 @@
       connected: requireBoolean(record.connected, "portfolio.bootstrap.connected"),
       provider: requireString(record.provider, "portfolio.bootstrap.provider"),
       providerMode: requireString(record.providerMode, "portfolio.bootstrap.providerMode"),
+      marketDataProvider: requireString(record.marketDataProvider || record.provider, "portfolio.bootstrap.marketDataProvider"),
+      angelOverlayActive: overlayEnabled,
       user: isObject(record.user)
         ? {
             userId: record.user.userId ? requireString(record.user.userId, "portfolio.bootstrap.user.userId") : null,
@@ -286,6 +290,8 @@
   function normalizePortfolioPollPayload(payload) {
     const record = requireObject(payload, "portfolio.poll");
     const updates = requireObject(record.updates || {}, "portfolio.poll.updates");
+    const overlayRaw = record.angelOverlayActive;
+    const overlayEnabled = overlayRaw === undefined ? false : requireBoolean(overlayRaw, "portfolio.poll.angelOverlayActive");
 
     return {
       asOf: requireString(record.asOf, "portfolio.poll.asOf"),
@@ -302,6 +308,8 @@
       connected: requireBoolean(record.connected, "portfolio.poll.connected"),
       provider: requireString(record.provider, "portfolio.poll.provider"),
       providerMode: requireString(record.providerMode, "portfolio.poll.providerMode"),
+      marketDataProvider: requireString(record.marketDataProvider || record.provider, "portfolio.poll.marketDataProvider"),
+      angelOverlayActive: overlayEnabled,
     };
   }
 
@@ -516,6 +524,8 @@
       connected: normalizedPoll.connected,
       provider: normalizedPoll.provider,
       providerMode: normalizedPoll.providerMode,
+      marketDataProvider: normalizedPoll.marketDataProvider || stateRecord.marketDataProvider || normalizedPoll.provider,
+      angelOverlayActive: Boolean(normalizedPoll.angelOverlayActive),
       user: stateRecord.user || { userId: null, userName: null },
     };
   }

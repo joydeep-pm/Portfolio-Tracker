@@ -143,6 +143,13 @@ const COMPARE_COLOR_PALETTE = [
 const WHATS_NEW_FEED = [
   {
     date: "2026-03-04",
+    title: "Zerodha + Angel Hybrid Feed",
+    detail:
+      "Portfolio ownership remains on Zerodha while market quote enrichment (LTP/close) can be overlaid from live Angel SmartAPI sessions.",
+    targetView: "portfolio",
+  },
+  {
+    date: "2026-03-04",
     title: "Angel One Live Session Routes Added",
     detail:
       "Backend now supports Angel SmartAPI session lifecycle (`/api/angel/session`, `/api/angel/session/status`, `/api/angel/logout`) with server-side TOTP generation.",
@@ -316,6 +323,8 @@ let portfolioState = {
   connected: false,
   provider: "",
   providerMode: "",
+  marketDataProvider: "",
+  angelOverlayActive: false,
   user: { userId: null, userName: null },
   selectedKey: "",
   rationaleTab: "decision",
@@ -818,6 +827,8 @@ function syntheticPortfolioBootstrapPayload() {
     connected: false,
     provider: "synthetic",
     providerMode: "demo",
+    marketDataProvider: "synthetic",
+    angelOverlayActive: false,
     user: { userId: null, userName: "Demo User" },
   });
 }
@@ -841,6 +852,8 @@ function currentPortfolioStateAsAdapterDTO() {
     connected: portfolioState.connected,
     provider: portfolioState.provider || "synthetic",
     providerMode: portfolioState.providerMode || "demo",
+    marketDataProvider: portfolioState.marketDataProvider || portfolioState.provider || "synthetic",
+    angelOverlayActive: Boolean(portfolioState.angelOverlayActive),
     user: portfolioState.user || { userId: null, userName: null },
   };
 }
@@ -866,6 +879,8 @@ function applyPortfolioBootstrap(payload) {
   portfolioState.connected = payload.connected;
   portfolioState.provider = payload.provider;
   portfolioState.providerMode = payload.providerMode;
+  portfolioState.marketDataProvider = payload.marketDataProvider || payload.provider;
+  portfolioState.angelOverlayActive = Boolean(payload.angelOverlayActive);
   portfolioState.user = payload.user || { userId: null, userName: null };
 
   const validKeys = new Set(portfolioState.rows.map((row) => row.key));
@@ -1705,7 +1720,9 @@ function renderPortfolioStatusChips() {
   if (!portfolioSourceChip || !portfolioConnectionChip) return;
   const providerLabel = portfolioState.provider || runtimeState.adapterMode || "synthetic";
   const modeLabel = portfolioState.providerMode || (portfolioState.connected ? "live" : "demo");
-  portfolioSourceChip.textContent = `Source: ${providerLabel} (${modeLabel})`;
+  const marketDataLabel = portfolioState.marketDataProvider || providerLabel;
+  const suffix = marketDataLabel && marketDataLabel !== providerLabel ? ` • Feed: ${marketDataLabel}` : "";
+  portfolioSourceChip.textContent = `Source: ${providerLabel} (${modeLabel})${suffix}`;
   portfolioSourceChip.classList.remove("status-pill-alert", "status-pill-warn", "status-pill-ok", "status-pill-muted");
   portfolioSourceChip.classList.add("status-pill-muted");
 

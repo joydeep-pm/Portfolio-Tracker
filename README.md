@@ -400,6 +400,28 @@ Response includes env presence checks for:
    - `GET /api/angel/session/status`
 4. Expect `connected: true` and non-empty `hasFeedToken`.
 
+### Option 2: Zerodha Portfolio + Angel Market Data
+
+This repo now supports keeping Zerodha as the portfolio source while overlaying Angel market quotes:
+
+- Holdings/positions source: Zerodha (`kite-direct`)
+- Quote source (LTP/close): Angel when Angel session is active
+- Fallback: Zerodha quote path, then demo quote path
+
+How to use:
+
+1. Keep `BROKER_PROVIDER=kite-direct`.
+2. Ensure Angel env vars are present (`ANGEL_API_KEY`, `ANGEL_CLIENT_CODE`, `ANGEL_PIN`, `ANGEL_TOTP_SECRET`).
+3. Create Angel session:
+   - `POST /api/angel/session`
+4. Call portfolio endpoints as usual:
+   - `GET /api/v1/portfolio/bootstrap`
+   - `GET /api/v1/portfolio/poll`
+
+Portfolio payload now includes:
+- `marketDataProvider` (`angel`, `kite`, or `demo`)
+- `angelOverlayActive` (`true|false`)
+
 ## Zerodha Session Notes
 
 - Zerodha session is treated as expired at the next `06:00 IST` cutoff.

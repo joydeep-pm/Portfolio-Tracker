@@ -2,12 +2,15 @@ const crypto = require("node:crypto");
 
 const mockMarket = require("../mockMarket");
 const { instrumentKey } = require("../portfolioAssembler");
+const { ANGEL_ROOT, buildHeaders } = require("../angelSmartApi");
 
 const WINDOWS = ["1D", "1W", "1M", "6M", "YTD"];
 const KITE_API_BASE = "https://api.kite.trade";
 const HISTORY_TTL_MS = 10 * 60 * 1000;
+const ANGEL_SYMBOL_TTL_MS = 60 * 60 * 1000;
 
 const historyCache = new Map();
+const angelSymbolCache = new Map();
 
 function toNumber(value, fallback = 0) {
   const parsed = Number.parseFloat(value);
@@ -59,6 +62,17 @@ function deterministicReturn(symbol, windowKey) {
   return Number.parseFloat((normalized * span).toFixed(2));
 }
 
+function toBool(value) {
+  const key = String(value || "").trim().toLowerCase();
+  return key === "1" || key === "true" || key === "yes" || key === "y";
+}
+
+function mapAngelExchange(exchange) {
+  const value = String(exchange || "NSE").toUpperCase();
+  if (value === "BSE") return "BSE";
+  return "NSE";
+}
+
 function mockReturnsByKey(instruments) {
   const view = mockMarket.buildView("all");
   const bySymbol = new Map(view.stocks.map((stock) => [instrumentKey(stock.exchange, stock.symbol), stock.returns]));
@@ -102,6 +116,21 @@ function createKiteDirectProvider(options = {}) {
   const apiKey = options.apiKey || process.env.KITE_API_KEY || "";
   const accessToken = options.accessToken || session.accessToken || "";
   const connected = Boolean(fetchImpl && apiKey && accessToken);
+  const angelSession = session.angel || {};
+  const angelApiKey = options.angelApiKey || process.env.ANGEL_API_KEY || "";
+  const overlaySetting = options.enableAngelMarketData ?? process.env.ENABLE_ANGEL_MARKET_DATA;
+  const angelOverlayEnabled =
+    overlaySetting === undefined || overlaySetting === null || String(overlaySetting).trim() === ""
+      ? true
+      : toBool(overlaySetting);
+  const angelConnected = Boolean(
+    fetchImpl &&
+      angelOverlayEnabled &&
+      angelApiKey &&
+      angelSession.connected &&
+      angelSession.accessToken &&
+      angelSession.clientCode,
+  );
 
   async function kiteGet(pathname, query = {}) {
     if (!connected) {
@@ -124,6 +153,87 @@ function createKiteDirectProvider(options = {}) {
     });
 
     return parseKiteResponse(response);
+  }
+
+  async function angelRequest(pathname, method = "GET", body = null) {
+    if (!angelConnected) {
+      throw new Error("Angel market overlay is not connected");
+    }
+
+    const methodKey = String(method || "GET").toUpperCase();
+    const query = methodKey === "GET" && body && typeof body === "object" ? `?${new URLSearchParams(body).toString()}` : "";
+    const response = await fetchImpl(`${ANGEL_ROOT}${pathname}${query}`, {
+      method: methodKey,
+      headers: buildHeaders(angelApiKey, angelSession.accessToken),
+      body: methodKey === "GET" ? undefined : body ? JSON.stringify(body) : undefined,
+    });
+
+    const raw = await response.text();
+    let payload = {};
+    try {
+      payload = raw ? JSON.parse(raw) : {};
+    } catch (_error) {
+      payload = {
+        status: false,
+        message: "angel-non-json-response",
+      };
+    }
+
+    if (!response.ok || payload?.status === false) {
+      throw new Error(payload?.message || `Angel request failed (${response.status})`);
+    }
+
+    return payload;
+  }
+
+  async function resolveAngelSymbolToken(item) {
+    const key = instrumentKey(item.exchange, item.symbol);
+    const cached = angelSymbolCache.get(key);
+    if (cached && Date.now() - cached.updatedAtMs <= ANGEL_SYMBOL_TTL_MS) {
+      return cached.token;
+    }
+
+    try {
+      const payload = await angelRequest("/rest/secure/angelbroking/order/v1/searchScrip", "POST", {
+        exchange: mapAngelExchange(item.exchange),
+        searchscrip: String(item.symbol || "").toUpperCase(),
+      });
+      const rows = Array.isArray(payload?.data) ? payload.data : [];
+      const exact = rows.find((row) => String(row.tradingsymbol || "").toUpperCase() === String(item.symbol || "").toUpperCase());
+      const best = exact || rows[0] || null;
+      const token = best ? String(best.symboltoken || "").trim() : "";
+      if (!token) return "";
+      angelSymbolCache.set(key, {
+        token,
+        updatedAtMs: Date.now(),
+      });
+      return token;
+    } catch (_error) {
+      return "";
+    }
+  }
+
+  async function fetchAngelQuote(item) {
+    try {
+      const symbolToken = await resolveAngelSymbolToken(item);
+      if (!symbolToken) return null;
+      const payload = await angelRequest("/rest/secure/angelbroking/order/v1/getLtpData", "POST", {
+        exchange: mapAngelExchange(item.exchange),
+        tradingsymbol: String(item.symbol || "").toUpperCase(),
+        symboltoken: symbolToken,
+      });
+
+      const data = payload?.data || {};
+      const ltp = toNumber(data.ltp, 0);
+      const previousClose = toNumber(data.close ?? data.prevclose ?? data.previousclose, ltp);
+      if (!ltp) return null;
+      return {
+        lastPrice: ltp,
+        previousClose,
+      };
+    } catch (_error) {
+      return null;
+    }
   }
 
   async function getHoldings() {
@@ -151,10 +261,30 @@ function createKiteDirectProvider(options = {}) {
     const list = Array.isArray(instruments) ? instruments : [];
     if (!list.length) return {};
 
+    const output = {};
+
+    if (angelConnected) {
+      await Promise.all(
+        list.map(async (item) => {
+          const key = instrumentKey(item.exchange, item.symbol);
+          const quote = await fetchAngelQuote(item);
+          if (!quote) return;
+          output[key] = {
+            ...quote,
+            source: "angel",
+          };
+        }),
+      );
+    }
+
+    const unresolved = list.filter((item) => {
+      const key = instrumentKey(item.exchange, item.symbol);
+      return !output[key];
+    });
+
     if (!connected) {
       const base = mockReturnsByKey(list);
-      const output = {};
-      list.forEach((item, index) => {
+      unresolved.forEach((item, index) => {
         const key = instrumentKey(item.exchange, item.symbol);
         const oneDay = toNumber(base[key]?.["1D"], 0);
         const average = 120 + index * 31;
@@ -162,6 +292,7 @@ function createKiteDirectProvider(options = {}) {
         output[key] = {
           lastPrice: Number.parseFloat(average.toFixed(2)),
           previousClose: Number.parseFloat(previousClose.toFixed(2)),
+          source: "demo",
         };
       });
       return output;
@@ -169,9 +300,11 @@ function createKiteDirectProvider(options = {}) {
 
     try {
       const search = new URLSearchParams();
-      list.forEach((item) => {
+      unresolved.forEach((item) => {
         search.append("i", `${String(item.exchange || "NSE").toUpperCase()}:${String(item.symbol || "").toUpperCase()}`);
       });
+
+      if (!search.toString()) return output;
 
       const response = await fetchImpl(`${KITE_API_BASE}/quote?${search.toString()}`, {
         method: "GET",
@@ -183,9 +316,8 @@ function createKiteDirectProvider(options = {}) {
 
       const payload = await parseKiteResponse(response);
       const data = payload.data || {};
-      const output = {};
 
-      list.forEach((item) => {
+      unresolved.forEach((item) => {
         const key = instrumentKey(item.exchange, item.symbol);
         const quoteKey = `${String(item.exchange || "NSE").toUpperCase()}:${String(item.symbol || "").toUpperCase()}`;
         const quote = data[quoteKey] || {};
@@ -194,12 +326,13 @@ function createKiteDirectProvider(options = {}) {
           lastPrice: toNumber(quote.last_price, previousClose),
           previousClose,
           instrumentToken: toNumber(quote.instrument_token, item.instrumentToken || 0),
+          source: "kite",
         };
       });
 
       return output;
     } catch (_error) {
-      return {};
+      return output;
     }
   }
 
@@ -306,6 +439,8 @@ function createKiteDirectProvider(options = {}) {
         provider: "kite-direct",
         mode: connected ? "live" : "demo",
         connected,
+        marketDataProvider: angelConnected ? "angel" : connected ? "kite" : "demo",
+        angelOverlayActive: angelConnected,
       };
     },
   };

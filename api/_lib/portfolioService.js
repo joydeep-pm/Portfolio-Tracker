@@ -60,6 +60,8 @@ function addPortfolioMetadata(snapshot, details) {
     connected: Boolean(session.connected || providerMeta.connected),
     provider: providerMeta.provider,
     providerMode: providerMeta.mode,
+    marketDataProvider: providerMeta.marketDataProvider || providerMeta.provider,
+    angelOverlayActive: Boolean(providerMeta.angelOverlayActive),
     user: {
       userId: session.userId || null,
       userName: session.userName || null,
@@ -357,6 +359,8 @@ async function pollPortfolio(options = {}) {
     connected: filteredSnapshot.connected,
     provider: filteredSnapshot.provider,
     providerMode: filteredSnapshot.providerMode,
+    marketDataProvider: filteredSnapshot.marketDataProvider || filteredSnapshot.provider,
+    angelOverlayActive: Boolean(filteredSnapshot.angelOverlayActive),
   };
 }
 

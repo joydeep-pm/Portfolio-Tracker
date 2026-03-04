@@ -16,6 +16,7 @@ const CONFIG_KEYS = [
   { key: "ANGEL_CLIENT_CODE", group: "angel_optional", required: false },
   { key: "ANGEL_PIN", group: "angel_optional", required: false, secret: true },
   { key: "ANGEL_TOTP_SECRET", group: "angel_optional", required: false, secret: true },
+  { key: "ENABLE_ANGEL_MARKET_DATA", group: "angel_optional", required: false },
 ];
 
 function toBool(value) {
@@ -53,6 +54,14 @@ function inspectConfig(env = process.env) {
   const provider = normalizeProvider(env.BROKER_PROVIDER);
   const liveTradingEnabled = toBool(env.ENABLE_LIVE_TRADING);
   const pkscreenerLive = toBool(env.ENABLE_PKSCREENER_LIVE);
+  const angelMarketDataEnabledRaw = env.ENABLE_ANGEL_MARKET_DATA;
+  const angelMarketDataEnabled =
+    angelMarketDataEnabledRaw === undefined || String(angelMarketDataEnabledRaw).trim() === ""
+      ? true
+      : toBool(angelMarketDataEnabledRaw);
+  const angelMarketDataReady = Boolean(
+    byKey.ANGEL_API_KEY?.present && byKey.ANGEL_CLIENT_CODE?.present && byKey.ANGEL_PIN?.present && byKey.ANGEL_TOTP_SECRET?.present,
+  );
 
   const zerodhaLiveReady = Boolean(byKey.KITE_API_KEY?.present && byKey.KITE_API_SECRET?.present);
   const pkscreenerLiveReady = !pkscreenerLive || Boolean(byKey.PKSCREENER_CMD?.present);
@@ -64,6 +73,9 @@ function inspectConfig(env = process.env) {
     pkscreenerLive && !pkscreenerLiveReady ? "ENABLE_PKSCREENER_LIVE=true requires PKSCREENER_CMD." : null,
     liveTradingEnabled && !liveTradingReady ? "ENABLE_LIVE_TRADING=true requires Zerodha live credentials." : null,
     !supabaseReady ? "Supabase snapshot persistence is disabled (memory fallback active)." : null,
+    angelMarketDataEnabled && !angelMarketDataReady
+      ? "Angel market-data overlay is enabled but ANGEL_* credentials are incomplete; quote feed falls back to Zerodha/demo."
+      : null,
   ].filter(Boolean);
 
   return {
@@ -76,6 +88,8 @@ function inspectConfig(env = process.env) {
       supabaseReady,
       liveTradingEnabled,
       liveTradingReady,
+      angelMarketDataEnabled,
+      angelMarketDataReady,
     },
     warnings,
   };

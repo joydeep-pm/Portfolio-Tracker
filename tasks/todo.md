@@ -727,3 +727,27 @@
     - `GET /api/angel/session/status` returns `connected: true` for same client session via secure cookie persistence.
   - Post-fix note:
     - Fixed `FUNCTION_INVOCATION_FAILED` caused by sending request body with `GET` to SmartAPI profile endpoint.
+
+## Angel Market Data Overlay Plan (Option 2) (2026-03-04)
+- [x] Keep Zerodha (`kite-direct`) as holdings/positions source and decision baseline.
+- [x] Add optional Angel market-data overlay for quotes (LTP/close) inside `kite-direct` provider.
+- [x] Source Angel session from secure cookies on portfolio API requests without switching broker provider.
+- [x] Add env/runtime flags and provider metadata to show when Angel overlay is active.
+- [x] Add tests for overlay toggles and fallback behavior; run full regression suite.
+
+## Angel Market Data Overlay Verify Plan Check-In
+- Scope: only market data enrichment path; no order flow and no replacement of Zerodha portfolio ownership.
+- Success criteria: with Angel session + flag enabled, portfolio quotes come from Angel when available, and fallback remains stable to Zerodha/mock when unavailable.
+
+## Angel Market Data Overlay Review
+- Code updates:
+  - `api/_lib/brokers/kiteDirectProvider.js` (Angel quote overlay + fallback order + metadata)
+  - `api/portfolio.js` (reads Angel session cookies alongside Zerodha session)
+  - `api/_lib/portfolioService.js` (returns `marketDataProvider`, `angelOverlayActive`)
+  - `adapterCore.js` + `app.js` (consumes/displays overlay metadata in Portfolio status chip)
+  - `api/_lib/configHealth.js` + `.env.example` + `README.md` (config/docs updates)
+  - `tests/kiteAngelOverlay.test.js` (overlay behavior + fallback tests)
+- Validation:
+  - `node --check api/_lib/brokers/kiteDirectProvider.js api/_lib/portfolioService.js api/portfolio.js adapterCore.js app.js api/_lib/configHealth.js`
+  - `node --test tests/kiteAngelOverlay.test.js tests/providerFactory.test.js tests/mockApi.test.js` (10/10 pass)
+  - `node --test tests/*.test.js` (83/83 pass)

@@ -12,9 +12,35 @@ function sessionFromRequest(req) {
   const userId = String(cookies.kite_user_id || "").trim();
   const userName = String(cookies.kite_user_name || "").trim();
   const expiresAt = String(cookies.kite_expires_at || "").trim();
+  const angelJwtToken = String(cookies.pt_angel_jwt || "").trim();
+  const angelRefreshToken = String(cookies.pt_angel_refresh || "").trim();
+  const angelFeedToken = String(cookies.pt_angel_feed || "").trim();
+  const angelClientCode = String(cookies.pt_angel_client || "").trim();
+  const angelExpiresAt = String(cookies.pt_angel_expires || "").trim();
+  const angelExpiresMs = new Date(angelExpiresAt).getTime();
+  const angelConnected = Boolean(angelJwtToken && Number.isFinite(angelExpiresMs) && Date.now() < angelExpiresMs);
 
-  if (!accessToken) return null;
-  if (isSessionExpired({ expiresAt })) return null;
+  if (!accessToken || isSessionExpired({ expiresAt })) {
+    return angelConnected
+      ? {
+          connected: false,
+          accessToken: "",
+          userId: null,
+          userName: null,
+          expiresAt: null,
+          provider: "kite-direct",
+          angel: {
+            connected: true,
+            accessToken: angelJwtToken,
+            refreshToken: angelRefreshToken,
+            feedToken: angelFeedToken,
+            clientCode: angelClientCode || null,
+            expiresAt: angelExpiresAt || null,
+          },
+        }
+      : null;
+  }
+
   return {
     connected: true,
     accessToken,
@@ -22,6 +48,14 @@ function sessionFromRequest(req) {
     userName: userName || null,
     expiresAt: expiresAt || null,
     provider: "kite-direct",
+    angel: {
+      connected: angelConnected,
+      accessToken: angelJwtToken,
+      refreshToken: angelRefreshToken,
+      feedToken: angelFeedToken,
+      clientCode: angelClientCode || null,
+      expiresAt: angelExpiresAt || null,
+    },
   };
 }
 
