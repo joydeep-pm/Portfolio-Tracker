@@ -133,6 +133,14 @@ test("angel session route generates and reports connected state with mocked Smar
     assert.equal(statusRes.statusCode, 200);
     assert.equal(statusRes.body.connected, true);
 
+    const reusedRes = createRes();
+    await angelHandler({ method: "POST", query: { route: "session" }, body: {} }, reusedRes);
+    assert.equal(reusedRes.statusCode, 200);
+    assert.equal(reusedRes.body.reused, true);
+    const reusedCookies = reusedRes.getHeader("set-cookie");
+    assert.equal(Array.isArray(reusedCookies), true);
+    assert.equal(reusedCookies.some((cookie) => String(cookie).includes("pt_angel_jwt=")), true);
+
     assert.equal(calls.some((item) => item.includes("/loginByPassword")), true);
     assert.equal(calls.some((item) => item.includes("/getProfile")), true);
   } finally {

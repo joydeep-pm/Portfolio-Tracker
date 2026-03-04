@@ -172,6 +172,9 @@ module.exports = async function handler(req, res) {
     const body = await parseJsonBody(req);
     const force = String(body.force || req.query?.force || "").toLowerCase() === "true";
     if (!force && isSessionAlive()) {
+      // Always re-issue cookies for warm-session reuse so downstream routes (portfolio)
+      // receive Angel auth context in the current client session.
+      writeSessionCookies(res);
       return json(res, 200, {
         ok: true,
         provider: "angel-one",
