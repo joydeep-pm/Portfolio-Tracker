@@ -47,3 +47,5 @@
 - Preventive rule: keep `.table-head` and `.cluster-row` on an identical fixed-column grid template; avoid mixing `fr` sizing in metric columns for dense heatmaps.
 - User correction: "What's New" should be a standalone page, not embedded only inside Themes.
 - Preventive rule: when a section drives navigation/actions across multiple workflows, promote it to a dedicated top-nav view instead of burying it inside another page.
+- User correction: UI claims must clearly differentiate pre-existing screens vs newly delivered plan-derived changes.
+- Preventive rule: when summarizing delivery, include a visible source-to-feature traceability block in-product (repo source -> module path -> UI/API surface).

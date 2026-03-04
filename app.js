@@ -143,6 +143,12 @@ const COMPARE_COLOR_PALETTE = [
 const WHATS_NEW_FEED = [
   {
     date: "2026-03-04",
+    title: "Plan Traceability Matrix Added",
+    detail: "What’s New now maps each referenced GitHub source to active modules, APIs, and UI surfaces in this project.",
+    targetView: "whatsnew",
+  },
+  {
+    date: "2026-03-04",
     title: "Dedicated What's New Page",
     detail: "Release updates now live on a separate top-nav page so roadmap changes are easier to scan.",
     targetView: "whatsnew",
@@ -170,6 +176,65 @@ const WHATS_NEW_FEED = [
     title: "Hotspot + Agent Engine",
     detail: "Hotspot ranking and multi-agent recommendations are available via APIs and UI flows.",
     targetView: "comparison",
+  },
+];
+
+const PLAN_TRACE_ITEMS = [
+  {
+    wave: "Wave 3",
+    source: "mohdasif2294/portfolio-copilot",
+    integrated: "LangGraph-style orchestrator + portfolio workflow",
+    modules: ["api/_lib/multiAgentEngine.js", "api/v1/agents/analyze"],
+    uiSurface: "Portfolio Signals",
+    targetView: "portfolio",
+  },
+  {
+    wave: "Wave 3",
+    source: "rooneyrulz/agentic-stock-research-system",
+    integrated: "Market/news/recommendation consensus + weighted risk scoring",
+    modules: ["api/_lib/newsRagStore.js", "api/_lib/multiAgentEngine.js"],
+    uiSurface: "Portfolio Signals",
+    targetView: "portfolio",
+  },
+  {
+    wave: "Wave 3",
+    source: "mayankthole/Dhan-MCP-Trades",
+    integrated: "Natural language intent routing adapted to Zerodha MCP flows",
+    modules: ["api/_lib/agentRouter.js", "api/v1/agents/intent"],
+    uiSurface: "What's New + API Router",
+    targetView: "whatsnew",
+  },
+  {
+    wave: "Wave 2",
+    source: "pkjmesra/PKScreener",
+    integrated: "Technical scan adapter for breakout/consolidation/momentum flags",
+    modules: ["api/_lib/pkscreenerAdapter.js", "api/v1/hotspots/snapshot"],
+    uiSurface: "Comparison",
+    targetView: "comparison",
+  },
+  {
+    wave: "Wave 1",
+    source: "debpal/BharatFinTrack",
+    integrated: "NSE thematic/index categorization and holdings-to-theme mapping",
+    modules: ["scripts/ingest-bharatfintrack.js", "api/_lib/thematicMapping.js"],
+    uiSurface: "Portfolio Signals",
+    targetView: "portfolio",
+  },
+  {
+    wave: "Wave 4",
+    source: "sandeepkumar0801/Ai-portfolio-analyzer-and-trading",
+    integrated: "Streamlit dashboard baseline with portfolio/hotspot/recommendation panels",
+    modules: ["streamlit_app.py", "scripts/run-streamlit-dashboard.sh"],
+    uiSurface: "Streamlit Dashboard",
+    targetView: "whatsnew",
+  },
+  {
+    wave: "Wave 1",
+    source: "sd416/zerodha-portfolio",
+    integrated: "Headless CLI snapshot and cron-safe EOD runner",
+    modules: ["scripts/portfolio-snapshot.js", "scripts/run-eod-snapshot.js"],
+    uiSurface: "CLI + Artifacts",
+    targetView: "whatsnew",
   },
 ];
 
@@ -254,6 +319,7 @@ const comparisonViewEl = document.getElementById("comparisonView");
 const portfolioViewEl = document.getElementById("portfolioView");
 const viewLinks = [...document.querySelectorAll("[data-app-view-target]")];
 const whatsNewLogEl = document.getElementById("whatsNewLog");
+const planTraceGridEl = document.getElementById("planTraceGrid");
 
 const matrixEl = document.getElementById("matrix");
 const statsEl = document.getElementById("statsRow");
@@ -1886,6 +1952,26 @@ function renderWhatsNewLog() {
   }).join("");
 }
 
+function renderPlanTraceGrid() {
+  if (!planTraceGridEl) return;
+
+  planTraceGridEl.innerHTML = PLAN_TRACE_ITEMS.map((item) => {
+    const target = String(item.targetView || "whatsnew");
+    const targetLabel = target === "whatsnew" ? "What's New" : target;
+    const moduleList = item.modules.map((modulePath) => `<code>${modulePath}</code>`).join("");
+    return `
+      <article class="plan-trace-card">
+        <p class="plan-trace-wave">${item.wave}</p>
+        <h4>${item.source}</h4>
+        <p>${item.integrated}</p>
+        <p class="plan-trace-surface">Surface: ${item.uiSurface}</p>
+        <div class="plan-trace-modules">${moduleList}</div>
+        <button class="whats-new-log-action" data-quick-view-target="${target}">Open ${targetLabel}</button>
+      </article>
+    `;
+  }).join("");
+}
+
 function setActiveView(target) {
   const allowedViews = new Set(["themes", "whatsnew", "comparison", "portfolio"]);
   if (!allowedViews.has(target)) {
@@ -2245,6 +2331,7 @@ async function init() {
   runtimeState.lastAsOfLabel = bootstrap.asOf;
 
   attachHandlers();
+  renderPlanTraceGrid();
   renderWhatsNewLog();
   renderMatrix();
   if (runtimeState.enablePortfolioView) {

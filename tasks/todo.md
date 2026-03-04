@@ -480,3 +480,21 @@
   - `node --test tests/*.test.js` (65/65 pass)
 - Outcome:
   - `What's New` now behaves as a first-class app page accessible from top navigation, similar to `Portfolio` and `Comparison`.
+
+## Plan Traceability UI Plan (2026-03-04)
+- [x] Add a traceability section on `What's New` that maps each referenced source repo to implemented modules.
+- [x] Render source -> wave -> module -> UI surface cards from structured data in `app.js`.
+- [x] Add quick actions from each mapping card to relevant app views.
+- [x] Add a dated `WHATS_NEW_FEED` entry for this traceability release.
+- [x] Re-run syntax and full test suite.
+
+## Plan Traceability UI Review
+- Code updates:
+  - `index.html`
+  - `app.js`
+  - `styles.css`
+- Validation:
+  - `node --check app.js`
+  - `node --test tests/*.test.js`
+- Outcome:
+  - The UI now explicitly shows where each GitHub-inspired plan component lives in this codebase and where it surfaces in-product.
