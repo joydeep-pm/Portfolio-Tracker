@@ -355,6 +355,7 @@ Until broker account activation is complete, this repo now includes local/mock c
 
 These endpoints return realistic NSE/BSE-shaped payloads and allow end-to-end adapter flow testing before live Angel credentials are usable.
 When an Angel session is connected (`pt_angel_*` cookies present), `/api/v1/market/*` and `/api/v1/comparison/series` switch to Angel-backed live mode and only fall back to mock mode if live fetch fails.
+The live market service uses `data/angel_symbol_tokens.seed.json` to resolve symbol tokens without runtime `searchScrip` dependency (useful when SmartAPI throttles search from serverless IPs).
 
 ### Frontend config for mock mode
 
@@ -421,6 +422,9 @@ How to use:
 4. Call portfolio endpoints as usual:
    - `GET /api/v1/portfolio/bootstrap`
    - `GET /api/v1/portfolio/poll`
+
+For Themes/Comparison live mode, keep `data/angel_symbol_tokens.seed.json` updated with required symbols.  
+If you explicitly want runtime token search fallback, set `ENABLE_ANGEL_DYNAMIC_SEARCH=true` (default is disabled).
 
 Portfolio payload now includes:
 - `marketDataProvider` (`angel`, `kite`, or `demo`)

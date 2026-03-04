@@ -143,6 +143,13 @@ const COMPARE_COLOR_PALETTE = [
 const WHATS_NEW_FEED = [
   {
     date: "2026-03-04",
+    title: "Angel Token Seed For Themes Live Mode",
+    detail:
+      "Themes live mode now uses a pre-seeded Angel symbol-token map to avoid serverless `searchScrip` throttling and keep market payloads live-backed.",
+    targetView: "themes",
+  },
+  {
+    date: "2026-03-04",
     title: "Themes Switched To Angel Live Mode",
     detail:
       "Themes and Comparison endpoints now use Angel-backed live quotes and historical returns when an Angel session is connected, with automatic fallback only if live fetch fails.",

@@ -66,3 +66,5 @@
 - Preventive rule: when multiple implementation options are offered, wait for explicit option selection and implement exactly that path before adding broader provider migration work.
 - User correction: clarified that Angel setup is specifically the Market Feed/Historical app path, not generic Trading API intent.
 - Preventive rule: when broker APIs have multiple product families, explicitly map each in-use endpoint to the user’s selected app type and flag mismatches before implementation.
+- User correction: Themes data had to be truly live, not silently falling back to mock while sessions were connected.
+- Preventive rule: for every live-data surface, expose and verify explicit source diagnostics (`live` vs `fallback`) during rollout before declaring completion.

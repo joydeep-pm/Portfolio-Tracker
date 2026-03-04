@@ -265,6 +265,7 @@
   - `api/_lib/angelLiveMarket.js` (new live market assembly and comparison helper)
   - `api/market.js` (Angel live mode routing + fallback)
   - `api/comparison.js` (Angel live comparison routing + fallback)
+  - `data/angel_symbol_tokens.seed.json` (pre-seeded token map to avoid serverless `searchScrip` 403 throttling)
   - `tests/angelLiveMarket.test.js` (live view + comparison tests)
   - `README.md`
   - `app.js` (`What's New` update)

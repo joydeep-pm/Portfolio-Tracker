@@ -1,0 +1,174 @@
+{
+  "generatedAt": "2026-03-04T17:07:52.532Z",
+  "source": "angel-search-seed",
+  "symbols": {
+    "NSE:RELIANCE": {
+      "token": "2885",
+      "tradingsymbol": "RELIANCE-EQ",
+      "name": "RELIANCE",
+      "asOf": "2026-03-04T17:07:24.582Z"
+    },
+    "NSE:TCS": {
+      "token": "11536",
+      "tradingsymbol": "TCS-EQ",
+      "name": "TCS",
+      "asOf": "2026-03-04T17:07:25.312Z"
+    },
+    "NSE:INFY": {
+      "token": "1594",
+      "tradingsymbol": "INFY-EQ",
+      "name": "INFY",
+      "asOf": "2026-03-04T17:07:26.006Z"
+    },
+    "NSE:ICICIBANK": {
+      "token": "4963",
+      "tradingsymbol": "ICICIBANK-EQ",
+      "name": "ICICIBANK",
+      "asOf": "2026-03-04T17:07:27.324Z"
+    },
+    "NSE:SBIN": {
+      "token": "3045",
+      "tradingsymbol": "SBIN-EQ",
+      "name": "SBIN",
+      "asOf": "2026-03-04T17:07:28.010Z"
+    },
+    "NSE:BHARTIARTL": {
+      "token": "10604",
+      "tradingsymbol": "BHARTIARTL-EQ",
+      "name": "BHARTIARTL",
+      "asOf": "2026-03-04T17:07:29.353Z"
+    },
+    "NSE:LT": {
+      "token": "11483",
+      "tradingsymbol": "LT-EQ",
+      "name": "LT",
+      "asOf": "2026-03-04T17:07:30.071Z"
+    },
+    "NSE:PIDILITIND": {
+      "token": "2664",
+      "tradingsymbol": "PIDILITIND-EQ",
+      "name": "PIDILITIND",
+      "asOf": "2026-03-04T17:07:31.410Z"
+    },
+    "NSE:SIEMENS": {
+      "token": "3150",
+      "tradingsymbol": "SIEMENS-EQ",
+      "name": "SIEMENS",
+      "asOf": "2026-03-04T17:07:32.127Z"
+    },
+    "NSE:KOTAKBANK": {
+      "token": "1922",
+      "tradingsymbol": "KOTAKBANK-EQ",
+      "name": "KOTAKBANK",
+      "asOf": "2026-03-04T17:07:33.462Z"
+    },
+    "NSE:AXISBANK": {
+      "token": "5900",
+      "tradingsymbol": "AXISBANK-EQ",
+      "name": "AXISBANK",
+      "asOf": "2026-03-04T17:07:34.268Z"
+    },
+    "NSE:INDUSINDBK": {
+      "token": "5258",
+      "tradingsymbol": "INDUSINDBK-EQ",
+      "name": "INDUSINDBK",
+      "asOf": "2026-03-04T17:07:35.332Z"
+    },
+    "NSE:BANKBARODA": {
+      "token": "4668",
+      "tradingsymbol": "BANKBARODA-EQ",
+      "name": "BANKBARODA",
+      "asOf": "2026-03-04T17:07:36.396Z"
+    },
+    "NSE:PNB": {
+      "token": "10666",
+      "tradingsymbol": "PNB-EQ",
+      "name": "PNB",
+      "asOf": "2026-03-04T17:07:37.209Z"
+    },
+    "NSE:UNIONBANK": {
+      "token": "10753",
+      "tradingsymbol": "UNIONBANK-EQ",
+      "name": "UNIONBANK",
+      "asOf": "2026-03-04T17:07:38.532Z"
+    },
+    "NSE:HCLTECH": {
+      "token": "7229",
+      "tradingsymbol": "HCLTECH-EQ",
+      "name": "HCLTECH",
+      "asOf": "2026-03-04T17:07:39.223Z"
+    },
+    "NSE:TECHM": {
+      "token": "13538",
+      "tradingsymbol": "TECHM-EQ",
+      "name": "TECHM",
+      "asOf": "2026-03-04T17:07:40.538Z"
+    },
+    "NSE:SUNPHARMA": {
+      "token": "3351",
+      "tradingsymbol": "SUNPHARMA-EQ",
+      "name": "SUNPHARMA",
+      "asOf": "2026-03-04T17:07:41.231Z"
+    },
+    "NSE:CIPLA": {
+      "token": "694",
+      "tradingsymbol": "CIPLA-EQ",
+      "name": "CIPLA",
+      "asOf": "2026-03-04T17:07:42.559Z"
+    },
+    "NSE:DIVISLAB": {
+      "token": "10940",
+      "tradingsymbol": "DIVISLAB-EQ",
+      "name": "DIVISLAB",
+      "asOf": "2026-03-04T17:07:43.247Z"
+    },
+    "NSE:NTPC": {
+      "token": "11630",
+      "tradingsymbol": "NTPC-EQ",
+      "name": "NTPC",
+      "asOf": "2026-03-04T17:07:44.570Z"
+    },
+    "NSE:POWERGRID": {
+      "token": "14977",
+      "tradingsymbol": "POWERGRID-EQ",
+      "name": "POWERGRID",
+      "asOf": "2026-03-04T17:07:45.255Z"
+    },
+    "NSE:IOC": {
+      "token": "1624",
+      "tradingsymbol": "IOC-EQ",
+      "name": "IOC",
+      "asOf": "2026-03-04T17:07:46.566Z"
+    },
+    "NSE:TATASTEEL": {
+      "token": "3499",
+      "tradingsymbol": "TATASTEEL-EQ",
+      "name": "TATASTEEL",
+      "asOf": "2026-03-04T17:07:47.253Z"
+    },
+    "NSE:JSWSTEEL": {
+      "token": "11723",
+      "tradingsymbol": "JSWSTEEL-EQ",
+      "name": "JSWSTEEL",
+      "asOf": "2026-03-04T17:07:48.567Z"
+    },
+    "NSE:SAIL": {
+      "token": "2963",
+      "tradingsymbol": "SAIL-EQ",
+      "name": "SAIL",
+      "asOf": "2026-03-04T17:07:49.250Z"
+    },
+    "NSE:POLYCAB": {
+      "token": "9590",
+      "tradingsymbol": "POLYCAB-EQ",
+      "name": "POLYCAB",
+      "asOf": "2026-03-04T17:07:50.565Z"
+    },
+    "NSE:TRENT": {
+      "token": "1964",
+      "tradingsymbol": "TRENT-EQ",
+      "name": "TRENT",
+      "asOf": "2026-03-04T17:07:51.251Z"
+    }
+  }
+}

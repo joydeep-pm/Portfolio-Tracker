@@ -1,4 +1,6 @@
 const crypto = require("node:crypto");
+const fs = require("node:fs/promises");
+const path = require("node:path");
 
 const { ANGEL_ROOT, buildHeaders } = require("./angelSmartApi");
 const { loadThematicCatalog } = require("./thematicCatalog");
@@ -16,6 +18,11 @@ const quoteCache = new Map();
 const returnsCache = new Map();
 const viewCache = new Map();
 let liveTick = 0;
+const SYMBOL_SEED_PATH = path.resolve(process.cwd(), "data/angel_symbol_tokens.seed.json");
+const symbolSeedState = {
+  loadedAtMs: 0,
+  symbols: {},
+};
 
 function toNumber(value, fallback = 0) {
   const parsed = Number.parseFloat(value);
@@ -39,6 +46,11 @@ function normalizeExchange(value) {
   const key = String(value || "all").toLowerCase();
   if (key === "nse" || key === "bse" || key === "all") return key;
   return "all";
+}
+
+function dynamicSearchEnabled() {
+  const value = String(process.env.ENABLE_ANGEL_DYNAMIC_SEARCH || "").trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes" || value === "y";
 }
 
 function mapAngelExchange(exchange) {
@@ -170,6 +182,25 @@ function parseConstituent(value) {
   };
 }
 
+async function loadSymbolSeed(forceReload = false) {
+  const now = Date.now();
+  if (!forceReload && symbolSeedState.symbols && now - symbolSeedState.loadedAtMs <= 5 * 60 * 1000) {
+    return symbolSeedState.symbols;
+  }
+
+  try {
+    const content = await fs.readFile(SYMBOL_SEED_PATH, "utf8");
+    const payload = JSON.parse(content);
+    symbolSeedState.loadedAtMs = now;
+    symbolSeedState.symbols = payload?.symbols && typeof payload.symbols === "object" ? payload.symbols : {};
+    return symbolSeedState.symbols;
+  } catch (_error) {
+    symbolSeedState.loadedAtMs = now;
+    symbolSeedState.symbols = {};
+    return {};
+  }
+}
+
 function buildUniverse(catalog, exchangeKey) {
   const indices = Array.isArray(catalog?.indices) ? catalog.indices : [];
   const stocks = [];
@@ -220,8 +251,20 @@ function buildUniverse(catalog, exchangeKey) {
 
 async function resolveSymbolToken(item, ctx) {
   const key = instrumentKey(item.exchange, item.symbol);
+  const seeded = ctx.symbolSeed?.[key];
+  if (seeded?.token) {
+    return {
+      token: String(seeded.token),
+      tradingsymbol: String(seeded.tradingsymbol || item.symbol).toUpperCase(),
+      name: String(seeded.name || item.symbol),
+      updatedAtMs: Date.now(),
+    };
+  }
+
   const cached = symbolTokenCache.get(key);
   if (cached && Date.now() - cached.updatedAtMs <= SYMBOL_TOKEN_TTL_MS) return cached;
+
+  if (!ctx.dynamicSearch) return null;
 
   const payload = await angelRequest({
     fetchImpl: ctx.fetchImpl,
@@ -435,6 +478,8 @@ async function buildLiveMarketView(options = {}) {
   const accessToken = String(session.accessToken || "").trim();
   const clientCode = String(session.clientCode || "").trim();
 
+  const symbolSeed = await loadSymbolSeed(Boolean(options.forceSeedReload));
+
   const diagnostics = {
     requested: 0,
     tokenResolved: 0,
@@ -444,6 +489,8 @@ async function buildLiveMarketView(options = {}) {
     historicalResolved: 0,
     errors: 0,
     samples: [],
+    seededSymbols: Object.keys(symbolSeed || {}).length,
+    dynamicSearch: dynamicSearchEnabled(),
   };
 
   if (!fetchImpl || !quoteApiKey || !historicalApiKey || !accessToken || !clientCode || !session.connected) {
@@ -508,6 +555,8 @@ async function buildLiveMarketView(options = {}) {
     historicalApiKey,
     accessToken,
     diagnostics,
+    symbolSeed,
+    dynamicSearch: dynamicSearchEnabled(),
   };
 
   const metricsRows = await mapWithConcurrency([...uniqueMap.values()], 3, async (item) => fetchLiveMetrics(item, ctx));
