@@ -696,3 +696,34 @@
     - `symbol=PAYTM` -> `theme_hint=Fintech & Payments India`, top clusters led by Fintech micro-clusters.
     - `symbol=HDFCBANK` -> `theme_hint=Banking & Financial Services`, top clusters led by Banking micro-clusters.
     - `symbol=ITC` -> `theme_hint=Consumer Staples`, top clusters led by Consumer Staples micro-clusters.
+
+## Angel Live Session Activation Plan (2026-03-04)
+- [x] Implement SmartAPI auth helper with secure TOTP generation from `ANGEL_TOTP_SECRET`.
+- [x] Add Angel session lifecycle routes (`session`, `session-status`, `logout`) in `api/angel.js`.
+- [x] Add Vercel rewrites for new Angel routes and keep existing callback/postback/health unchanged.
+- [x] Add tests for missing-env and mocked success login flow.
+- [x] Verify production health/status endpoints and document exact env setup steps.
+
+## Angel Live Session Verify Plan Check-In
+- Scope: backend auth/session plumbing only; no order placement and no migration from Zerodha provider yet.
+- Success criteria: once env vars are set, `POST /api/angel/session` returns connected session metadata and `GET /api/angel/session/status` reports connected.
+- Safety: never persist raw secrets in repo; only keep in-memory tokens and masked diagnostics in responses.
+
+## Angel Live Session Activation Review
+- Code updates:
+  - `api/_lib/angelSmartApi.js` (SmartAPI request helper + RFC-compatible TOTP generator)
+  - `api/angel.js` (`session`, `session-status`, `logout`, richer `health`)
+  - `vercel.json` (rewrites for new Angel routes)
+  - `tests/angelSession.test.js` (TOTP + missing-env + mocked session success)
+  - `README.md` (activation checklist and endpoint docs)
+- Validation:
+  - `node --check api/angel.js`
+  - `node --check api/_lib/angelSmartApi.js`
+  - `node --test tests/angelSession.test.js tests/mockApi.test.js` (8/8 pass)
+  - `node --test tests/*.test.js` (81/81 pass)
+  - `curl https://portfolio-tracker-kappa-woad.vercel.app/api/angel/health` -> `ready: false` with explicit missing key list (expected until env is set)
+  - Production after env setup:
+    - `POST /api/angel/session` returns `connected: true`, `hasFeedToken: true`.
+    - `GET /api/angel/session/status` returns `connected: true` for same client session via secure cookie persistence.
+  - Post-fix note:
+    - Fixed `FUNCTION_INVOCATION_FAILED` caused by sending request body with `GET` to SmartAPI profile endpoint.

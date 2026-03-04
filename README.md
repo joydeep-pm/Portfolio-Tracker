@@ -374,6 +374,9 @@ The mock backend ignores token validation, but a non-empty token is still requir
 Use one-click readiness validation before attempting real Angel session generation:
 
 - `GET /api/angel/health`
+- `POST /api/angel/session` (creates or refreshes live Angel session)
+- `GET /api/angel/session/status` (connected/disconnected state)
+- `POST /api/angel/logout` (clears local/remote Angel session)
 
 Response includes env presence checks for:
 - `ANGEL_API_KEY`
@@ -381,7 +384,21 @@ Response includes env presence checks for:
 - `ANGEL_PIN`
 - `ANGEL_TOTP_SECRET`
 
-This endpoint does not authenticate with Angel; it verifies backend configuration readiness only.
+`/api/angel/health` verifies configuration and current session state.  
+`/api/angel/session` authenticates against SmartAPI `loginByPassword` using server-side TOTP generation.
+
+### SmartAPI Activation Checklist
+
+1. Set these in Vercel Project Settings -> Environment Variables:
+   - `ANGEL_API_KEY`
+   - `ANGEL_CLIENT_CODE`
+   - `ANGEL_PIN`
+   - `ANGEL_TOTP_SECRET` (base32 secret from SmartAPI TOTP setup)
+2. Redeploy.
+3. Call:
+   - `POST /api/angel/session`
+   - `GET /api/angel/session/status`
+4. Expect `connected: true` and non-empty `hasFeedToken`.
 
 ## Zerodha Session Notes
 

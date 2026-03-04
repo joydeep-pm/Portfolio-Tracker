@@ -4,6 +4,9 @@
     { "source": "/api/angel/callback", "destination": "/api/angel?route=callback" },
     { "source": "/api/angel/postback", "destination": "/api/angel?route=postback" },
     { "source": "/api/angel/health", "destination": "/api/angel?route=health" },
+    { "source": "/api/angel/session", "destination": "/api/angel?route=session" },
+    { "source": "/api/angel/session/status", "destination": "/api/angel?route=session-status" },
+    { "source": "/api/angel/logout", "destination": "/api/angel?route=logout" },
 
     { "source": "/api/zerodha/auth/url", "destination": "/api/zerodha?route=auth-url" },
     { "source": "/api/zerodha/callback", "destination": "/api/zerodha?route=callback" },

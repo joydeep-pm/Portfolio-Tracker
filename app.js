@@ -143,6 +143,13 @@ const COMPARE_COLOR_PALETTE = [
 const WHATS_NEW_FEED = [
   {
     date: "2026-03-04",
+    title: "Angel One Live Session Routes Added",
+    detail:
+      "Backend now supports Angel SmartAPI session lifecycle (`/api/angel/session`, `/api/angel/session/status`, `/api/angel/logout`) with server-side TOTP generation.",
+    targetView: "portfolio",
+  },
+  {
+    date: "2026-03-04",
     title: "Per-Symbol Macro Context Fix",
     detail:
       "Macro context now keeps processed events in read flow, auto-harvests when context is empty in production, and derives theme hints per selected symbol to avoid identical outputs.",

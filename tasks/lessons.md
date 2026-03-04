@@ -60,3 +60,5 @@
 - Preventive rule: do not mutate/consume analysis queues in a read-path endpoint used by UI drill-down interactions.
 - Preventive rule: macro context endpoint should bootstrap source data when event store is empty in serverless runtimes, otherwise all symbol requests collapse to neutral payloads.
 - Preventive rule: derive symbol-specific theme hints from holdings-to-theme mapping when explicit theme input is missing.
+- User correction: asked whether all four Angel env vars are required when pricing tier is free and focus is market feed.
+- Preventive rule: distinguish commercial pricing from auth requirements; always state the minimal credential set required by the implemented auth flow and clearly mark unused keys.
