@@ -399,10 +399,6 @@ async function buildLiveMarketView(options = {}) {
   const accessToken = String(session.accessToken || "").trim();
   const clientCode = String(session.clientCode || "").trim();
 
-  if (!fetchImpl || !quoteApiKey || !historicalApiKey || !accessToken || !clientCode || !session.connected) {
-    return null;
-  }
-
   const diagnostics = {
     requested: 0,
     tokenResolved: 0,
@@ -413,6 +409,20 @@ async function buildLiveMarketView(options = {}) {
     errors: 0,
     samples: [],
   };
+
+  if (!fetchImpl || !quoteApiKey || !historicalApiKey || !accessToken || !clientCode || !session.connected) {
+    if (options.withDiagnostics) {
+      return {
+        view: null,
+        diagnostics: {
+          ...diagnostics,
+          cacheHit: false,
+          reason: "missing-live-prerequisites",
+        },
+      };
+    }
+    return null;
+  }
 
   const cacheKey = `${exchangeKey}`;
   const cached = viewCache.get(cacheKey);
@@ -431,7 +441,19 @@ async function buildLiveMarketView(options = {}) {
 
   const catalog = options.catalogOverride || (await loadThematicCatalog());
   const universe = buildUniverse(catalog, exchangeKey);
-  if (!universe.stocks.length || !universe.clusters.length) return null;
+  if (!universe.stocks.length || !universe.clusters.length) {
+    if (options.withDiagnostics) {
+      return {
+        view: null,
+        diagnostics: {
+          ...diagnostics,
+          cacheHit: false,
+          reason: "empty-universe",
+        },
+      };
+    }
+    return null;
+  }
 
   const uniqueMap = new Map();
   universe.stocks.forEach((stock) => {
@@ -474,7 +496,22 @@ async function buildLiveMarketView(options = {}) {
     })
     .filter(Boolean);
 
-  if (!stocks.length) return null;
+  if (!stocks.length) {
+    if (options.withDiagnostics) {
+      return {
+        view: null,
+        diagnostics: {
+          ...diagnostics,
+          cacheHit: false,
+          reason: "no-live-stocks",
+          liveStocks: 0,
+          liveClusters: 0,
+          liveHeads: 0,
+        },
+      };
+    }
+    return null;
+  }
 
   const stocksByCluster = new Map();
   stocks.forEach((stock) => {
@@ -496,7 +533,22 @@ async function buildLiveMarketView(options = {}) {
     })
     .filter(Boolean);
 
-  if (!clusters.length) return null;
+  if (!clusters.length) {
+    if (options.withDiagnostics) {
+      return {
+        view: null,
+        diagnostics: {
+          ...diagnostics,
+          cacheHit: false,
+          reason: "no-live-clusters",
+          liveStocks: stocks.length,
+          liveClusters: 0,
+          liveHeads: 0,
+        },
+      };
+    }
+    return null;
+  }
 
   const clusterIdsByHead = new Map();
   clusters.forEach((cluster) => {
