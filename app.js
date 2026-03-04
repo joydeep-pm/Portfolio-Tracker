@@ -3,6 +3,51 @@ const TARGET_STOCKS = 2486;
 const TARGET_CLUSTERS = 175;
 const MAX_COMPARE_SELECTION = 8;
 const PORTFOLIO_ACTIONS = ["BUY", "ACCUMULATE", "HOLD", "REDUCE", "SELL"];
+const NETWORK_REFRESH_INTERVAL_MS = 30000;
+const NETWORK_ENDPOINTS = [
+  {
+    id: "zerodha-session",
+    label: "Zerodha Session Status",
+    method: "GET",
+    url: "/api/zerodha/session/status",
+  },
+  {
+    id: "zerodha-auth",
+    label: "Zerodha Auth URL",
+    method: "GET",
+    url: "/api/zerodha/auth/url",
+  },
+  {
+    id: "angel-health",
+    label: "Angel Health",
+    method: "GET",
+    url: "/api/angel/health",
+  },
+  {
+    id: "angel-session",
+    label: "Angel Session Status",
+    method: "GET",
+    url: "/api/angel/session/status",
+  },
+  {
+    id: "market-bootstrap",
+    label: "Themes Market Bootstrap",
+    method: "GET",
+    url: "/api/v1/market/bootstrap?exchange=all&debug=1",
+  },
+  {
+    id: "portfolio-bootstrap",
+    label: "Portfolio Bootstrap",
+    method: "GET",
+    url: "/api/v1/portfolio/bootstrap?exchange=all",
+  },
+  {
+    id: "macro-context",
+    label: "Macro Context Snapshot",
+    method: "GET",
+    url: "/api/v1/macro/context?exchange=all&limit=16&includeProcessed=1",
+  },
+];
 
 const CORE_HEADS = [
   "Banking & Financial Services",
@@ -141,6 +186,13 @@ const COMPARE_COLOR_PALETTE = [
 
 // Keep this feed updated whenever new user-facing capabilities ship.
 const WHATS_NEW_FEED = [
+  {
+    date: "2026-03-04",
+    title: "Network Connectivity Dashboard",
+    detail:
+      "A dedicated Network tab now shows real-time provider sessions, active source routing per data flow, and endpoint-level API diagnostics with fallback signals.",
+    targetView: "network",
+  },
   {
     date: "2026-03-04",
     title: "Angel Token Seed For Themes Live Mode",
@@ -367,6 +419,24 @@ let portfolioState = {
   scanSort: "action_then_confidence",
 };
 
+let networkState = {
+  requestId: 0,
+  loading: false,
+  lastCheckedAt: "",
+  summary: {
+    overallStatus: "unknown",
+    upCount: 0,
+    degradedCount: 0,
+    downCount: 0,
+    endpointCount: 0,
+    avgLatencyMs: 0,
+  },
+  providers: [],
+  flows: [],
+  endpoints: [],
+  refreshTimer: null,
+};
+
 let runtimeState = {
   adapter: null,
   adapterMode: "synthetic",
@@ -391,6 +461,7 @@ const themesViewEl = document.getElementById("themesView");
 const whatsNewViewEl = document.getElementById("whatsNewView");
 const comparisonViewEl = document.getElementById("comparisonView");
 const portfolioViewEl = document.getElementById("portfolioView");
+const networkViewEl = document.getElementById("networkView");
 const viewLinks = [...document.querySelectorAll("[data-app-view-target]")];
 const whatsNewLogEl = document.getElementById("whatsNewLog");
 const planTraceGridEl = document.getElementById("planTraceGrid");
@@ -424,6 +495,15 @@ const portfolioSearchInput = document.getElementById("portfolioSearchInput");
 const portfolioConfidenceInput = document.getElementById("portfolioConfidenceInput");
 const portfolioActionButtons = [...document.querySelectorAll("[data-portfolio-action]")];
 const portfolioExchangeButtons = [...document.querySelectorAll("[data-portfolio-exchange]")];
+const networkRefreshBtn = document.getElementById("networkRefreshBtn");
+const networkLastChecked = document.getElementById("networkLastChecked");
+const networkSummaryRow = document.getElementById("networkSummaryRow");
+const networkProvidersMeta = document.getElementById("networkProvidersMeta");
+const networkProviderCards = document.getElementById("networkProviderCards");
+const networkFlowsMeta = document.getElementById("networkFlowsMeta");
+const networkFlowCards = document.getElementById("networkFlowCards");
+const networkEndpointsMeta = document.getElementById("networkEndpointsMeta");
+const networkEndpointsTable = document.getElementById("networkEndpointsTable");
 
 const modal = document.getElementById("clusterModal");
 const modalHead = document.getElementById("modalHead");
@@ -457,6 +537,15 @@ function clamp(v, min, max) {
 function percent(v) {
   const rounded = Math.round(v * 10) / 10;
   return `${rounded > 0 ? "+" : ""}${rounded.toFixed(1)}%`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function colorClass(value) {
@@ -2109,6 +2198,463 @@ function renderPortfolio() {
   setRationaleTab(portfolioState.rationaleTab);
 }
 
+function statusPillClass(status) {
+  if (status === "up") return "status-pill-ok";
+  if (status === "degraded") return "status-pill-warn";
+  if (status === "down") return "status-pill-alert";
+  return "status-pill-muted";
+}
+
+function statusLabel(status) {
+  if (status === "up") return "UP";
+  if (status === "degraded") return "DEGRADED";
+  if (status === "down") return "DOWN";
+  return "UNKNOWN";
+}
+
+function asOfClockLabel(iso) {
+  if (!iso) return "--";
+  const date = new Date(iso);
+  if (!Number.isFinite(date.getTime())) return "--";
+  return date.toLocaleString("en-IN", {
+    hour12: true,
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+async function probeNetworkEndpoint(definition) {
+  const startedAt = Date.now();
+  try {
+    const response = await fetch(definition.url, {
+      method: definition.method || "GET",
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      credentials: "same-origin",
+    });
+    const latencyMs = Math.max(0, Date.now() - startedAt);
+    const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+    let payload = null;
+    let rawBody = "";
+
+    if (contentType.includes("application/json")) {
+      payload = await response.json();
+    } else {
+      rawBody = await response.text();
+    }
+
+    return {
+      id: definition.id,
+      label: definition.label,
+      method: definition.method || "GET",
+      url: definition.url,
+      status: response.ok ? "up" : response.status >= 400 && response.status < 500 ? "degraded" : "down",
+      ok: response.ok,
+      httpStatus: response.status,
+      latencyMs,
+      payload,
+      rawBody,
+      checkedAt: new Date().toISOString(),
+      error: "",
+    };
+  } catch (error) {
+    return {
+      id: definition.id,
+      label: definition.label,
+      method: definition.method || "GET",
+      url: definition.url,
+      status: "down",
+      ok: false,
+      httpStatus: 0,
+      latencyMs: Math.max(0, Date.now() - startedAt),
+      payload: null,
+      rawBody: "",
+      checkedAt: new Date().toISOString(),
+      error: error.message || "request-failed",
+    };
+  }
+}
+
+function endpointSourceLabel(probe) {
+  const payload = probe.payload || {};
+  if (probe.id === "zerodha-session") return payload.provider || "kite-direct";
+  if (probe.id === "zerodha-auth") return "kite-direct";
+  if (probe.id === "angel-health" || probe.id === "angel-session") return "angel-one";
+  if (probe.id === "market-bootstrap") return payload.source || "mock";
+  if (probe.id === "portfolio-bootstrap") return payload.marketDataProvider || payload.provider || "unknown";
+  if (probe.id === "macro-context") {
+    const sources = Array.isArray(payload.sources) ? payload.sources : [];
+    return sources.length ? sources.join(",") : payload.model || "macro-engine";
+  }
+  return "--";
+}
+
+function endpointNote(probe) {
+  if (probe.error) return probe.error;
+  const payload = probe.payload || {};
+
+  if (probe.id === "zerodha-session") {
+    if (payload.connected) {
+      return `Connected${payload.user?.userId ? ` • ${payload.user.userId}` : ""}`;
+    }
+    const warnings = Array.isArray(payload.warnings) ? payload.warnings.filter(Boolean).slice(0, 2) : [];
+    return warnings.length ? warnings.join(" • ") : "Disconnected";
+  }
+
+  if (probe.id === "zerodha-auth") {
+    if (payload.ready) return payload.connected ? "Ready • active session" : "Ready • awaiting login";
+    return payload.message || "API key missing";
+  }
+
+  if (probe.id === "angel-health") {
+    const checks = Array.isArray(payload.checks) ? payload.checks : [];
+    const missingRequired = checks.filter((item) => item.required && !item.present).map((item) => item.key);
+    if (payload.ready) return "Env ready";
+    if (missingRequired.length) return `Missing ${missingRequired.slice(0, 2).join(", ")}`;
+    return payload.message || "Health check unavailable";
+  }
+
+  if (probe.id === "angel-session") {
+    if (payload.connected) return `Connected${payload.clientCode ? ` • ${payload.clientCode}` : ""}`;
+    return "Disconnected";
+  }
+
+  if (probe.id === "market-bootstrap") {
+    const debug = payload.debug || {};
+    const fallback = debug.liveFallbackReason ? `fallback=${debug.liveFallbackReason}` : "";
+    const stockCount = Array.isArray(payload.stocks) ? payload.stocks.length : 0;
+    return `${payload.source || "unknown"} • stocks=${stockCount}${fallback ? ` • ${fallback}` : ""}`;
+  }
+
+  if (probe.id === "portfolio-bootstrap") {
+    const rowCount = Array.isArray(payload.rows) ? payload.rows.length : 0;
+    const connectionLabel = payload.connected ? "connected" : "read-only";
+    return `${connectionLabel} • rows=${rowCount}`;
+  }
+
+  if (probe.id === "macro-context") {
+    const sources = Array.isArray(payload.sources) ? payload.sources.length : 0;
+    const events = Number(payload.considered_events || 0);
+    return `sources=${sources} • events=${events}`;
+  }
+
+  return probe.ok ? "OK" : `HTTP ${probe.httpStatus}`;
+}
+
+function deriveNetworkModel(probes) {
+  const upCount = probes.filter((probe) => probe.status === "up").length;
+  const degradedCount = probes.filter((probe) => probe.status === "degraded").length;
+  const downCount = probes.filter((probe) => probe.status === "down").length;
+  const latencySet = probes.filter((probe) => Number.isFinite(probe.latencyMs) && probe.latencyMs > 0).map((probe) => probe.latencyMs);
+  const avgLatencyMs = latencySet.length ? Math.round(latencySet.reduce((sum, value) => sum + value, 0) / latencySet.length) : 0;
+  const overallStatus = downCount > 0 ? "down" : degradedCount > 0 ? "degraded" : "up";
+  const probeById = new Map(probes.map((probe) => [probe.id, probe]));
+
+  const zerodhaSession = probeById.get("zerodha-session");
+  const zerodhaAuth = probeById.get("zerodha-auth");
+  const angelHealth = probeById.get("angel-health");
+  const angelSession = probeById.get("angel-session");
+  const marketBootstrap = probeById.get("market-bootstrap");
+  const portfolioBootstrap = probeById.get("portfolio-bootstrap");
+  const macroContext = probeById.get("macro-context");
+
+  const zerodhaConnected = Boolean(zerodhaSession?.payload?.connected);
+  const zerodhaReady = Boolean(zerodhaAuth?.payload?.ready);
+  const angelConnected = Boolean(angelSession?.payload?.connected);
+  const angelReady = Boolean(angelHealth?.payload?.ready);
+  const marketSource = String(marketBootstrap?.payload?.source || "unknown");
+  const marketLive = marketSource.includes("angel-live");
+  const portfolioProvider = String(portfolioBootstrap?.payload?.provider || "unknown");
+  const portfolioMarketProvider = String(portfolioBootstrap?.payload?.marketDataProvider || portfolioProvider || "unknown");
+  const macroSources = Array.isArray(macroContext?.payload?.sources) ? macroContext.payload.sources : [];
+  const macroEvents = Number(macroContext?.payload?.considered_events || 0);
+
+  const providers = [
+    {
+      name: "Zerodha Broker Session",
+      status: zerodhaConnected ? "up" : zerodhaReady ? "degraded" : "down",
+      source: zerodhaSession?.payload?.provider || "kite-direct",
+      detail: zerodhaConnected
+        ? `Connected${zerodhaSession?.payload?.user?.userId ? ` as ${zerodhaSession.payload.user.userId}` : ""}`
+        : zerodhaReady
+          ? "Configured but disconnected"
+          : "Credentials or auth-url configuration incomplete",
+      apis: ["/api/zerodha/auth/url", "/api/zerodha/session/status"],
+    },
+    {
+      name: "Angel Market Session",
+      status: angelConnected ? "up" : angelReady ? "degraded" : "down",
+      source: "angel-one",
+      detail: angelConnected
+        ? `Connected${angelSession?.payload?.clientCode ? ` as ${angelSession.payload.clientCode}` : ""}`
+        : angelReady
+          ? "Configured but disconnected"
+          : "Missing required ANGEL_* credentials",
+      apis: ["/api/angel/health", "/api/angel/session/status"],
+    },
+    {
+      name: "Themes + Comparison Feed",
+      status: marketBootstrap?.status === "down" ? "down" : marketLive ? "up" : "degraded",
+      source: marketSource,
+      detail:
+        marketBootstrap?.status === "down"
+          ? "Market bootstrap endpoint unavailable"
+          : marketLive
+            ? "Live Angel feed active"
+            : `Fallback path active (${marketBootstrap?.payload?.debug?.liveFallbackReason || "mock"})`,
+      apis: ["/api/v1/market/bootstrap", "/api/v1/market/poll"],
+    },
+    {
+      name: "Portfolio Pipeline",
+      status: portfolioBootstrap?.status === "down" ? "down" : portfolioBootstrap?.payload?.connected ? "up" : "degraded",
+      source: `${portfolioProvider} • feed ${portfolioMarketProvider}`,
+      detail:
+        portfolioBootstrap?.status === "down"
+          ? "Portfolio bootstrap endpoint unavailable"
+          : portfolioBootstrap?.payload?.connected
+            ? "Live holdings available"
+            : "Read-only or demo bootstrap in use",
+      apis: ["/api/v1/portfolio/bootstrap", "/api/v1/portfolio/poll"],
+    },
+    {
+      name: "Macro & Regulatory Engine",
+      status: macroContext?.status === "down" ? "down" : macroEvents > 0 ? "up" : "degraded",
+      source: macroSources.length ? macroSources.join(", ") : "macro-engine",
+      detail:
+        macroContext?.status === "down"
+          ? "Macro context endpoint unavailable"
+          : macroEvents > 0
+            ? `${macroEvents} relevant events in context window`
+            : "No high-signal events in current context window",
+      apis: ["/api/v1/macro/context", "/api/v1/macro/latest"],
+    },
+  ];
+
+  const flows = [
+    {
+      name: "Holdings Data (Portfolio)",
+      status: zerodhaConnected ? "up" : "degraded",
+      source: zerodhaSession?.payload?.provider || "kite-direct",
+      detail: zerodhaConnected ? "Live Zerodha session active" : "Zerodha not connected; portfolio may be stale/demo",
+    },
+    {
+      name: "Market Quotes (Themes/Comparison)",
+      status: marketBootstrap?.status === "down" ? "down" : marketLive ? "up" : "degraded",
+      source: marketSource,
+      detail: marketLive ? "Angel live quotes + returns" : "Fallback feed path in effect",
+    },
+    {
+      name: "Portfolio Market Overlay",
+      status: angelConnected ? "up" : "degraded",
+      source: portfolioMarketProvider,
+      detail: angelConnected ? "Angel overlay active for quote enrichment" : "Overlay disabled or disconnected",
+    },
+    {
+      name: "Macro Context Feed",
+      status: macroContext?.status === "down" ? "down" : macroEvents > 0 ? "up" : "degraded",
+      source: macroSources.length ? macroSources.join(", ") : "macro-engine",
+      detail: macroEvents > 0 ? "Regulatory/news events mapped to context" : "No events matched current selection window",
+    },
+  ];
+
+  const endpoints = probes.map((probe) => ({
+    ...probe,
+    source: endpointSourceLabel(probe),
+    note: endpointNote(probe),
+  }));
+
+  return {
+    summary: {
+      overallStatus,
+      upCount,
+      degradedCount,
+      downCount,
+      endpointCount: probes.length,
+      avgLatencyMs,
+    },
+    providers,
+    flows,
+    endpoints,
+  };
+}
+
+function clearNetworkRefreshTimer() {
+  if (networkState.refreshTimer) {
+    clearTimeout(networkState.refreshTimer);
+    networkState.refreshTimer = null;
+  }
+}
+
+function scheduleNetworkRefresh() {
+  clearNetworkRefreshTimer();
+  if (state.activeView !== "network") return;
+  networkState.refreshTimer = window.setTimeout(() => {
+    refreshNetworkDashboard({ silent: true }).catch((error) => {
+      console.error("Network dashboard auto-refresh failed", error);
+      scheduleNetworkRefresh();
+    });
+  }, NETWORK_REFRESH_INTERVAL_MS);
+}
+
+function renderNetworkDashboard() {
+  if (!networkSummaryRow || !networkProviderCards || !networkFlowCards || !networkEndpointsTable) return;
+
+  const summary = networkState.summary;
+  const overallClass = statusPillClass(summary.overallStatus);
+
+  if (networkRefreshBtn) {
+    networkRefreshBtn.disabled = networkState.loading;
+    networkRefreshBtn.textContent = networkState.loading ? "Refreshing..." : "Refresh Status";
+  }
+
+  if (networkLastChecked) {
+    const checkedLabel = networkState.lastCheckedAt ? asOfClockLabel(networkState.lastCheckedAt) : "--";
+    networkLastChecked.textContent = networkState.loading ? "Checking connectivity..." : `Last checked ${checkedLabel}`;
+  }
+
+  networkSummaryRow.innerHTML = `
+    <article class="stat-card">
+      <p>Overall Health</p>
+      <h3><span class="status-pill ${overallClass}">${statusLabel(summary.overallStatus)}</span></h3>
+    </article>
+    <article class="stat-card"><p>Endpoints Up</p><h3>${summary.upCount}</h3></article>
+    <article class="stat-card"><p>Degraded</p><h3>${summary.degradedCount}</h3></article>
+    <article class="stat-card"><p>Down</p><h3>${summary.downCount}</h3></article>
+    <article class="stat-card"><p>Avg Latency</p><h3>${summary.avgLatencyMs || 0}ms</h3></article>
+    <article class="stat-card"><p>Total Checks</p><h3>${summary.endpointCount}</h3></article>
+  `;
+
+  if (!networkState.providers.length) {
+    networkProviderCards.innerHTML = `<div class="scan-empty">No provider diagnostics available yet.</div>`;
+    networkFlowCards.innerHTML = `<div class="scan-empty">No flow diagnostics available yet.</div>`;
+    networkEndpointsTable.innerHTML = `<div class="scan-empty">No endpoint diagnostics available yet.</div>`;
+    if (networkProvidersMeta) networkProvidersMeta.textContent = "--";
+    if (networkFlowsMeta) networkFlowsMeta.textContent = "--";
+    if (networkEndpointsMeta) networkEndpointsMeta.textContent = "--";
+    return;
+  }
+
+  networkProviderCards.innerHTML = networkState.providers
+    .map(
+      (provider) => `
+        <article class="network-card">
+          <header>
+            <h4>${escapeHtml(provider.name)}</h4>
+            <span class="status-pill ${statusPillClass(provider.status)}">${statusLabel(provider.status)}</span>
+          </header>
+          <p class="network-card-source">${escapeHtml(provider.source || "--")}</p>
+          <p class="network-card-detail">${escapeHtml(provider.detail || "--")}</p>
+          <p class="network-card-apis">${provider.apis.map((apiPath) => `<code>${escapeHtml(apiPath)}</code>`).join("")}</p>
+        </article>
+      `,
+    )
+    .join("");
+
+  networkFlowCards.innerHTML = networkState.flows
+    .map(
+      (flow) => `
+        <article class="network-card">
+          <header>
+            <h4>${escapeHtml(flow.name)}</h4>
+            <span class="status-pill ${statusPillClass(flow.status)}">${statusLabel(flow.status)}</span>
+          </header>
+          <p class="network-card-source">${escapeHtml(flow.source || "--")}</p>
+          <p class="network-card-detail">${escapeHtml(flow.detail || "--")}</p>
+        </article>
+      `,
+    )
+    .join("");
+
+  const endpointRows = networkState.endpoints
+    .map(
+      (endpoint) => `
+        <tr>
+          <td><span class="network-method">${escapeHtml(endpoint.method)}</span></td>
+          <td>${escapeHtml(endpoint.label)}</td>
+          <td><code>${escapeHtml(endpoint.url)}</code></td>
+          <td><span class="status-pill ${statusPillClass(endpoint.status)}">${statusLabel(endpoint.status)}</span></td>
+          <td>${endpoint.httpStatus || "--"}</td>
+          <td>${Number.isFinite(endpoint.latencyMs) ? `${endpoint.latencyMs}ms` : "--"}</td>
+          <td>${escapeHtml(endpoint.source || "--")}</td>
+          <td>${escapeHtml(endpoint.note || "--")}</td>
+        </tr>
+      `,
+    )
+    .join("");
+
+  networkEndpointsTable.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Method</th>
+          <th>Endpoint</th>
+          <th>Path</th>
+          <th>Status</th>
+          <th>HTTP</th>
+          <th>Latency</th>
+          <th>Source</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>${endpointRows}</tbody>
+    </table>
+  `;
+
+  if (networkProvidersMeta) {
+    networkProvidersMeta.textContent = `${networkState.providers.length} providers`;
+  }
+  if (networkFlowsMeta) {
+    networkFlowsMeta.textContent = `${networkState.flows.length} flows`;
+  }
+  if (networkEndpointsMeta) {
+    networkEndpointsMeta.textContent = `${networkState.summary.endpointCount} probes`;
+  }
+}
+
+async function refreshNetworkDashboard(options = {}) {
+  if (!networkSummaryRow) return;
+  const requestId = networkState.requestId + 1;
+  networkState.requestId = requestId;
+  networkState.loading = true;
+  if (!options.silent) renderNetworkDashboard();
+
+  try {
+    const probes = await Promise.all(NETWORK_ENDPOINTS.map((definition) => probeNetworkEndpoint(definition)));
+    if (requestId !== networkState.requestId) return;
+
+    const derived = deriveNetworkModel(probes);
+    networkState.summary = derived.summary;
+    networkState.providers = derived.providers;
+    networkState.flows = derived.flows;
+    networkState.endpoints = derived.endpoints;
+    networkState.lastCheckedAt = new Date().toISOString();
+    networkState.loading = false;
+    renderNetworkDashboard();
+  } catch (error) {
+    if (requestId !== networkState.requestId) return;
+    networkState.loading = false;
+    networkState.lastCheckedAt = new Date().toISOString();
+    networkState.summary = {
+      overallStatus: "down",
+      upCount: 0,
+      degradedCount: 0,
+      downCount: NETWORK_ENDPOINTS.length,
+      endpointCount: NETWORK_ENDPOINTS.length,
+      avgLatencyMs: 0,
+    };
+    networkState.providers = [];
+    networkState.flows = [];
+    networkState.endpoints = [];
+    renderNetworkDashboard();
+    setRuntimeHealth("stale", "Network diagnostics refresh failed");
+  } finally {
+    scheduleNetworkRefresh();
+  }
+}
+
 function freshnessLabel(nowMs) {
   if (!runtimeState.lastSuccessAtMs) return "No successful sync yet";
   const deltaSec = Math.max(0, Math.floor((nowMs - runtimeState.lastSuccessAtMs) / 1000));
@@ -2273,7 +2819,7 @@ function renderPlanTraceGrid() {
 }
 
 function setActiveView(target) {
-  const allowedViews = new Set(["themes", "whatsnew", "comparison", "portfolio"]);
+  const allowedViews = new Set(["themes", "whatsnew", "comparison", "portfolio", "network"]);
   if (!allowedViews.has(target)) {
     target = "themes";
   }
@@ -2285,6 +2831,7 @@ function setActiveView(target) {
   whatsNewViewEl.classList.toggle("active-view", target === "whatsnew");
   comparisonViewEl.classList.toggle("active-view", target === "comparison");
   portfolioViewEl.classList.toggle("active-view", target === "portfolio");
+  networkViewEl.classList.toggle("active-view", target === "network");
 
   viewLinks.forEach((link) => {
     const active = link.dataset.appViewTarget === target;
@@ -2293,6 +2840,7 @@ function setActiveView(target) {
   });
 
   if (target === "comparison") {
+    clearNetworkRefreshTimer();
     if (modal.open) closeClusterModal();
     requestAnimationFrame(() => {
       resizeCompareCanvas();
@@ -2306,6 +2854,14 @@ function setActiveView(target) {
       console.error("Failed to refresh portfolio on view switch", error);
       renderPortfolio();
     });
+    clearNetworkRefreshTimer();
+  } else if (target === "network") {
+    refreshNetworkDashboard({ silent: false }).catch((error) => {
+      console.error("Failed to refresh network dashboard on view switch", error);
+      renderNetworkDashboard();
+    });
+  } else {
+    clearNetworkRefreshTimer();
   }
 }
 
@@ -2469,6 +3025,14 @@ function attachHandlers() {
       });
     });
   });
+
+  if (networkRefreshBtn) {
+    networkRefreshBtn.addEventListener("click", () => {
+      refreshNetworkDashboard({ silent: false }).catch((error) => {
+        console.error("Manual network refresh failed", error);
+      });
+    });
+  }
 
   closeModal.addEventListener("click", closeClusterModal);
   modal.addEventListener("click", (event) => {
@@ -2655,6 +3219,7 @@ async function init() {
   if (runtimeState.enablePortfolioView) {
     renderPortfolio();
   }
+  renderNetworkDashboard();
   await initializeComparisonState();
   setActiveView("themes");
   renderDataStatus();

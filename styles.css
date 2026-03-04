@@ -1268,6 +1268,129 @@ body[data-ui-variant="classic"] #compareCanvas {
   color: var(--muted);
 }
 
+.network-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.9rem;
+}
+
+.network-hero-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.network-grid {
+  margin-top: 0.86rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.82rem;
+}
+
+.network-provider-cards,
+.network-flow-cards {
+  padding: 0.62rem 0.72rem 0.76rem;
+  display: grid;
+  gap: 0.48rem;
+}
+
+.network-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.56rem 0.62rem;
+  background: var(--panel-2);
+}
+
+.network-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.56rem;
+}
+
+.network-card h4 {
+  margin: 0;
+  font-size: 0.69rem;
+  letter-spacing: 0.02rem;
+}
+
+.network-card-source {
+  margin: 0.26rem 0 0;
+  font-size: 0.61rem;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.network-card-detail {
+  margin: 0.2rem 0 0;
+  font-size: 0.61rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.network-card-apis {
+  margin: 0.34rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+}
+
+.network-card-apis code {
+  border: 1px solid rgba(230, 238, 248, 0.16);
+  border-radius: 6px;
+  padding: 0.14rem 0.3rem;
+  font-size: 0.58rem;
+  color: #c8ddf7;
+  background: rgba(27, 44, 67, 0.64);
+}
+
+.network-endpoints-card {
+  margin-top: 0.82rem;
+}
+
+.network-endpoints-table {
+  padding: 0.56rem 0.72rem 0.82rem;
+  overflow: auto;
+}
+
+.network-endpoints-table table {
+  width: 100%;
+  min-width: 1060px;
+  border-collapse: collapse;
+}
+
+.network-endpoints-table th,
+.network-endpoints-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 0.38rem 0.32rem;
+  text-align: left;
+  font-size: 0.62rem;
+  vertical-align: top;
+}
+
+.network-endpoints-table th {
+  color: var(--muted);
+  font-size: 0.56rem;
+  letter-spacing: 0.04rem;
+  text-transform: uppercase;
+}
+
+.network-endpoints-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.network-method {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.16rem 0.36rem;
+  font-size: 0.53rem;
+  letter-spacing: 0.03rem;
+  background: rgba(16, 24, 38, 0.88);
+}
+
 .modal {
   width: min(920px, calc(100vw - 1.4rem));
   border: 0;
@@ -1343,7 +1466,8 @@ body[data-ui-variant="classic"] #compareCanvas {
 
 @media (max-width: 1160px) {
   .compare-grid,
-  .portfolio-grid {
+  .portfolio-grid,
+  .network-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1389,6 +1513,7 @@ body[data-ui-variant="classic"] #compareCanvas {
 
   .themes-header,
   .portfolio-header,
+  .network-hero,
   .hero {
     flex-direction: column;
     align-items: stretch;

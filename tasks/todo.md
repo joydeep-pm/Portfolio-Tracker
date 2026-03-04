@@ -218,6 +218,28 @@
 - [x] Add idempotency test for EOD snapshot persistence in memory mode.
 - [x] Verify EOD runner with sample date output.
 
+## Network Connectivity Dashboard Plan (2026-03-04)
+- [x] Add a dedicated `Network` top-nav view and section shell in `index.html`.
+- [x] Implement live connectivity probe logic in `app.js` for Zerodha, Angel, market, portfolio, and macro endpoints.
+- [x] Render provider/source/API status cards + endpoint diagnostics table in the new view.
+- [x] Add refresh controls and auto-refresh cadence while the Network view is active.
+- [x] Add native-styled CSS for the new view using existing design tokens/classes.
+- [x] Add a "What's New" entry and validate syntax/runtime behavior.
+
+## Network Connectivity Dashboard Verify Plan Check-In
+- Scope: UI + client-side diagnostics only, no backend contract changes.
+- Safety: reuse existing endpoints and fail-open in the dashboard when one probe fails.
+
+## Network Connectivity Dashboard Review
+- Code updates:
+  - `index.html` (new `Network` nav target + `networkView` page layout)
+  - `app.js` (endpoint probes, provider/flow derivation, renderers, view routing, auto-refresh, What's New entry)
+  - `styles.css` (network view cards, diagnostics table, responsive behavior)
+- Validation:
+  - `node --check app.js`
+  - `node --check api/angel.js api/market.js api/portfolio.js api/zerodha.js`
+  - `node --test tests/*.test.js` (87/87 pass)
+
 ## Angel Historical Integration Plan (2026-03-04)
 - [x] Add Angel historical API config surface (`ANGEL_HISTORICAL_API_KEY`) and health visibility.
 - [x] Patch `kite-direct` provider to fetch `1W/1M/6M/YTD` returns from Angel candle endpoint when Angel overlay is connected.

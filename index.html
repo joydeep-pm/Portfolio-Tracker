@@ -20,6 +20,7 @@
         <a href="#" class="muted" data-app-view-target="portfolio">Portfolio</a>
         <a href="#" class="muted">Signals</a>
         <a href="#" class="muted" data-app-view-target="comparison">Comparison</a>
+        <a href="#" class="muted" data-app-view-target="network">Network</a>
       </nav>
       <div class="topbar-status">
         <div id="liveSourcePill" class="live-pill"><span class="dot"></span><span id="liveSourceText">LIVE DATA</span></div>
@@ -271,6 +272,50 @@
             <div id="portfolioDecisionPanel" class="portfolio-decision-panel"></div>
             <div id="portfolioMacroPanel" class="portfolio-decision-panel hidden"></div>
           </aside>
+        </section>
+      </section>
+
+      <section id="networkView" class="app-view">
+        <section class="hero network-hero">
+          <div>
+            <p class="kicker">Settings &amp; Connectivity</p>
+            <h1>Network <span>Dashboard</span></h1>
+            <p class="subhead">
+              Verify provider sessions, active data sources, endpoint health, and fallback states across portfolio, themes, and macro pipelines.
+            </p>
+          </div>
+          <div class="network-hero-controls">
+            <button id="networkRefreshBtn" class="mode-btn">Refresh Status</button>
+            <span id="networkLastChecked" class="status-pill status-pill-muted">Last checked --</span>
+          </div>
+        </section>
+
+        <section id="networkSummaryRow" class="stats snapshot-strip"></section>
+
+        <section class="network-grid">
+          <article class="scan-card">
+            <header class="compare-card-head">
+              <h3>Provider Connections</h3>
+              <p id="networkProvidersMeta">--</p>
+            </header>
+            <div id="networkProviderCards" class="network-provider-cards"></div>
+          </article>
+
+          <article class="scan-card">
+            <header class="compare-card-head">
+              <h3>Data Flow Sources</h3>
+              <p id="networkFlowsMeta">--</p>
+            </header>
+            <div id="networkFlowCards" class="network-flow-cards"></div>
+          </article>
+        </section>
+
+        <section class="chart-card network-endpoints-card">
+          <header class="compare-card-head">
+            <h3>API Endpoint Diagnostics</h3>
+            <p id="networkEndpointsMeta">--</p>
+          </header>
+          <div id="networkEndpointsTable" class="network-endpoints-table"></div>
         </section>
       </section>
     </main>
