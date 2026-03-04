@@ -571,9 +571,10 @@ body[data-ui-variant="classic"] .legend {
 .table-head,
 .cluster-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 34px repeat(5, minmax(48px, 1fr));
+  grid-template-columns: 168px 34px repeat(5, 62px);
   gap: 0.22rem;
   align-items: center;
+  justify-content: start;
 }
 
 .table-head {
@@ -614,12 +615,12 @@ body[data-ui-variant="classic"] .legend {
 .cluster-name {
   display: block;
   justify-self: start;
-  font-size: clamp(0.54rem, 0.62vw, 0.67rem);
+  font-size: clamp(0.54rem, 0.6vw, 0.66rem);
   font-weight: 600;
   text-transform: none;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: clip;
+  text-overflow: ellipsis;
   line-height: 1.2;
 }
 
@@ -1252,7 +1253,7 @@ body[data-ui-variant="classic"] #compareCanvas {
 
   .table-head,
   .cluster-row {
-    grid-template-columns: minmax(0, 1fr) 30px repeat(5, minmax(44px, 1fr));
+    grid-template-columns: 132px 28px repeat(5, 52px);
   }
 
   .portfolio-table-head,

@@ -445,3 +445,21 @@
   - `node --test tests/*.test.js` (63/63 pass)
   - live-paper validation artifact present (`artifacts/live-paper-snapshot.json`)
   - production smoke artifact present (`artifacts/production-smoke.json`)
+
+## Themes Heatmap Alignment Plan (2026-03-04)
+- [x] Align heatmap row grid start with header grid start inside each theme card.
+- [x] Enforce fixed metric column widths so `1D/1W/1M/6M/YTD` chips line up row-to-row.
+- [x] Preserve single-line cluster labels with ellipsis to prevent spillover.
+- [x] Add a homepage "What's New" entry for this UI change.
+- [x] Run syntax + test validation before deploy.
+
+## Themes Heatmap Alignment Review
+- Code updates:
+  - `styles.css`
+  - `app.js`
+  - `tasks/lessons.md`
+- Validation:
+  - `node --check app.js`
+  - `node --test tests/*.test.js`
+- Outcome:
+  - Theme heatmap rows and headers now share the same left start and fixed metric tracks, so chips sit directly under their time-window headers.

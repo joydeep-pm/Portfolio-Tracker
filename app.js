@@ -143,6 +143,12 @@ const COMPARE_COLOR_PALETTE = [
 const WHATS_NEW_FEED = [
   {
     date: "2026-03-04",
+    title: "Heatmap Columns Realigned",
+    detail: "Theme cards now start from the same left anchor and metric chips align directly under 1D/1W/1M/6M/YTD headers.",
+    targetView: "themes",
+  },
+  {
+    date: "2026-03-04",
     title: "Production Readiness Complete",
     detail: "All release gates passed with production smoke checks and live validation.",
     targetView: "themes",

@@ -43,3 +43,5 @@
 - Preventive rule: for operational support, provide exact click-path instructions (menu names, shortcuts, tab names) and avoid high-level phrasing like "open DevTools" without navigation steps.
 - User correction: every shipped change should be reflected in the homepage "What's New" surface.
 - Preventive rule: whenever a user-visible capability is added, append a dated entry to the `WHATS_NEW_FEED` in `app.js` and ensure the "What's New" panel reflects it before handoff.
+- User correction: theme heatmap rows must begin at the same left anchor and align exactly under period headers.
+- Preventive rule: keep `.table-head` and `.cluster-row` on an identical fixed-column grid template; avoid mixing `fr` sizing in metric columns for dense heatmaps.
