@@ -670,3 +670,29 @@
   - `npx vercel build` -> `.vercel/output/functions` count = `9`
   - `npx vercel --prod --yes` deployed and aliased to `https://portfolio-tracker-kappa-woad.vercel.app`
   - `curl -i https://portfolio-tracker-kappa-woad.vercel.app/api/v1/macro/context?symbol=DEEPAKNTR&exchange=all` now returns `200` (no backend `500`)
+
+## Macro Context Uniform Output Fix Plan (2026-03-04)
+- [x] Stop destructive queue behavior for UI reads by defaulting macro context requests to include processed events.
+- [x] Add production auto-harvest bootstrap when context endpoint has zero events in writable `/tmp` DB.
+- [x] Improve symbol specificity by deriving theme hint from holdings-to-theme mapping when user clicks a symbol.
+- [x] Verify regression suite and live endpoint behavior across multiple symbols.
+
+## Macro Context Uniform Output Fix Review
+- Root cause:
+  - Context read flow was using `includeProcessed=false`, while analyzer marks items as processed, causing subsequent requests to see empty/generic output.
+  - On Vercel serverless, `/tmp` DB starts empty frequently; without on-demand harvest, `considered_events` stayed `0`.
+  - Theme hint was often empty, so head-impact routing stayed generic.
+- Code updates:
+  - `api/macro.js` (default `includeProcessed=true`, production auto-harvest when empty, second-pass analysis)
+  - `api/_lib/macroContextEngine.js` (derive per-symbol theme hint from BharatFinTrack mapping + improved theme/head token overlap)
+  - `app.js` (frontend macro request now sends `includeProcessed: true`; added What's New entry)
+- Validation:
+  - `node --check api/macro.js`
+  - `node --check api/_lib/macroContextEngine.js`
+  - `node --check app.js`
+  - `node --test tests/macroContextApi.test.js tests/macroContextEngine.test.js tests/macroApi.test.js` (6/6 pass)
+  - `node --test tests/*.test.js` (78/78 pass)
+  - Live prod verification (`https://portfolio-tracker-kappa-woad.vercel.app/api/v1/macro/context`):
+    - `symbol=PAYTM` -> `theme_hint=Fintech & Payments India`, top clusters led by Fintech micro-clusters.
+    - `symbol=HDFCBANK` -> `theme_hint=Banking & Financial Services`, top clusters led by Banking micro-clusters.
+    - `symbol=ITC` -> `theme_hint=Consumer Staples`, top clusters led by Consumer Staples micro-clusters.

@@ -17,6 +17,13 @@ function toBool(value, fallback = false) {
   return fallback;
 }
 
+function shouldAutoHarvest(req, body = {}) {
+  const defaultEnabled = Boolean(process.env.VERCEL);
+  const enabled = toBool(body.autoHarvest ?? req.query?.autoHarvest, defaultEnabled);
+  const disabledByEnv = String(process.env.MACRO_AUTO_HARVEST || "").toLowerCase() === "false";
+  return enabled && !disabledByEnv;
+}
+
 module.exports = async function handler(req, res) {
   const trace = initTrace(req, res, "macro-api");
   const route = String(req.query?.route || "latest").toLowerCase();
@@ -33,19 +40,47 @@ module.exports = async function handler(req, res) {
         themeHint,
         exchange: exchangeKey(body.exchange || req.query?.exchange),
         limit: toInt(body.limit ?? req.query?.limit, 30),
-        includeProcessed: toBool(body.includeProcessed ?? req.query?.includeProcessed, false),
+        includeProcessed: toBool(body.includeProcessed ?? req.query?.includeProcessed, true),
         includePromptDraft: toBool(body.includePromptDraft ?? req.query?.includePromptDraft, false),
       });
 
+      let finalPayload = payload;
+      if (shouldAutoHarvest(req, body) && Number(payload?.considered_events || 0) <= 0) {
+        try {
+          const harvestPayload = await runHarvester({
+            maxItemsPerSource: toInt(body.perSource ?? req.query?.perSource, 20),
+            latestLimit: toInt(body.latestLimit ?? req.query?.latestLimit, 20),
+          });
+          traceLog(trace, "info", "macro.context.autoharvest", {
+            insertedCount: harvestPayload.insertedCount,
+            duplicateCount: harvestPayload.duplicateCount,
+            fetchedCount: harvestPayload.fetchedCount,
+          });
+
+          finalPayload = await analyzeMacroContext({
+            symbol,
+            themeHint,
+            exchange: exchangeKey(body.exchange || req.query?.exchange),
+            limit: toInt(body.limit ?? req.query?.limit, 30),
+            includeProcessed: true,
+            includePromptDraft: toBool(body.includePromptDraft ?? req.query?.includePromptDraft, false),
+          });
+        } catch (harvestError) {
+          traceLog(trace, "warn", "macro.context.autoharvest.failed", {
+            message: String(harvestError?.message || "autoharvest failed"),
+          });
+        }
+      }
+
       traceLog(trace, "info", "macro.context.success", {
-        symbol: payload.symbol,
-        sentiment: payload.sentiment_score,
-        consideredEvents: payload.considered_events,
-        impactedClusters: payload.impacted_clusters.length,
+        symbol: finalPayload.symbol,
+        sentiment: finalPayload.sentiment_score,
+        consideredEvents: finalPayload.considered_events,
+        impactedClusters: finalPayload.impacted_clusters.length,
       });
 
       return json(res, 200, {
-        ...payload,
+        ...finalPayload,
         meta: {
           contractVersion: CONTRACTS.macroContext,
           traceId: trace.traceId,

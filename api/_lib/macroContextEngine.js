@@ -1,6 +1,8 @@
 const { buildView } = require("./mockMarket");
 const { bootstrapPortfolio } = require("./portfolioService");
 const { resolveDbPath, openDatabase, ensureSchema } = require("./macroHarvester");
+const { loadThematicCatalog } = require("./thematicCatalog");
+const { mapHoldingsToThemes } = require("./thematicMapping");
 
 const DEFAULT_LIMIT = 30;
 const MAX_LIMIT = 120;
@@ -61,6 +63,18 @@ const TAG_TO_HEADS = {
   "capital markets": ["Banking & Financial Services", "PSU & Disinvestment"],
 };
 
+const SYMBOL_THEME_HINTS = [
+  { head: "Banking & Financial Services", regex: /(BANK|FIN|NBFC|HDFC|ICICI|SBI|KOTAK|AXIS|INDUS|BAJAJFIN|CHOLA)/i },
+  { head: "Fintech & Payments India", regex: /(PAY|UPI|WALLET|MOBIK|PHONEPE)/i },
+  { head: "Power Utilities & Grid", regex: /(POWER|GRID|NTPC|TORRENT|ADANIPOWER)/i },
+  { head: "Oil, Gas & Petrochemicals", regex: /(OIL|ONGC|PETRO|GAS|IOC|BPCL|HPCL)/i },
+  { head: "Pharma & Biotech", regex: /(PHARMA|BIO|LAB|DRREDDY|CIPLA|SUNPHARMA)/i },
+  { head: "Automobiles & EV", regex: /(AUTO|MOTOR|MARUTI|TATAMOT|BAJAJ|EICHER|M&M|MAHINDRA)/i },
+  { head: "IT Services & Digital Tech", regex: /(INFY|TCS|WIPRO|TECH|LTIM|HCL|PERSIST|COFORGE|MPHASIS)/i },
+  { head: "Consumer Staples", regex: /(^ITC$|HINDUNILVR|NESTLE|DABUR|BRITANNIA|COLPAL)/i },
+  { head: "Consumer Discretionary", regex: /(TRENT|NYKAA|SENCO|TITAN|V-MART|JUBILANT|ZOMATO|SWIGGY)/i },
+];
+
 function normalizeExchange(raw) {
   const value = String(raw || "all").toLowerCase();
   if (value === "nse" || value === "bse") return value;
@@ -81,6 +95,24 @@ function normalizeText(value) {
   return String(value || "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function hashText(value) {
+  const input = String(value || "");
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
+function inferThemeHintFromSymbol(symbol) {
+  const key = String(symbol || "").toUpperCase();
+  if (!key) return "";
+  for (const rule of SYMBOL_THEME_HINTS) {
+    if (rule.regex.test(key)) return rule.head;
+  }
+  return "";
 }
 
 function parsePriorityTags(value) {
@@ -179,16 +211,71 @@ function scoreHeadImpacts(text, tags, focusTheme) {
     });
   });
 
-  const focusThemeText = normalizeText(focusTheme).toLowerCase();
-  if (focusThemeText) {
-    headScores.forEach((score, headName) => {
-      if (headName.toLowerCase().includes(focusThemeText) || focusThemeText.includes(headName.toLowerCase())) {
-        headScores.set(headName, score + 2);
+  const focusThemeTokens = normalizeText(focusTheme)
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 3);
+
+  if (focusThemeTokens.length) {
+    Object.keys(HEAD_KEYWORD_MAP).forEach((headName) => {
+      const headTokens = normalizeText(headName)
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter((token) => token.length >= 3);
+      const overlap = focusThemeTokens.filter((token) => headTokens.includes(token)).length;
+      if (overlap > 0) {
+        headScores.set(headName, (headScores.get(headName) || 0) + overlap * 4.2);
       }
     });
   }
 
   return headScores;
+}
+
+async function deriveThemeHint({ selectedSymbol, explicitThemeHint, holdings }) {
+  const direct = normalizeText(explicitThemeHint);
+  if (direct) return direct;
+  if (!selectedSymbol) return "";
+
+  const safeHoldings = Array.isArray(holdings) ? holdings : [];
+
+  try {
+    if (safeHoldings.length) {
+      const catalog = await loadThematicCatalog();
+      const mapped = mapHoldingsToThemes(safeHoldings, catalog).mappings.filter(
+        (item) => String(item.symbol || "").toUpperCase() === selectedSymbol && String(item.index_name || "").toUpperCase() !== "UNMAPPED",
+      );
+      if (mapped.length) {
+        const rank = {
+          thematic: 5,
+          sector: 4,
+          broad: 3,
+          strategy: 2,
+          variant: 1,
+          uncategorized: 0,
+          unclassified: 0,
+        };
+
+        mapped.sort((a, b) => {
+          const left = rank[String(a.index_category || "").toLowerCase()] || 0;
+          const right = rank[String(b.index_category || "").toLowerCase()] || 0;
+          return right - left;
+        });
+
+        const top = mapped[0];
+        return normalizeText(top.sector_tag || top.index_name);
+      }
+    }
+  } catch (_error) {
+    // ignore and continue to heuristic fallback below
+  }
+
+  const symbolHint = inferThemeHintFromSymbol(selectedSymbol);
+  if (symbolHint) return symbolHint;
+
+  const heads = Object.keys(HEAD_KEYWORD_MAP);
+  if (!heads.length) return "";
+  return heads[hashText(selectedSymbol) % heads.length];
 }
 
 function scoreHoldingRelevance(itemText, symbols, selectedSymbol) {
@@ -342,7 +429,7 @@ async function loadPortfolioRowsSafe(exchange) {
 async function analyzeMacroContext(options = {}) {
   const exchange = normalizeExchange(options.exchange);
   const selectedSymbol = String(options.symbol || "").toUpperCase().trim();
-  const themeHint = String(options.themeHint || options.theme || "").trim();
+  const inputThemeHint = String(options.themeHint || options.theme || "").trim();
   const limit = normalizeLimit(options.limit);
   const includeProcessed = Boolean(options.includeProcessed);
   const includePromptDraft = Boolean(options.includePromptDraft);
@@ -350,6 +437,11 @@ async function analyzeMacroContext(options = {}) {
   const holdings = await loadPortfolioRowsSafe(exchange);
   const holdingsBySymbol = new Map(holdings.map((row) => [String(row.symbol || "").toUpperCase(), row]));
   const symbols = [...holdingsBySymbol.keys()];
+  const themeHint = await deriveThemeHint({
+    selectedSymbol,
+    explicitThemeHint: inputThemeHint,
+    holdings,
+  });
 
   const dbPath = resolveDbPath(options.dbPath);
   let db;

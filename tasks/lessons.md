@@ -56,3 +56,7 @@
 - User correction: macro context backend failed in production with `unable to open database file`.
 - Preventive rule: never default SQLite paths to repo-local directories in serverless runtimes; use writable `/tmp` fallback and allow `MACRO_EVENTS_DB_PATH` override.
 - Preventive rule: optional analytics endpoints should fail open with neutral payloads (200) instead of surfacing 500s to UI panels.
+- User correction: macro/regulatory panel showed near-identical output for every symbol.
+- Preventive rule: do not mutate/consume analysis queues in a read-path endpoint used by UI drill-down interactions.
+- Preventive rule: macro context endpoint should bootstrap source data when event store is empty in serverless runtimes, otherwise all symbol requests collapse to neutral payloads.
+- Preventive rule: derive symbol-specific theme hints from holdings-to-theme mapping when explicit theme input is missing.

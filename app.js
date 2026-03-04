@@ -143,6 +143,13 @@ const COMPARE_COLOR_PALETTE = [
 const WHATS_NEW_FEED = [
   {
     date: "2026-03-04",
+    title: "Per-Symbol Macro Context Fix",
+    detail:
+      "Macro context now keeps processed events in read flow, auto-harvests when context is empty in production, and derives theme hints per selected symbol to avoid identical outputs.",
+    targetView: "portfolio",
+  },
+  {
+    date: "2026-03-04",
     title: "Macro Context Backend Reliability Fix",
     detail:
       "Macro & Regulatory Context now fails open with neutral output when storage is unavailable; production route was consolidated and redeployed to eliminate 500 errors.",
@@ -1889,7 +1896,7 @@ async function requestMacroContextForRow(row, options = {}) {
           symbol: row.symbol,
           exchange: String(row.exchange || "all").toLowerCase(),
           limit: 30,
-          includeProcessed: false,
+          includeProcessed: true,
         })
       : syntheticMacroContextForRow(row);
 
