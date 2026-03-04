@@ -16,6 +16,7 @@
         <a href="#" class="muted">Universe</a>
         <a href="#" class="muted">Sectors</a>
         <a href="#" class="active" data-app-view-target="themes">Themes</a>
+        <a href="#" class="muted" data-app-view-target="whatsnew">What's New</a>
         <a href="#" class="muted" data-app-view-target="portfolio">Portfolio</a>
         <a href="#" class="muted">Signals</a>
         <a href="#" class="muted" data-app-view-target="comparison">Comparison</a>
@@ -50,6 +51,33 @@
           </section>
         </section>
 
+        <section class="themes-command-bar">
+          <div class="controls">
+            <input id="searchInput" type="text" placeholder="Find NSE/BSE stocks, clusters, themes..." />
+            <button data-mode="all" class="mode-btn active">Show All</button>
+            <button data-mode="movers" class="mode-btn">Movers</button>
+            <button data-mode="laggards" class="mode-btn">Laggards</button>
+            <button id="liveToggle" class="mode-btn">Pause Live</button>
+          </div>
+        </section>
+
+        <section class="stats snapshot-strip" id="statsRow"></section>
+
+        <section id="matrix" class="matrix"></section>
+      </section>
+
+      <section id="whatsNewView" class="app-view">
+        <section class="hero whats-new-hero">
+          <div>
+            <p class="kicker">Release Intelligence</p>
+            <h1>What's <span>New</span></h1>
+            <p class="subhead">
+              Track every shipped improvement and jump directly into each upgraded workflow.
+            </p>
+          </div>
+          <span class="status-pill status-pill-ok">Waves 1-4 Complete</span>
+        </section>
+
         <section class="whats-new-panel" aria-label="What's new in this release">
           <header class="whats-new-head">
             <div>
@@ -59,7 +87,6 @@
                 This release adds major backend intelligence plus new UI workflows. Use these cards to jump to each area.
               </p>
             </div>
-            <span class="status-pill status-pill-ok">Waves 1-4 Complete</span>
           </header>
           <div class="whats-new-grid">
             <article class="whats-new-card">
@@ -95,20 +122,6 @@
             <div id="whatsNewLog" class="whats-new-log-list"></div>
           </section>
         </section>
-
-        <section class="themes-command-bar">
-          <div class="controls">
-            <input id="searchInput" type="text" placeholder="Find NSE/BSE stocks, clusters, themes..." />
-            <button data-mode="all" class="mode-btn active">Show All</button>
-            <button data-mode="movers" class="mode-btn">Movers</button>
-            <button data-mode="laggards" class="mode-btn">Laggards</button>
-            <button id="liveToggle" class="mode-btn">Pause Live</button>
-          </div>
-        </section>
-
-        <section class="stats snapshot-strip" id="statsRow"></section>
-
-        <section id="matrix" class="matrix"></section>
       </section>
 
       <section id="comparisonView" class="app-view">

@@ -143,6 +143,12 @@ const COMPARE_COLOR_PALETTE = [
 const WHATS_NEW_FEED = [
   {
     date: "2026-03-04",
+    title: "Dedicated What's New Page",
+    detail: "Release updates now live on a separate top-nav page so roadmap changes are easier to scan.",
+    targetView: "whatsnew",
+  },
+  {
+    date: "2026-03-04",
     title: "Heatmap Columns Realigned",
     detail: "Theme cards now start from the same left anchor and metric chips align directly under 1D/1W/1M/6M/YTD headers.",
     targetView: "themes",
@@ -243,6 +249,7 @@ let runtimeState = {
 };
 
 const themesViewEl = document.getElementById("themesView");
+const whatsNewViewEl = document.getElementById("whatsNewView");
 const comparisonViewEl = document.getElementById("comparisonView");
 const portfolioViewEl = document.getElementById("portfolioView");
 const viewLinks = [...document.querySelectorAll("[data-app-view-target]")];
@@ -1867,23 +1874,29 @@ function renderWhatsNewLog() {
 
   whatsNewLogEl.innerHTML = WHATS_NEW_FEED.map((item) => {
     const target = String(item.targetView || "themes");
+    const targetLabel = target === "whatsnew" ? "What's New" : target;
     return `
       <article class="whats-new-log-item">
         <p class="whats-new-date">${item.date}</p>
         <h4>${item.title}</h4>
         <p>${item.detail}</p>
-        <button class="whats-new-log-action" data-quick-view-target="${target}">Open ${target}</button>
+        <button class="whats-new-log-action" data-quick-view-target="${target}">Open ${targetLabel}</button>
       </article>
     `;
   }).join("");
 }
 
 function setActiveView(target) {
+  const allowedViews = new Set(["themes", "whatsnew", "comparison", "portfolio"]);
+  if (!allowedViews.has(target)) {
+    target = "themes";
+  }
   if (target === "portfolio" && !runtimeState.enablePortfolioView) {
     target = "themes";
   }
   state.activeView = target;
   themesViewEl.classList.toggle("active-view", target === "themes");
+  whatsNewViewEl.classList.toggle("active-view", target === "whatsnew");
   comparisonViewEl.classList.toggle("active-view", target === "comparison");
   portfolioViewEl.classList.toggle("active-view", target === "portfolio");
 

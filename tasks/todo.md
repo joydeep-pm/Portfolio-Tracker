@@ -463,3 +463,20 @@
   - `node --test tests/*.test.js`
 - Outcome:
   - Theme heatmap rows and headers now share the same left start and fixed metric tracks, so chips sit directly under their time-window headers.
+
+## What's New Dedicated Page Plan (2026-03-04)
+- [x] Add top-nav route for a dedicated `What's New` page.
+- [x] Move release cards/log panel from `Themes` into standalone `What's New` view.
+- [x] Extend client view router to support `whatsnew` target.
+- [x] Add a dated `WHATS_NEW_FEED` entry announcing the new page.
+- [x] Re-run JS syntax and full automated tests.
+
+## What's New Dedicated Page Review
+- Code updates:
+  - `index.html`
+  - `app.js`
+- Validation:
+  - `node --check app.js`
+  - `node --test tests/*.test.js` (65/65 pass)
+- Outcome:
+  - `What's New` now behaves as a first-class app page accessible from top navigation, similar to `Portfolio` and `Comparison`.

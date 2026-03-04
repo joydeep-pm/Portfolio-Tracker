@@ -45,3 +45,5 @@
 - Preventive rule: whenever a user-visible capability is added, append a dated entry to the `WHATS_NEW_FEED` in `app.js` and ensure the "What's New" panel reflects it before handoff.
 - User correction: theme heatmap rows must begin at the same left anchor and align exactly under period headers.
 - Preventive rule: keep `.table-head` and `.cluster-row` on an identical fixed-column grid template; avoid mixing `fr` sizing in metric columns for dense heatmaps.
+- User correction: "What's New" should be a standalone page, not embedded only inside Themes.
+- Preventive rule: when a section drives navigation/actions across multiple workflows, promote it to a dedicated top-nav view instead of burying it inside another page.
