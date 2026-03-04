@@ -81,3 +81,5 @@
 - Preventive rule: when analysis data is sparse/unavailable, surface explicit fallback reason in UI and apply deterministic symbol-aware fallback instead of silent neutral defaults.
 - User correction: Vercel Hobby deployment failed when root serverless function count exceeded 12.
 - Preventive rule: before shipping new API entrypoints, count `api/*.js` and consolidate gateways early (for example route-family multiplexing) to stay within plan limits.
+- User correction: production surfaced a frontend "Unable to initialize data adapter" state.
+- Preventive rule: frontend bootstrap must not hard-fail on backend adapter startup errors; always auto-fallback to synthetic mode (or equivalent degraded mode) with explicit diagnostic message.

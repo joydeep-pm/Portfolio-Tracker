@@ -4536,10 +4536,28 @@ async function init() {
     setRuntimeHealth("error", resolved.warning);
   }
 
-  const bootstrap = await runtimeState.adapter.bootstrap({
-    exchange: "all",
-    window: compareState.window,
-  });
+  let bootstrap;
+  try {
+    bootstrap = await runtimeState.adapter.bootstrap({
+      exchange: "all",
+      window: compareState.window,
+    });
+  } catch (error) {
+    if (runtimeState.adapterMode !== "backend") {
+      throw error;
+    }
+
+    const fallbackReason = error?.message || "backend bootstrap failed";
+    runtimeState.adapter = createSyntheticAdapter();
+    runtimeState.adapterMode = "synthetic";
+    runtimeState.persistentWarning = `Backend bootstrap failed (${fallbackReason}). Using synthetic mode.`;
+    setRuntimeHealth("error", runtimeState.persistentWarning);
+
+    bootstrap = await runtimeState.adapter.bootstrap({
+      exchange: "all",
+      window: compareState.window,
+    });
+  }
 
   applyNormalizedUniverse(bootstrap, {
     skipRecalc: runtimeState.adapterMode === "backend",
@@ -4574,5 +4592,5 @@ async function init() {
 
 init().catch((error) => {
   console.error("Application bootstrap failed", error);
-  setRuntimeHealth("error", "Unable to initialize data adapter");
+  setRuntimeHealth("error", `Unable to initialize data adapter: ${error?.message || "unknown error"}`);
 });

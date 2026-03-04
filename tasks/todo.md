@@ -1107,3 +1107,20 @@
 - Outcome:
   - Deployment blocker resolved for Vercel Hobby function cap (`<=12`).
   - Public API paths remain unchanged (`/api/v1/research/*`, `/api/v1/commands/interpret` now rewrite through `api/quant`).
+
+## Data Adapter Bootstrap Resilience Patch (2026-03-05)
+- [x] Add backend-bootstrap fallback to synthetic adapter in `app.js` init path.
+- [x] Preserve a clear runtime warning when fallback occurs instead of hard-stop generic adapter failure.
+- [x] Improve topbar error copy to include root error message in terminal catch.
+- [x] Run syntax + regression checks and record outcomes.
+
+## Data Adapter Bootstrap Resilience Review
+- Code updates:
+  - `app.js`
+- Validation:
+  - `node --check app.js` (pass)
+  - `node --test tests/*.test.js` (pass, `97/97`)
+- Outcome:
+  - Backend bootstrap failures no longer hard-fail app startup.
+  - App now auto-degrades to synthetic adapter with explicit warning: `Backend bootstrap failed (...). Using synthetic mode.`
+  - Terminal catch now surfaces root error detail in topbar status instead of generic message-only failure.

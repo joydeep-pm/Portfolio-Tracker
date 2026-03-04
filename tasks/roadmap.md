@@ -312,3 +312,7 @@
 ## Macro Context Reliability Patch (Post-M2 Hardening)
 - [x] M2.5 Prevent misleading all-neutral macro sentiment in sparse/unavailable contexts.
   - Evidence: 2026-03-05 IST - Added momentum-bias tie-breaker in `api/_lib/macroContextEngine.js` for near-neutral heuristic outputs; preserved backend `reason` in `adapterCore.js`; added symbol-level synthetic fallback + explicit context note in `app.js` when macro storage/context is unavailable.
+
+## Runtime Resilience Patch (Deployment Hardening)
+- [x] R1 Harden frontend adapter bootstrap to degrade gracefully when backend bootstrap fails.
+  - Evidence: 2026-03-05 IST - Updated `app.js` init flow to auto-fallback from backend adapter to synthetic adapter on bootstrap failure, preserving app startup and surfacing explicit fallback warning.
