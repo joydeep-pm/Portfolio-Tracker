@@ -31,6 +31,11 @@ function liveMarketEnabled() {
   return toBool(value);
 }
 
+function debugEnabled(req) {
+  const value = String(req?.query?.debug || "").trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes";
+}
+
 module.exports = async function handler(req, res) {
   const trace = initTrace(req, res, "market-api");
   const respond = (statusCode, payload) =>
@@ -44,13 +49,17 @@ module.exports = async function handler(req, res) {
   const route = String(req.query?.route || "").toLowerCase();
   const exchange = mockMarket.getExchange(req.query?.exchange);
   const angelSession = angelSessionFromRequest(req);
+  const debug = debugEnabled(req);
 
   if (route === "bootstrap") {
     if (req.method !== "GET") {
       return respond(405, { error: "Method not allowed" });
     }
 
+    let liveAttempted = false;
+    let liveFallbackReason = "";
     if (liveMarketEnabled() && angelSession.connected) {
+      liveAttempted = true;
       try {
         const livePayload = await buildLiveMarketView({
           exchange,
@@ -64,12 +73,16 @@ module.exports = async function handler(req, res) {
           });
           return respond(200, livePayload);
         }
+        liveFallbackReason = "live-empty-payload";
       } catch (error) {
         traceLog(trace, "warn", "market.bootstrap.live.fallback", {
           exchange,
           message: error.message,
         });
+        liveFallbackReason = error.message;
       }
+    } else {
+      liveFallbackReason = !liveMarketEnabled() ? "live-market-disabled" : "angel-session-not-connected";
     }
 
     const payload = mockMarket.buildView(exchange);
@@ -77,7 +90,19 @@ module.exports = async function handler(req, res) {
       exchange,
       stocks: Array.isArray(payload.stocks) ? payload.stocks.length : 0,
     });
-    return respond(200, payload);
+    return respond(
+      200,
+      debug
+        ? {
+            ...payload,
+            debug: {
+              liveAttempted,
+              liveFallbackReason,
+              angelSessionConnected: angelSession.connected,
+            },
+          }
+        : payload,
+    );
   }
 
   if (route === "poll") {
