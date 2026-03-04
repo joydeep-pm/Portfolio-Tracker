@@ -50,6 +50,52 @@
           </section>
         </section>
 
+        <section class="whats-new-panel" aria-label="What's new in this release">
+          <header class="whats-new-head">
+            <div>
+              <p class="kicker">Release Highlights</p>
+              <h2>What Changed In This Revamp</h2>
+              <p class="subhead">
+                This release adds major backend intelligence plus new UI workflows. Use these cards to jump to each area.
+              </p>
+            </div>
+            <span class="status-pill status-pill-ok">Waves 1-4 Complete</span>
+          </header>
+          <div class="whats-new-grid">
+            <article class="whats-new-card">
+              <p class="whats-new-tag">Wave 1</p>
+              <h3>Live Zerodha Portfolio Layer</h3>
+              <ul>
+                <li>Live holdings + P&amp;L pipeline from Zerodha session.</li>
+                <li>Thematic mapping for holdings using BharatFinTrack index categories.</li>
+              </ul>
+              <button class="whats-new-action" data-quick-view-target="portfolio">Open Portfolio Signals</button>
+            </article>
+            <article class="whats-new-card">
+              <p class="whats-new-tag">Wave 2</p>
+              <h3>Hotspot + Screener Engine</h3>
+              <ul>
+                <li>Breakout/consolidation/momentum scan flags through PKScreener adapter.</li>
+                <li>Ranked hotspot themes with breadth and strength scoring.</li>
+              </ul>
+              <button class="whats-new-action" data-quick-view-target="comparison">Open Comparison Radar</button>
+            </article>
+            <article class="whats-new-card">
+              <p class="whats-new-tag">Waves 3-4</p>
+              <h3>Agent Decisions + Dashboard</h3>
+              <ul>
+                <li>Portfolio/market/news/recommendation multi-agent workflow with risk guardrails.</li>
+                <li>Separate Streamlit dashboard for portfolio + hotspots + recommendations.</li>
+              </ul>
+              <button class="whats-new-action" data-quick-view-target="themes">Back To Theme Grid</button>
+            </article>
+          </div>
+          <section class="whats-new-log">
+            <h3>Recent Updates</h3>
+            <div id="whatsNewLog" class="whats-new-log-list"></div>
+          </section>
+        </section>
+
         <section class="themes-command-bar">
           <div class="controls">
             <input id="searchInput" type="text" placeholder="Find NSE/BSE stocks, clusters, themes..." />

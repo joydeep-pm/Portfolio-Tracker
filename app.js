@@ -139,6 +139,28 @@ const COMPARE_COLOR_PALETTE = [
   "#9f7d4b",
 ];
 
+// Keep this feed updated whenever new user-facing capabilities ship.
+const WHATS_NEW_FEED = [
+  {
+    date: "2026-03-04",
+    title: "Production Readiness Complete",
+    detail: "All release gates passed with production smoke checks and live validation.",
+    targetView: "themes",
+  },
+  {
+    date: "2026-03-04",
+    title: "Live Portfolio Integration",
+    detail: "Zerodha-backed portfolio signals and rationale workflows are active.",
+    targetView: "portfolio",
+  },
+  {
+    date: "2026-03-04",
+    title: "Hotspot + Agent Engine",
+    detail: "Hotspot ranking and multi-agent recommendations are available via APIs and UI flows.",
+    targetView: "comparison",
+  },
+];
+
 const AdapterCore = window.PortfolioAdapterCore;
 if (!AdapterCore) {
   throw new Error("PortfolioAdapterCore is required. Ensure adapterCore.js is loaded before app.js.");
@@ -218,6 +240,7 @@ const themesViewEl = document.getElementById("themesView");
 const comparisonViewEl = document.getElementById("comparisonView");
 const portfolioViewEl = document.getElementById("portfolioView");
 const viewLinks = [...document.querySelectorAll("[data-app-view-target]")];
+const whatsNewLogEl = document.getElementById("whatsNewLog");
 
 const matrixEl = document.getElementById("matrix");
 const statsEl = document.getElementById("statsRow");
@@ -1833,6 +1856,22 @@ function applyCompareButtonStates() {
   });
 }
 
+function renderWhatsNewLog() {
+  if (!whatsNewLogEl) return;
+
+  whatsNewLogEl.innerHTML = WHATS_NEW_FEED.map((item) => {
+    const target = String(item.targetView || "themes");
+    return `
+      <article class="whats-new-log-item">
+        <p class="whats-new-date">${item.date}</p>
+        <h4>${item.title}</h4>
+        <p>${item.detail}</p>
+        <button class="whats-new-log-action" data-quick-view-target="${target}">Open ${target}</button>
+      </article>
+    `;
+  }).join("");
+}
+
 function setActiveView(target) {
   if (target === "portfolio" && !runtimeState.enablePortfolioView) {
     target = "themes";
@@ -1925,6 +1964,16 @@ function attachHandlers() {
       if (!target) return;
       setActiveView(target);
     });
+  });
+
+  document.addEventListener("click", (event) => {
+    const targetButton = event.target.closest("[data-quick-view-target]");
+    if (!targetButton) return;
+    event.preventDefault();
+    const target = targetButton.dataset.quickViewTarget;
+    if (!target) return;
+    setActiveView(target);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
   compareClusterInput.addEventListener("input", (event) => {
@@ -2177,6 +2226,7 @@ async function init() {
   runtimeState.lastAsOfLabel = bootstrap.asOf;
 
   attachHandlers();
+  renderWhatsNewLog();
   renderMatrix();
   if (runtimeState.enablePortfolioView) {
     renderPortfolio();

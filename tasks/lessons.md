@@ -41,3 +41,5 @@
 - Preventive rule: after creating any planning artifact, begin at least one concrete implementation item and mark it with verification evidence to avoid a static checklist impression.
 - User correction: troubleshooting guidance around DevTools/token extraction was not explicit enough.
 - Preventive rule: for operational support, provide exact click-path instructions (menu names, shortcuts, tab names) and avoid high-level phrasing like "open DevTools" without navigation steps.
+- User correction: every shipped change should be reflected in the homepage "What's New" surface.
+- Preventive rule: whenever a user-visible capability is added, append a dated entry to the `WHATS_NEW_FEED` in `app.js` and ensure the "What's New" panel reflects it before handoff.
