@@ -140,7 +140,11 @@ async function angelRequest({ fetchImpl, path, method = "GET", body, apiKey, acc
   try {
     payload = raw ? JSON.parse(raw) : {};
   } catch (_error) {
-    payload = { status: false, message: "non-json-response" };
+    payload = {
+      status: false,
+      message: `non-json-response:${response.status}`,
+      raw: String(raw || "").slice(0, 180),
+    };
   }
 
   if (!response.ok || payload?.status === false) {
@@ -327,7 +331,23 @@ async function fetchHistoricalReturns(item, resolved, ctx) {
 async function fetchLiveMetrics(item, ctx) {
   try {
     if (ctx.diagnostics) ctx.diagnostics.requested += 1;
-    const resolved = await resolveSymbolToken(item, ctx);
+    let resolved = null;
+    try {
+      resolved = await resolveSymbolToken(item, ctx);
+    } catch (error) {
+      if (ctx.diagnostics) {
+        ctx.diagnostics.errors += 1;
+        if (ctx.diagnostics.samples.length < 6) {
+          ctx.diagnostics.samples.push({
+            symbol: item.symbol,
+            exchange: item.exchange,
+            stage: "searchScrip",
+            reason: error?.message || "search-failed",
+          });
+        }
+      }
+      return null;
+    }
     if (!resolved) {
       if (ctx.diagnostics) {
         ctx.diagnostics.tokenMiss += 1;
@@ -343,7 +363,23 @@ async function fetchLiveMetrics(item, ctx) {
       return null;
     }
     if (ctx.diagnostics) ctx.diagnostics.tokenResolved += 1;
-    const quote = await fetchQuote(item, resolved, ctx);
+    let quote = null;
+    try {
+      quote = await fetchQuote(item, resolved, ctx);
+    } catch (error) {
+      if (ctx.diagnostics) {
+        ctx.diagnostics.errors += 1;
+        if (ctx.diagnostics.samples.length < 6) {
+          ctx.diagnostics.samples.push({
+            symbol: item.symbol,
+            exchange: item.exchange,
+            stage: "getLtpData",
+            reason: error?.message || "quote-failed",
+          });
+        }
+      }
+      return null;
+    }
     if (!quote) {
       if (ctx.diagnostics) {
         ctx.diagnostics.quoteMiss += 1;
