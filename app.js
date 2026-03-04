@@ -143,6 +143,13 @@ const COMPARE_COLOR_PALETTE = [
 const WHATS_NEW_FEED = [
   {
     date: "2026-03-04",
+    title: "Angel Historical Returns Live Path",
+    detail:
+      "Portfolio period returns (`1W/1M/6M/YTD`) now use Angel candle history when an Angel session is active, reducing synthetic fallback usage for market context windows.",
+    targetView: "portfolio",
+  },
+  {
+    date: "2026-03-04",
     title: "Angel Session Handshake Hardening",
     detail:
       "Warm-session reuse now re-issues Angel auth cookies, so the hybrid feed reliably shows Zerodha holdings with Angel market-data overlay across refreshes.",

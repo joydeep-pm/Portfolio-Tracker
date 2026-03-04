@@ -99,3 +99,77 @@ test("kite-direct falls back to demo quotes when Angel overlay is unavailable", 
   assert.equal(meta.marketDataProvider, "demo");
   assert.equal(meta.angelOverlayActive, false);
 });
+
+test("kite-direct derives historical returns from Angel candle data", async () => {
+  const requests = [];
+  const headersByPath = new Map();
+  const fetchImpl = async (url, options = {}) => {
+    const target = String(url);
+    requests.push(target);
+    const keyHeader = String(options?.headers?.["X-PrivateKey"] || "");
+    if (target.includes("/searchScrip")) {
+      headersByPath.set("searchScrip", keyHeader);
+      return {
+        ok: true,
+        async text() {
+          return JSON.stringify({
+            status: true,
+            data: [{ tradingsymbol: "SBINHIST", symboltoken: "93045" }],
+          });
+        },
+      };
+    }
+
+    if (target.includes("/historical/v1/getCandleData")) {
+      headersByPath.set("historical", keyHeader);
+      return {
+        ok: true,
+        async text() {
+          return JSON.stringify({
+            status: true,
+            data: [
+              ["2026-02-20T00:00:00+05:30", 700, 710, 690, 700, 1000],
+              ["2026-03-04T00:00:00+05:30", 770, 780, 760, 770, 1000],
+            ],
+          });
+        },
+      };
+    }
+
+    return {
+      ok: false,
+      status: 404,
+      async text() {
+        return JSON.stringify({ status: false, message: "not-found" });
+      },
+    };
+  };
+
+  const provider = createKiteDirectProvider({
+    apiKey: "",
+    accessToken: "",
+    fetchImpl,
+    angelApiKey: "angel-quote-key",
+    angelHistoricalApiKey: "angel-historical-key",
+    enableAngelMarketData: true,
+    session: {
+      angel: {
+        connected: true,
+        accessToken: "angel-jwt",
+        clientCode: "C12345",
+      },
+    },
+  });
+
+  const rows = [{ exchange: "NSE", symbol: "SBINHIST", instrumentToken: 0 }];
+  const returns = await provider.getHistoricalReturns(rows, ["1W", "1M", "6M", "YTD"]);
+  const key = instrumentKey("NSE", "SBINHIST");
+
+  assert.equal(returns[key]["1W"], 10);
+  assert.equal(returns[key]["1M"], 10);
+  assert.equal(returns[key]["6M"], 10);
+  assert.equal(returns[key]["YTD"], 10);
+  assert.equal(headersByPath.get("searchScrip"), "angel-quote-key");
+  assert.equal(headersByPath.get("historical"), "angel-historical-key");
+  assert.equal(requests.some((item) => item.includes("/historical/v1/getCandleData")), true);
+});

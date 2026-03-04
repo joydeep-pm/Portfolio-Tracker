@@ -380,6 +380,7 @@ Use one-click readiness validation before attempting real Angel session generati
 
 Response includes env presence checks for:
 - `ANGEL_API_KEY`
+- `ANGEL_HISTORICAL_API_KEY` (optional; falls back to `ANGEL_API_KEY` when omitted)
 - `ANGEL_CLIENT_CODE`
 - `ANGEL_PIN`
 - `ANGEL_TOTP_SECRET`
@@ -391,6 +392,7 @@ Response includes env presence checks for:
 
 1. Set these in Vercel Project Settings -> Environment Variables:
    - `ANGEL_API_KEY`
+   - `ANGEL_HISTORICAL_API_KEY` (recommended for dedicated historical app key)
    - `ANGEL_CLIENT_CODE`
    - `ANGEL_PIN`
    - `ANGEL_TOTP_SECRET` (base32 secret from SmartAPI TOTP setup)
@@ -406,12 +408,13 @@ This repo now supports keeping Zerodha as the portfolio source while overlaying 
 
 - Holdings/positions source: Zerodha (`kite-direct`)
 - Quote source (LTP/close): Angel when Angel session is active
-- Fallback: Zerodha quote path, then demo quote path
+- Returns source (`1W`, `1M`, `6M`, `YTD`): Angel candle API when Angel session is active
+- Fallback: Zerodha quote/history paths, then demo values
 
 How to use:
 
 1. Keep `BROKER_PROVIDER=kite-direct`.
-2. Ensure Angel env vars are present (`ANGEL_API_KEY`, `ANGEL_CLIENT_CODE`, `ANGEL_PIN`, `ANGEL_TOTP_SECRET`).
+2. Ensure Angel env vars are present (`ANGEL_API_KEY`, `ANGEL_HISTORICAL_API_KEY`, `ANGEL_CLIENT_CODE`, `ANGEL_PIN`, `ANGEL_TOTP_SECRET`).
 3. Create Angel session:
    - `POST /api/angel/session`
 4. Call portfolio endpoints as usual:

@@ -247,8 +247,12 @@ module.exports = async function handler(req, res) {
     if (req.method !== "GET") return methodNotAllowed(res);
     const missing = missingAngelEnv(process.env);
     const requiredKeys = ["ANGEL_API_KEY", "ANGEL_CLIENT_CODE", "ANGEL_PIN", "ANGEL_TOTP_SECRET"];
-    const checks = requiredKeys.map((key) => ({ key, present: !missing.includes(key) }));
-    const ready = checks.every((item) => item.present);
+    const optionalKeys = ["ANGEL_HISTORICAL_API_KEY"];
+    const checks = [
+      ...requiredKeys.map((key) => ({ key, required: true, present: !missing.includes(key) })),
+      ...optionalKeys.map((key) => ({ key, required: false, present: Boolean(String(process.env[key] || "").trim()) })),
+    ];
+    const ready = checks.filter((item) => item.required).every((item) => item.present);
     const snapshot = sessionSnapshot(req);
 
     return json(res, 200, {
@@ -261,7 +265,7 @@ module.exports = async function handler(req, res) {
       session: snapshot,
       serverTime: new Date().toISOString(),
       note: ready
-        ? "All required env vars are present. Use POST /api/angel/session to generate live session."
+        ? "All required env vars are present. Use POST /api/angel/session to generate live session. Set ANGEL_HISTORICAL_API_KEY for dedicated candle-app routing."
         : "Set missing env vars in Vercel Project Settings > Environment Variables.",
     });
   }

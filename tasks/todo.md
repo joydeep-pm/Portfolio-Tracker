@@ -218,6 +218,35 @@
 - [x] Add idempotency test for EOD snapshot persistence in memory mode.
 - [x] Verify EOD runner with sample date output.
 
+## Angel Historical Integration Plan (2026-03-04)
+- [x] Add Angel historical API config surface (`ANGEL_HISTORICAL_API_KEY`) and health visibility.
+- [x] Patch `kite-direct` provider to fetch `1W/1M/6M/YTD` returns from Angel candle endpoint when Angel overlay is connected.
+- [x] Keep deterministic fallback behavior only when Angel historical fetch is unavailable.
+- [x] Add automated tests for Angel historical return derivation + fallback behavior.
+- [x] Update docs (`.env.example`, `README.md`) with required env vars and verification steps.
+- [x] Run tests and record evidence.
+
+## Angel Historical Verify Plan Check-In
+- Scope: market-data layer only (returns computation), no portfolio ownership/provider-switch changes.
+- Safety: preserve existing quote overlay and Zerodha session flow; historical fetch failures must fail open to existing fallback path.
+
+## Angel Historical Integration Review
+- Code updates:
+  - `api/_lib/brokers/kiteDirectProvider.js` (Angel candle history path + fallback chaining)
+  - `api/_lib/configHealth.js` (historical key visibility/profile)
+  - `api/angel.js` (health route now reports optional historical key status)
+  - `tests/kiteAngelOverlay.test.js` (historical return derivation test + key routing assertion)
+  - `.env.example`
+  - `README.md`
+  - `app.js` (`What's New` entry)
+- Validation:
+  - `node --check api/_lib/brokers/kiteDirectProvider.js`
+  - `node --check api/_lib/configHealth.js`
+  - `node --check api/angel.js`
+  - `node --test tests/kiteAngelOverlay.test.js tests/configHealth.test.js` (5/5 pass)
+  - `node --test tests/angelSession.test.js tests/mockApi.test.js` (8/8 pass)
+  - `node --test tests/*.test.js` (84/84 pass)
+
 ## Phase 1 Macro Harvester Plan (2026-03-04)
 - [x] Add modular harvester service for RBI/SEBI RSS ingestion with clean field extraction (`title`, `link`, `pubDate`, `description`).
 - [x] Add RBI feed discovery from `https://www.rbi.org.in/Scripts/rss.aspx` and parse Press Releases + Notifications feeds.

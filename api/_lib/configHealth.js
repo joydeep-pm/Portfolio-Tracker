@@ -13,6 +13,7 @@ const CONFIG_KEYS = [
   { key: "ENABLE_PKSCREENER_LIVE", group: "scanner", required: false },
   { key: "PKSCREENER_CMD", group: "scanner", required: false },
   { key: "ANGEL_API_KEY", group: "angel_optional", required: false, secret: true },
+  { key: "ANGEL_HISTORICAL_API_KEY", group: "angel_optional", required: false, secret: true },
   { key: "ANGEL_CLIENT_CODE", group: "angel_optional", required: false },
   { key: "ANGEL_PIN", group: "angel_optional", required: false, secret: true },
   { key: "ANGEL_TOTP_SECRET", group: "angel_optional", required: false, secret: true },
@@ -62,6 +63,7 @@ function inspectConfig(env = process.env) {
   const angelMarketDataReady = Boolean(
     byKey.ANGEL_API_KEY?.present && byKey.ANGEL_CLIENT_CODE?.present && byKey.ANGEL_PIN?.present && byKey.ANGEL_TOTP_SECRET?.present,
   );
+  const angelHistoricalReady = Boolean(byKey.ANGEL_HISTORICAL_API_KEY?.present || byKey.ANGEL_API_KEY?.present);
 
   const zerodhaLiveReady = Boolean(byKey.KITE_API_KEY?.present && byKey.KITE_API_SECRET?.present);
   const pkscreenerLiveReady = !pkscreenerLive || Boolean(byKey.PKSCREENER_CMD?.present);
@@ -75,6 +77,9 @@ function inspectConfig(env = process.env) {
     !supabaseReady ? "Supabase snapshot persistence is disabled (memory fallback active)." : null,
     angelMarketDataEnabled && !angelMarketDataReady
       ? "Angel market-data overlay is enabled but ANGEL_* credentials are incomplete; quote feed falls back to Zerodha/demo."
+      : null,
+    angelMarketDataEnabled && angelMarketDataReady && !byKey.ANGEL_HISTORICAL_API_KEY?.present
+      ? "ANGEL_HISTORICAL_API_KEY is not set; historical returns currently reuse ANGEL_API_KEY."
       : null,
   ].filter(Boolean);
 
@@ -90,6 +95,7 @@ function inspectConfig(env = process.env) {
       liveTradingReady,
       angelMarketDataEnabled,
       angelMarketDataReady,
+      angelHistoricalReady,
     },
     warnings,
   };

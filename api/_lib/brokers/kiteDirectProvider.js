@@ -8,6 +8,7 @@ const WINDOWS = ["1D", "1W", "1M", "6M", "YTD"];
 const KITE_API_BASE = "https://api.kite.trade";
 const HISTORY_TTL_MS = 10 * 60 * 1000;
 const ANGEL_SYMBOL_TTL_MS = 60 * 60 * 1000;
+const ANGEL_CANDLE_INTERVAL = "ONE_DAY";
 
 const historyCache = new Map();
 const angelSymbolCache = new Map();
@@ -28,6 +29,10 @@ function pctChange(latest, base) {
 
 function formatDate(date) {
   return date.toISOString().slice(0, 10);
+}
+
+function formatAngelDateTime(date, time = "09:15") {
+  return `${formatDate(date)} ${time}`;
 }
 
 function shiftDays(base, days) {
@@ -118,6 +123,7 @@ function createKiteDirectProvider(options = {}) {
   const connected = Boolean(fetchImpl && apiKey && accessToken);
   const angelSession = session.angel || {};
   const angelApiKey = options.angelApiKey || process.env.ANGEL_API_KEY || "";
+  const angelHistoricalApiKey = options.angelHistoricalApiKey || process.env.ANGEL_HISTORICAL_API_KEY || angelApiKey;
   const overlaySetting = options.enableAngelMarketData ?? process.env.ENABLE_ANGEL_MARKET_DATA;
   const angelOverlayEnabled =
     overlaySetting === undefined || overlaySetting === null || String(overlaySetting).trim() === ""
@@ -127,6 +133,14 @@ function createKiteDirectProvider(options = {}) {
     fetchImpl &&
       angelOverlayEnabled &&
       angelApiKey &&
+      angelSession.connected &&
+      angelSession.accessToken &&
+      angelSession.clientCode,
+  );
+  const angelHistoricalConnected = Boolean(
+    fetchImpl &&
+      angelOverlayEnabled &&
+      angelHistoricalApiKey &&
       angelSession.connected &&
       angelSession.accessToken &&
       angelSession.clientCode,
@@ -184,6 +198,47 @@ function createKiteDirectProvider(options = {}) {
     }
 
     return payload;
+  }
+
+  async function angelHistoricalRequest(pathname, method = "GET", body = null) {
+    if (!angelHistoricalConnected) {
+      throw new Error("Angel historical overlay is not connected");
+    }
+
+    const methodKey = String(method || "GET").toUpperCase();
+    const query = methodKey === "GET" && body && typeof body === "object" ? `?${new URLSearchParams(body).toString()}` : "";
+    const response = await fetchImpl(`${ANGEL_ROOT}${pathname}${query}`, {
+      method: methodKey,
+      headers: buildHeaders(angelHistoricalApiKey, angelSession.accessToken),
+      body: methodKey === "GET" ? undefined : body ? JSON.stringify(body) : undefined,
+    });
+
+    const raw = await response.text();
+    let payload = {};
+    try {
+      payload = raw ? JSON.parse(raw) : {};
+    } catch (_error) {
+      payload = {
+        status: false,
+        message: "angel-historical-non-json-response",
+      };
+    }
+
+    if (!response.ok || payload?.status === false) {
+      throw new Error(payload?.message || `Angel historical request failed (${response.status})`);
+    }
+
+    return payload;
+  }
+
+  function candleClose(row) {
+    if (Array.isArray(row)) {
+      return toNumber(row?.[4], 0);
+    }
+    if (row && typeof row === "object") {
+      return toNumber(row.close, 0);
+    }
+    return 0;
   }
 
   async function resolveAngelSymbolToken(item) {
@@ -365,16 +420,45 @@ function createKiteDirectProvider(options = {}) {
     return value;
   }
 
+  async function fetchAngelHistoricalWindowReturn(item, windowKey, now) {
+    const symbolToken = await resolveAngelSymbolToken(item);
+    if (!symbolToken) return null;
+
+    const cacheKey = `angel:${symbolToken}:${windowKey}`;
+    const cached = historyCache.get(cacheKey);
+    if (cached && now.getTime() - cached.updatedAtMs <= HISTORY_TTL_MS) {
+      return cached.value;
+    }
+
+    const from = startDateForWindow(windowKey, now);
+    const payload = await angelHistoricalRequest("/rest/secure/angelbroking/historical/v1/getCandleData", "POST", {
+      exchange: mapAngelExchange(item.exchange),
+      symboltoken: symbolToken,
+      interval: ANGEL_CANDLE_INTERVAL,
+      fromdate: formatAngelDateTime(from, "09:15"),
+      todate: formatAngelDateTime(now, "15:30"),
+    });
+
+    const candles = Array.isArray(payload?.data) ? payload.data : [];
+    if (!candles.length) return null;
+
+    const first = candles[0];
+    const last = candles[candles.length - 1];
+    const startClose = candleClose(first);
+    const endClose = candleClose(last) || startClose;
+    if (!startClose) return null;
+
+    const value = Number.parseFloat(clamp(pctChange(endClose, startClose), -95, 220).toFixed(2));
+    historyCache.set(cacheKey, { value, updatedAtMs: now.getTime() });
+    return value;
+  }
+
   async function getHistoricalReturns(instruments, windows) {
     const list = Array.isArray(instruments) ? instruments : [];
     const targetWindows = Array.isArray(windows) && windows.length ? windows : WINDOWS;
     if (!list.length) return {};
 
     const output = mockReturnsByKey(list);
-    if (!connected) {
-      return output;
-    }
-
     const now = new Date();
 
     for (const item of list) {
@@ -386,10 +470,22 @@ function createKiteDirectProvider(options = {}) {
         }, {});
       }
 
-      if (!item.instrumentToken) continue;
-
       for (const windowKey of targetWindows) {
         if (windowKey === "1D") continue;
+        let resolved = false;
+        if (angelHistoricalConnected) {
+          try {
+            const value = await fetchAngelHistoricalWindowReturn(item, windowKey, now);
+            if (Number.isFinite(value)) {
+              output[key][windowKey] = value;
+              resolved = true;
+            }
+          } catch (_error) {
+            // Keep fallback value if Angel historical fetch fails.
+          }
+        }
+        if (resolved) continue;
+        if (!connected || !item.instrumentToken) continue;
         try {
           const value = await fetchHistoricalWindowReturn(item.instrumentToken, windowKey, now);
           if (Number.isFinite(value)) output[key][windowKey] = value;
@@ -441,6 +537,7 @@ function createKiteDirectProvider(options = {}) {
         connected,
         marketDataProvider: angelConnected ? "angel" : connected ? "kite" : "demo",
         angelOverlayActive: angelConnected,
+        angelHistoricalActive: angelHistoricalConnected,
       };
     },
   };
