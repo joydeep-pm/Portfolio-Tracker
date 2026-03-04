@@ -49,3 +49,5 @@
 - Preventive rule: when a section drives navigation/actions across multiple workflows, promote it to a dedicated top-nav view instead of burying it inside another page.
 - User correction: UI claims must clearly differentiate pre-existing screens vs newly delivered plan-derived changes.
 - Preventive rule: when summarizing delivery, include a visible source-to-feature traceability block in-product (repo source -> module path -> UI/API surface).
+- User correction: theme heatmap columns (`6M/YTD`) were clipped at 3-cards-per-row laptop widths.
+- Preventive rule: size dense heatmap cards from required internal grid width first; set container min width so layouts gracefully step down to fewer cards per row before columns clip.

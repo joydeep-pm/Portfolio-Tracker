@@ -498,3 +498,19 @@
   - `node --test tests/*.test.js`
 - Outcome:
   - The UI now explicitly shows where each GitHub-inspired plan component lives in this codebase and where it surfaces in-product.
+
+## Themes Card Width Hotfix Plan (2026-03-04)
+- [x] Diagnose heatmap right-edge clipping (`6M/YTD`) at three-cards-per-row laptop layouts.
+- [x] Increase minimum theme-card width so grid naturally drops to two cards per row when needed.
+- [x] Add a dated `What's New` entry for this UI fix.
+- [x] Run syntax + full regression tests.
+
+## Themes Card Width Hotfix Review
+- Code updates:
+  - `styles.css`
+  - `app.js`
+- Validation:
+  - `node --check app.js`
+  - `node --test tests/*.test.js`
+- Outcome:
+  - Theme cards now render in 2-per-row layout on constrained desktop widths, keeping the full return-band columns visible.

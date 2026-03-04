@@ -143,6 +143,12 @@ const COMPARE_COLOR_PALETTE = [
 const WHATS_NEW_FEED = [
   {
     date: "2026-03-04",
+    title: "Theme Grid Width Fix",
+    detail: "Theme heatmap cards now use wider minimum widths so 6M/YTD columns stay fully visible; layout switches to two cards per row on laptop screens.",
+    targetView: "themes",
+  },
+  {
+    date: "2026-03-04",
     title: "Plan Traceability Matrix Added",
     detail: "What’s New now maps each referenced GitHub source to active modules, APIs, and UI surfaces in this project.",
     targetView: "whatsnew",
