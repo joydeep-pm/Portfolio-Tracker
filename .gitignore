@@ -9,3 +9,4 @@ __pycache__/
 artifacts/
 data/macro_harvest_store.json
 data/macro_events.db
+*.tsbuildinfo

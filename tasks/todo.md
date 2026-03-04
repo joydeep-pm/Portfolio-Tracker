@@ -610,3 +610,18 @@
 - Validation:
   - Structural verification only (repo is non-Next and has no TypeScript toolchain installed).
   - `npx tsc --version` failed due missing `typescript` package in this workspace.
+
+## TypeScript Compile Fix Plan (2026-03-04)
+- [x] Align `tsconfig.json` module settings so Next-style ESM `app/api` and `components` TS files compile.
+- [x] Add missing type declarations for `better-sqlite3`.
+- [x] Re-run `npx tsc --noEmit` and confirm zero errors.
+
+## TypeScript Compile Fix Review
+- Code updates:
+  - `tsconfig.json`
+  - `next-env.d.ts`
+  - `package.json`
+  - `package-lock.json`
+- Validation:
+  - `npm i -D @types/better-sqlite3`
+  - `npx tsc --noEmit` (pass)
