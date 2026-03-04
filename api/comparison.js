@@ -1,14 +1,26 @@
 const mockMarket = require("./_lib/mockMarket");
+const { CONTRACTS } = require("./_lib/contracts");
+const { initTrace, traceLog } = require("./_lib/trace");
+const { json } = require("./_lib/http");
 
 module.exports = async function handler(req, res) {
+  const trace = initTrace(req, res, "comparison-api");
+  const respond = (statusCode, payload) =>
+    json(res, statusCode, {
+      ...(payload || {}),
+      meta: {
+        contractVersion: CONTRACTS.comparison,
+        traceId: trace.traceId,
+      },
+    });
   const route = String(req.query?.route || "").toLowerCase();
 
   if (route !== "series") {
-    return res.status(404).json({ error: "Not found" });
+    return respond(404, { error: "Not found" });
   }
 
   if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return respond(405, { error: "Method not allowed" });
   }
 
   const payload = mockMarket.getComparisonSeries({
@@ -18,5 +30,9 @@ module.exports = async function handler(req, res) {
     points: req.query?.points,
   });
 
-  return res.status(200).json(payload);
+  traceLog(trace, "info", "comparison.series.success", {
+    exchange: payload.exchange,
+    clusters: Object.keys(payload.seriesByClusterId || {}).length,
+  });
+  return respond(200, payload);
 };

@@ -1,6 +1,8 @@
 const { createBrokerProvider } = require("./brokers/providerFactory");
 const { evaluatePortfolio } = require("./decisionEngine");
 const { assemblePortfolioSnapshot, instrumentKey } = require("./portfolioAssembler");
+const { loadThematicCatalog } = require("./thematicCatalog");
+const { mapHoldingsToThemes } = require("./thematicMapping");
 const { getSession } = require("./zerodhaSession");
 
 const WINDOWS = ["1D", "1W", "1M", "6M", "YTD"];
@@ -62,6 +64,7 @@ function addPortfolioMetadata(snapshot, details) {
       userId: session.userId || null,
       userName: session.userName || null,
     },
+    thematicCatalogSource: snapshot.thematicCatalogSource || null,
   };
 }
 
@@ -71,11 +74,24 @@ function filterSnapshotByExchange(snapshot, exchange) {
 
   const rows = snapshot.rows.filter((row) => row.exchange.toLowerCase() === normalized);
   const decisions = rows.map((row) => row.decision);
+  const thematicMappings = (snapshot.thematicMappings || []).filter((item) => item.exchange.toLowerCase() === normalized);
+  const thematicSummary = thematicMappings.reduce(
+    (acc, item) => {
+      acc.totalMappings += 1;
+      const key = item.index_category || "unclassified";
+      if (!acc.byCategory[key]) acc.byCategory[key] = { mappings: 0, holdings: 0 };
+      acc.byCategory[key].mappings += 1;
+      return acc;
+    },
+    { totalMappings: 0, totalHoldingsCovered: rows.length, byCategory: {} },
+  );
 
   return {
     ...snapshot,
     rows,
     decisions,
+    thematicMappings,
+    thematicSummary,
     summary: {
       ...computeSummary(rows),
       cashAvailable: snapshot.summary?.cashAvailable || 0,
@@ -102,6 +118,8 @@ function buildPollDelta(previousSnapshot, nextSnapshot) {
       rows: nextSnapshot.rows,
       decisions: nextSnapshot.decisions,
       summary: nextSnapshot.summary,
+      thematicMappings: nextSnapshot.thematicMappings || [],
+      thematicSummary: nextSnapshot.thematicSummary || null,
     };
   }
 
@@ -114,6 +132,8 @@ function buildPollDelta(previousSnapshot, nextSnapshot) {
     rows: changedRows,
     decisions: nextSnapshot.decisions.filter((decision) => decisionByKey.has(instrumentKey(decision.exchange, decision.symbol))),
     summary: nextSnapshot.summary,
+    thematicMappings: nextSnapshot.thematicMappings || [],
+    thematicSummary: nextSnapshot.thematicSummary || null,
   };
 }
 
@@ -143,10 +163,27 @@ function snapshotFromRows(rows, asOf, cashAvailable) {
     asOf,
     rows: sorted,
     decisions,
+    thematicMappings: [],
+    thematicSummary: {
+      totalMappings: 0,
+      totalHoldingsCovered: sorted.length,
+      byCategory: {},
+    },
     summary: {
       ...computeSummary(sorted),
       cashAvailable: Number.parseFloat(toNumber(cashAvailable, 0).toFixed(2)),
     },
+  };
+}
+
+async function enrichSnapshotWithThemes(snapshot) {
+  const catalog = await loadThematicCatalog();
+  const thematic = mapHoldingsToThemes(snapshot.rows, catalog, snapshot.asOf);
+  return {
+    ...snapshot,
+    thematicMappings: thematic.mappings,
+    thematicSummary: thematic.summary,
+    thematicCatalogSource: catalog.source,
   };
 }
 
@@ -273,6 +310,12 @@ async function ensureSnapshot(options = {}) {
     }
   }
   if (requiresStructureSync) runtime.lastStructureSyncMs = nowMs;
+
+  try {
+    nextSnapshot = await enrichSnapshotWithThemes(nextSnapshot);
+  } catch (_error) {
+    // Keep core portfolio snapshot available even when thematic enrichment is unavailable.
+  }
 
   runtime.snapshot = nextSnapshot;
   runtime.tick += 1;

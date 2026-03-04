@@ -7,6 +7,7 @@ const comparisonHandler = require("../api/comparison");
 const angelHandler = require("../api/angel");
 
 function createRes() {
+  const headers = new Map();
   return {
     statusCode: 200,
     body: null,
@@ -21,6 +22,12 @@ function createRes() {
     send(payload) {
       this.body = payload;
       return this;
+    },
+    setHeader(name, value) {
+      headers.set(String(name).toLowerCase(), value);
+    },
+    getHeader(name) {
+      return headers.get(String(name).toLowerCase());
     },
   };
 }
@@ -46,6 +53,9 @@ test("bootstrap endpoint returns contract payload", async () => {
   assert.equal(Array.isArray(res.body.stocks), true);
   assert.equal(typeof res.body.asOf, "string");
   assert.equal(typeof res.body.cursor, "string");
+  assert.equal(typeof res.body.meta?.contractVersion, "string");
+  assert.equal(typeof res.body.meta?.traceId, "string");
+  assert.equal(typeof res.getHeader("x-trace-id"), "string");
 });
 
 test("poll endpoint ticks cursor and returns update envelope", async () => {
@@ -61,6 +71,8 @@ test("poll endpoint ticks cursor and returns update envelope", async () => {
   assert.equal(Array.isArray(res.body.updates.stocks), true);
   assert.equal(Array.isArray(res.body.updates.clusters), true);
   assert.equal(Array.isArray(res.body.updates.heads), true);
+  assert.equal(typeof res.body.meta?.contractVersion, "string");
+  assert.equal(typeof res.body.meta?.traceId, "string");
 });
 
 test("comparison series endpoint maps requested cluster IDs", async () => {
@@ -87,6 +99,8 @@ test("comparison series endpoint maps requested cluster IDs", async () => {
   const keys = Object.keys(res.body.seriesByClusterId);
   assert.equal(keys.length, 2);
   assert.equal(res.body.seriesByClusterId[keys[0]].length, 12);
+  assert.equal(typeof res.body.meta?.contractVersion, "string");
+  assert.equal(typeof res.body.meta?.traceId, "string");
 });
 
 test("angel health endpoint marks missing env vars", async () => {

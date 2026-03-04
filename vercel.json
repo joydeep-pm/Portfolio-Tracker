@@ -7,6 +7,7 @@
     { "source": "/api/zerodha/auth/url", "destination": "/api/zerodha?route=auth-url" },
     { "source": "/api/zerodha/callback", "destination": "/api/zerodha?route=callback" },
     { "source": "/api/zerodha/session/status", "destination": "/api/zerodha?route=session-status" },
+    { "source": "/api/zerodha/logout", "destination": "/api/zerodha?route=logout" },
 
     { "source": "/api/v1/market/bootstrap", "destination": "/api/market?route=bootstrap" },
     { "source": "/api/v1/market/poll", "destination": "/api/market?route=poll" },
@@ -16,6 +17,12 @@
     { "source": "/api/v1/portfolio/poll", "destination": "/api/portfolio?route=poll" },
     { "source": "/api/v1/portfolio/decisions", "destination": "/api/portfolio?route=decisions" },
     { "source": "/api/v1/portfolio/snapshots/eod", "destination": "/api/portfolio?route=snapshots-eod" },
+
+    { "source": "/api/v1/hotspots/snapshot", "destination": "/api/hotspots?route=snapshot" },
+    { "source": "/api/v1/hotspots/poll", "destination": "/api/hotspots?route=poll" },
+
+    { "source": "/api/v1/agents/intent", "destination": "/api/agents?route=intent" },
+    { "source": "/api/v1/agents/analyze", "destination": "/api/agents?route=analyze" },
 
     { "source": "/api/v1/orders/preview", "destination": "/api/orders?route=preview" },
     { "source": "/api/v1/orders/submit", "destination": "/api/orders?route=submit" },

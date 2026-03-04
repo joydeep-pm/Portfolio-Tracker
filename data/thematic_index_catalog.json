@@ -1,0 +1,170 @@
+{
+  "generatedAt": "2026-03-03T20:07:42.876Z",
+  "source": "bharatfintrack-seed",
+  "categories": [
+    "broad",
+    "sector",
+    "thematic",
+    "strategy",
+    "variant"
+  ],
+  "indices": [
+    {
+      "id": "nifty-50",
+      "name": "NIFTY 50",
+      "category": "broad",
+      "sectorTag": "Broad Market",
+      "source": "bharatfintrack",
+      "constituents": [
+        "NSE:RELIANCE",
+        "NSE:TCS",
+        "NSE:INFY",
+        "NSE:HDFCBANK",
+        "NSE:ICICIBANK",
+        "NSE:SBIN",
+        "NSE:ITC",
+        "NSE:BHARTIARTL",
+        "NSE:LT"
+      ]
+    },
+    {
+      "id": "nifty-next-50",
+      "name": "NIFTY NEXT 50",
+      "category": "broad",
+      "sectorTag": "Broad Market",
+      "source": "bharatfintrack",
+      "constituents": [
+        "NSE:DMART",
+        "NSE:PIDILITIND",
+        "NSE:SIEMENS",
+        "NSE:DABUR"
+      ]
+    },
+    {
+      "id": "nifty-bank",
+      "name": "NIFTY BANK",
+      "category": "sector",
+      "sectorTag": "Banking",
+      "source": "bharatfintrack",
+      "constituents": [
+        "NSE:HDFCBANK",
+        "NSE:ICICIBANK",
+        "NSE:SBIN",
+        "NSE:KOTAKBANK",
+        "NSE:AXISBANK",
+        "NSE:INDUSINDBK"
+      ]
+    },
+    {
+      "id": "nifty-psu-bank",
+      "name": "NIFTY PSU BANK",
+      "category": "thematic",
+      "sectorTag": "PSU Banking",
+      "source": "bharatfintrack",
+      "constituents": [
+        "NSE:SBIN",
+        "NSE:BANKBARODA",
+        "NSE:PNB",
+        "NSE:CANBK",
+        "NSE:UNIONBANK"
+      ]
+    },
+    {
+      "id": "nifty-it",
+      "name": "NIFTY IT",
+      "category": "sector",
+      "sectorTag": "IT",
+      "source": "bharatfintrack",
+      "constituents": [
+        "NSE:TCS",
+        "NSE:INFY",
+        "NSE:HCLTECH",
+        "NSE:WIPRO",
+        "NSE:TECHM"
+      ]
+    },
+    {
+      "id": "nifty-pharma",
+      "name": "NIFTY PHARMA",
+      "category": "sector",
+      "sectorTag": "Pharma",
+      "source": "bharatfintrack",
+      "constituents": [
+        "NSE:SUNPHARMA",
+        "NSE:DRREDDY",
+        "NSE:CIPLA",
+        "NSE:DIVISLAB"
+      ]
+    },
+    {
+      "id": "nifty-energy",
+      "name": "NIFTY ENERGY",
+      "category": "sector",
+      "sectorTag": "Energy",
+      "source": "bharatfintrack",
+      "constituents": [
+        "NSE:RELIANCE",
+        "NSE:ONGC",
+        "NSE:NTPC",
+        "NSE:POWERGRID",
+        "NSE:BPCL",
+        "NSE:IOC"
+      ]
+    },
+    {
+      "id": "nifty-metal",
+      "name": "NIFTY METAL",
+      "category": "sector",
+      "sectorTag": "Metals",
+      "source": "bharatfintrack",
+      "constituents": [
+        "NSE:TATASTEEL",
+        "NSE:HINDALCO",
+        "NSE:JSWSTEEL",
+        "NSE:SAIL"
+      ]
+    },
+    {
+      "id": "nifty-midcap150-momentum-50",
+      "name": "NIFTY MIDCAP150 MOMENTUM 50",
+      "category": "strategy",
+      "sectorTag": "Momentum",
+      "source": "bharatfintrack",
+      "constituents": [
+        "NSE:COFORGE",
+        "NSE:POLYCAB",
+        "NSE:TRENT",
+        "NSE:CGPOWER"
+      ]
+    },
+    {
+      "id": "nifty-alpha-low-volatility-30",
+      "name": "NIFTY ALPHA LOW-VOLATILITY 30",
+      "category": "strategy",
+      "sectorTag": "Factor",
+      "source": "bharatfintrack",
+      "constituents": [
+        "NSE:ITC",
+        "NSE:LT",
+        "NSE:BHARTIARTL",
+        "NSE:POWERGRID"
+      ]
+    },
+    {
+      "id": "nifty-total-market",
+      "name": "NIFTY TOTAL MARKET",
+      "category": "variant",
+      "sectorTag": "Total Market",
+      "source": "bharatfintrack",
+      "constituents": [
+        "NSE:RELIANCE",
+        "NSE:TCS",
+        "NSE:INFY",
+        "NSE:HDFCBANK",
+        "NSE:ICICIBANK",
+        "NSE:SBIN",
+        "NSE:ITC"
+      ]
+    }
+  ]
+}

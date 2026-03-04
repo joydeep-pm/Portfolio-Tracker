@@ -1,0 +1,84 @@
+{
+  "generatedAt": "2026-03-04T00:00:00.000Z",
+  "source": "bharatfintrack-seed",
+  "categories": ["broad", "sector", "thematic", "strategy", "variant"],
+  "indices": [
+    {
+      "id": "nifty-50",
+      "name": "NIFTY 50",
+      "category": "broad",
+      "sectorTag": "Broad Market",
+      "constituents": ["NSE:RELIANCE", "NSE:TCS", "NSE:INFY", "NSE:HDFCBANK", "NSE:ICICIBANK", "NSE:SBIN", "NSE:ITC", "NSE:BHARTIARTL", "NSE:LT"]
+    },
+    {
+      "id": "nifty-next-50",
+      "name": "NIFTY NEXT 50",
+      "category": "broad",
+      "sectorTag": "Broad Market",
+      "constituents": ["NSE:DMART", "NSE:PIDILITIND", "NSE:SIEMENS", "NSE:DABUR"]
+    },
+    {
+      "id": "nifty-bank",
+      "name": "NIFTY BANK",
+      "category": "sector",
+      "sectorTag": "Banking",
+      "constituents": ["NSE:HDFCBANK", "NSE:ICICIBANK", "NSE:SBIN", "NSE:KOTAKBANK", "NSE:AXISBANK", "NSE:INDUSINDBK"]
+    },
+    {
+      "id": "nifty-psu-bank",
+      "name": "NIFTY PSU BANK",
+      "category": "thematic",
+      "sectorTag": "PSU Banking",
+      "constituents": ["NSE:SBIN", "NSE:BANKBARODA", "NSE:PNB", "NSE:CANBK", "NSE:UNIONBANK"]
+    },
+    {
+      "id": "nifty-it",
+      "name": "NIFTY IT",
+      "category": "sector",
+      "sectorTag": "IT",
+      "constituents": ["NSE:TCS", "NSE:INFY", "NSE:HCLTECH", "NSE:WIPRO", "NSE:TECHM"]
+    },
+    {
+      "id": "nifty-pharma",
+      "name": "NIFTY PHARMA",
+      "category": "sector",
+      "sectorTag": "Pharma",
+      "constituents": ["NSE:SUNPHARMA", "NSE:DRREDDY", "NSE:CIPLA", "NSE:DIVISLAB"]
+    },
+    {
+      "id": "nifty-energy",
+      "name": "NIFTY ENERGY",
+      "category": "sector",
+      "sectorTag": "Energy",
+      "constituents": ["NSE:RELIANCE", "NSE:ONGC", "NSE:NTPC", "NSE:POWERGRID", "NSE:BPCL", "NSE:IOC"]
+    },
+    {
+      "id": "nifty-metal",
+      "name": "NIFTY METAL",
+      "category": "sector",
+      "sectorTag": "Metals",
+      "constituents": ["NSE:TATASTEEL", "NSE:HINDALCO", "NSE:JSWSTEEL", "NSE:SAIL"]
+    },
+    {
+      "id": "nifty-midcap150-momentum-50",
+      "name": "NIFTY MIDCAP150 MOMENTUM 50",
+      "category": "strategy",
+      "sectorTag": "Momentum",
+      "constituents": ["NSE:COFORGE", "NSE:POLYCAB", "NSE:TRENT", "NSE:CGPOWER"]
+    },
+    {
+      "id": "nifty-alpha-low-volatility-30",
+      "name": "NIFTY ALPHA LOW-VOLATILITY 30",
+      "category": "strategy",
+      "sectorTag": "Factor",
+      "constituents": ["NSE:ITC", "NSE:LT", "NSE:BHARTIARTL", "NSE:POWERGRID"]
+    },
+    {
+      "id": "nifty-total-market",
+      "name": "NIFTY TOTAL MARKET",
+      "category": "variant",
+      "sectorTag": "Total Market",
+      "constituents": ["NSE:RELIANCE", "NSE:TCS", "NSE:INFY", "NSE:HDFCBANK", "NSE:ICICIBANK", "NSE:SBIN", "NSE:ITC"]
+    }
+  ]
+}

@@ -39,3 +39,5 @@
 - User correction: roadmap template existed but was perceived as non-actionable because progress/evidence and active execution items were missing.
 - Preventive rule: when creating a tracking roadmap, always include a live execution board, per-item sub-steps, and immediate status/evidence updates in the same turn.
 - Preventive rule: after creating any planning artifact, begin at least one concrete implementation item and mark it with verification evidence to avoid a static checklist impression.
+- User correction: troubleshooting guidance around DevTools/token extraction was not explicit enough.
+- Preventive rule: for operational support, provide exact click-path instructions (menu names, shortcuts, tab names) and avoid high-level phrasing like "open DevTools" without navigation steps.

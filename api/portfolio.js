@@ -1,29 +1,46 @@
 const { bootstrapPortfolio, pollPortfolio, getDecisions } = require("./_lib/portfolioService");
+const { CONTRACTS } = require("./_lib/contracts");
+const { RECOMMENDATION_DISCLAIMER, applyDecisionGuardrails } = require("./_lib/safety");
 const { saveEodSnapshot } = require("./_lib/snapshots");
-const { exchangeKey, json, methodNotAllowed, parseJsonBody, parseCookies } = require("./_lib/http");
+const { initTrace, traceLog } = require("./_lib/trace");
+const { exchangeKey, json, parseJsonBody, parseCookies } = require("./_lib/http");
+const { isSessionExpired } = require("./_lib/zerodhaSession");
 
 function sessionFromRequest(req) {
   const cookies = parseCookies(req);
   const accessToken = String(cookies.kite_access_token || "").trim();
   const userId = String(cookies.kite_user_id || "").trim();
   const userName = String(cookies.kite_user_name || "").trim();
+  const expiresAt = String(cookies.kite_expires_at || "").trim();
 
   if (!accessToken) return null;
+  if (isSessionExpired({ expiresAt })) return null;
   return {
     connected: true,
     accessToken,
     userId: userId || null,
     userName: userName || null,
+    expiresAt: expiresAt || null,
     provider: "kite-direct",
   };
 }
 
 module.exports = async function handler(req, res) {
+  const trace = initTrace(req, res, "portfolio-api");
+  const withMeta = (payload) => ({
+    ...(payload || {}),
+    meta: {
+      contractVersion: CONTRACTS.portfolio,
+      traceId: trace.traceId,
+    },
+  });
+  const respond = (statusCode, payload) => json(res, statusCode, withMeta(payload));
+
   const route = String(req.query?.route || "").toLowerCase();
   const sessionOverride = sessionFromRequest(req);
 
   if (route === "bootstrap") {
-    if (req.method !== "GET") return methodNotAllowed(res);
+    if (req.method !== "GET") return respond(405, { error: "Method not allowed" });
 
     try {
       const payload = await bootstrapPortfolio({
@@ -32,9 +49,13 @@ module.exports = async function handler(req, res) {
         sessionOverride,
       });
 
-      return json(res, 200, payload);
+      traceLog(trace, "info", "portfolio.bootstrap.success", {
+        rows: Array.isArray(payload.rows) ? payload.rows.length : 0,
+      });
+      return respond(200, payload);
     } catch (error) {
-      return json(res, 500, {
+      traceLog(trace, "error", "portfolio.bootstrap.failed", { message: error.message });
+      return respond(500, {
         error: "portfolio-bootstrap-failed",
         message: error.message,
       });
@@ -42,7 +63,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (route === "poll") {
-    if (req.method !== "GET") return methodNotAllowed(res);
+    if (req.method !== "GET") return respond(405, { error: "Method not allowed" });
 
     try {
       const payload = await pollPortfolio({
@@ -51,9 +72,13 @@ module.exports = async function handler(req, res) {
         sessionOverride,
       });
 
-      return json(res, 200, payload);
+      traceLog(trace, "info", "portfolio.poll.success", {
+        rows: Array.isArray(payload?.updates?.rows) ? payload.updates.rows.length : 0,
+      });
+      return respond(200, payload);
     } catch (error) {
-      return json(res, 500, {
+      traceLog(trace, "error", "portfolio.poll.failed", { message: error.message });
+      return respond(500, {
         error: "portfolio-poll-failed",
         message: error.message,
       });
@@ -61,17 +86,28 @@ module.exports = async function handler(req, res) {
   }
 
   if (route === "decisions") {
-    if (req.method !== "GET") return methodNotAllowed(res);
+    if (req.method !== "GET") return respond(405, { error: "Method not allowed" });
 
     try {
       const payload = await getDecisions({
         exchange: exchangeKey(req.query?.exchange),
         sessionOverride,
       });
+      const decisions = Array.isArray(payload.decisions)
+        ? payload.decisions.map((decision) => applyDecisionGuardrails(decision, { liveTradingEnabled: false }))
+        : [];
 
-      return json(res, 200, payload);
+      traceLog(trace, "info", "portfolio.decisions.success", {
+        decisions: decisions.length,
+      });
+      return respond(200, {
+        ...payload,
+        decisions,
+        disclaimer: RECOMMENDATION_DISCLAIMER,
+      });
     } catch (error) {
-      return json(res, 500, {
+      traceLog(trace, "error", "portfolio.decisions.failed", { message: error.message });
+      return respond(500, {
         error: "portfolio-decisions-failed",
         message: error.message,
       });
@@ -79,7 +115,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (route === "snapshots-eod") {
-    if (req.method !== "POST") return methodNotAllowed(res);
+    if (req.method !== "POST") return respond(405, { error: "Method not allowed" });
 
     try {
       const body = await parseJsonBody(req);
@@ -87,14 +123,19 @@ module.exports = async function handler(req, res) {
         snapshotDate: body.snapshotDate,
       });
 
-      return json(res, 200, payload);
+      traceLog(trace, "info", "portfolio.snapshots-eod.success", {
+        stored: Boolean(payload?.stored),
+        mode: payload?.mode || null,
+      });
+      return respond(200, payload);
     } catch (error) {
-      return json(res, 500, {
+      traceLog(trace, "error", "portfolio.snapshots-eod.failed", { message: error.message });
+      return respond(500, {
         error: "portfolio-snapshot-failed",
         message: error.message,
       });
     }
   }
 
-  return json(res, 404, { error: "Not found" });
+  return respond(404, { error: "Not found" });
 };

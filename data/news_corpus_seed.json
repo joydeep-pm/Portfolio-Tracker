@@ -1,0 +1,38 @@
+{
+  "generatedAt": "2026-03-04T00:00:00.000Z",
+  "source": "seed-news-corpus",
+  "documents": [
+    {
+      "id": "news-psu-bank-1",
+      "title": "PSU bank credit growth accelerates with improving asset quality",
+      "content": "Public sector banks reported stronger loan growth and stable net interest margins, supporting positive momentum in PSU banking names.",
+      "tags": ["PSU Banking", "NIFTY PSU BANK", "SBIN", "BANKBARODA"],
+      "sentiment": "positive",
+      "publishedAt": "2026-03-01T10:30:00+05:30"
+    },
+    {
+      "id": "news-energy-1",
+      "title": "Energy basket volatile amid crude swings",
+      "content": "Oil-linked names saw mixed price action after global crude volatility increased and refining margins narrowed.",
+      "tags": ["Energy", "NIFTY ENERGY", "RELIANCE", "ONGC"],
+      "sentiment": "neutral",
+      "publishedAt": "2026-03-02T14:15:00+05:30"
+    },
+    {
+      "id": "news-it-1",
+      "title": "IT export pipeline remains resilient despite macro caution",
+      "content": "Large-cap IT firms guided for steady deal wins while management commentary indicated disciplined cost controls.",
+      "tags": ["IT", "NIFTY IT", "TCS", "INFY"],
+      "sentiment": "positive",
+      "publishedAt": "2026-03-03T09:45:00+05:30"
+    },
+    {
+      "id": "news-pharma-1",
+      "title": "USFDA observations create near-term overhang for select pharma counters",
+      "content": "Regulatory observations and delayed product approvals raised uncertainty for some pharmaceutical exporters.",
+      "tags": ["Pharma", "NIFTY PHARMA", "DRREDDY", "SUNPHARMA"],
+      "sentiment": "negative",
+      "publishedAt": "2026-03-03T16:20:00+05:30"
+    }
+  ]
+}

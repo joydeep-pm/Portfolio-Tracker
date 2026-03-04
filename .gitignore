@@ -3,3 +3,7 @@
 !.env.example
 node_modules/
 .DS_Store
+.vercel
+
+__pycache__/
+artifacts/

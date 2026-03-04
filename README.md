@@ -18,6 +18,127 @@ python3 -m http.server 4173
 Open:
 - http://127.0.0.1:4173/index.html
 
+## Streamlit Dashboard (Wave 4)
+
+Install dashboard dependencies:
+
+```bash
+pip install -r requirements-streamlit.txt
+```
+
+Run Streamlit UI:
+
+```bash
+./scripts/run-streamlit-dashboard.sh
+# or
+python3 -m streamlit run streamlit_app.py
+```
+
+Default API base in the app sidebar:
+- `http://127.0.0.1:4173/api/v1`
+
+## Headless Portfolio CLI (Wave 1)
+
+Use the CLI for cron-safe snapshots without loading the UI:
+
+```bash
+node scripts/portfolio-snapshot.js --mode summary --format table
+node scripts/portfolio-snapshot.js --mode detailed --format json --export ./artifacts/portfolio-snapshot.json
+node scripts/portfolio-snapshot.js --mode detailed --format table --export ./artifacts/portfolio-snapshot.csv
+node scripts/portfolio-snapshot.js --eod --snapshot-date 2026-03-04
+node scripts/run-eod-snapshot.js --snapshot-date 2026-03-04 --exchange all
+node scripts/exchange-request-token.js --request-token <request_token>
+node scripts/live-paper-validate.js --exchange all --export ./artifacts/live-paper-snapshot.json
+node scripts/ingest-bharatfintrack.js --output ./data/thematic_index_catalog.json
+node scripts/hotspots-snapshot.js --mode summary --format table --exchange all
+node scripts/hotspots-snapshot.js --mode detailed --format json --exchange all --export ./artifacts/hotspots.json
+node scripts/agents-analyze.js --prompt "evaluate my portfolio against current PSU bank thematic momentum" --format table --exchange all
+node scripts/agents-analyze.js --prompt "evaluate my portfolio against current PSU bank thematic momentum" --format json --exchange all --export ./artifacts/agent-analysis.json
+node scripts/replay-backfill.js --from 2026-03-01 --to 2026-03-03 --exchange all --hotspot-dir ./artifacts/backfill-hotspots
+```
+
+Supported options:
+- `--mode summary|detailed`
+- `--exchange all|nse|bse`
+- `--format table|json`
+- `--provider kite-direct|kite-mcp`
+- `--export <path>` (JSON in `json` mode, CSV in `table` mode)
+- `--eod` and optional `--snapshot-date YYYY-MM-DD`
+
+For cron-only EOD jobs, use:
+- `node scripts/run-eod-snapshot.js --snapshot-date YYYY-MM-DD --exchange all`
+
+For account-owner live-paper validation (requires `KITE_API_KEY` + `KITE_ACCESS_TOKEN`):
+- `node scripts/exchange-request-token.js --request-token <request_token>` (writes `KITE_ACCESS_TOKEN` into `.env.local`)
+- `node scripts/live-paper-validate.js --exchange all --export ./artifacts/live-paper-snapshot.json`
+
+For hotspot snapshot exports:
+- `node scripts/hotspots-snapshot.js --mode summary|detailed --format table|json --exchange all|nse|bse --refresh --export <path>`
+
+For multi-agent analysis:
+- `node scripts/agents-analyze.js --prompt "<natural language query>" --exchange all|nse|bse --format table|json --export <path>`
+
+For replay/backfill of missed windows:
+- `node scripts/replay-backfill.js --from YYYY-MM-DD [--to YYYY-MM-DD] --exchange all|nse|bse --hotspot-dir <path> [--no-skip-existing]`
+
+JSON CLI outputs include metadata:
+- `meta.contractVersion`
+- `meta.generatedAt`
+
+Environment/secrets health check:
+- Copy `.env.example` to `.env.local` and fill required values.
+- Run `node scripts/config-health.js --format table` (or `--format json`) to validate local + runtime env readiness without printing raw secrets.
+- For Vercel deployments, mirror the same keys in project environment settings (`vercel env add <KEY>`), then redeploy.
+
+## BharatFinTrack Ingestion + Holdings Thematic Mapping
+
+The Wave 1 ingestion job creates a normalized thematic catalog:
+
+```bash
+node scripts/ingest-bharatfintrack.js --output ./data/thematic_index_catalog.json
+```
+
+Behavior:
+- Attempts live extraction from Python `BharatFinTrack` package.
+- Falls back to `data/bharatfintrack_seed.json` when package/runtime is unavailable.
+- Produces `data/thematic_index_catalog.json` used by backend holdings-to-theme mapping.
+
+Portfolio snapshots now include:
+- `thematicMappings`: normalized records with `{ symbol, exchange, index_category, index_name, index_id, sector_tag, source, asOf }`
+- `thematicSummary`: aggregate mapping coverage by category
+- `thematicCatalogSource`: source identifier for traceability
+
+## PKScreener-style Hotspot Engine (Wave 2)
+
+Hotspot service includes:
+- Scan adapter with `breakout`, `consolidation`, and `momentum_anomaly` flag normalization.
+- IST-aware scheduler cache (5 minutes market-hours, 30 minutes off-hours).
+- Thematic join over holdings mappings and ranked hotspot scoring.
+
+Runtime modes:
+- Default synthetic adapter (`synthetic-pkscreener`) for local/dev.
+- Optional live command adapter via:
+  - `ENABLE_PKSCREENER_LIVE=true`
+  - `PKSCREENER_CMD='<command that prints JSON rows>'`
+
+## Multi-Agent Decision Engine (Wave 3)
+
+Implemented components:
+- Intent router for natural-language prompts (Dhan-style prompt routing adapted for Zerodha context).
+- LangGraph-style node workflow runner with agent sequence tracing:
+  - `portfolio_agent`
+  - `market_data_agent`
+  - `news_analyst_agent`
+  - `recommendation_agent`
+- Weighted consensus decision outputs:
+  - `action`, `confidence`, `weightedScore`
+  - `riskFlags`, `rationale`, `invalidation`
+- Lightweight RAG layer for news context retrieval from local corpus (`data/news_corpus.json` with seed fallback).
+
+News corpus defaults:
+- Seed file: `data/news_corpus_seed.json`
+- Runtime corpus: `data/news_corpus.json` (optional override)
+
 ## Features
 
 - Generated universe at the requested scale
@@ -123,6 +244,50 @@ If `dataMode` is `backend` but token/config is invalid, the UI shows an adapter 
 }
 ```
 
+`GET /hotspots/snapshot`
+- query: `exchange=all|nse|bse`, `refresh=true|false`
+- response includes: `hotspots[]`, `coverage`, `scheduler`, `cursor`
+
+`GET /hotspots/poll`
+- query: `exchange=all|nse|bse`, `cursor=<lastCursor>`
+- response includes: `updates.hotspots[]`, `updates.coverage`, `scheduler`
+
+`GET /agents/intent`
+- query: `prompt=<natural language query>`
+- response includes: `intent`, `route`, `symbols`, `themeHints`, `keywords`, `meta`
+
+`POST /agents/analyze`
+- body: `{ "prompt": "<query>", "exchange": "all|nse|bse" }`
+- response includes: `summary`, `decisions[]`, `context`, `graphTrace[]`, `disclaimer`, `meta`
+
+Response metadata:
+- `meta.contractVersion`: payload contract identifier
+- `meta.traceId`: request trace identifier (also returned in `x-trace-id` response header)
+
+Legacy API routes now include the same metadata envelope:
+- `/api/v1/portfolio/*`
+- `/api/v1/orders/*`
+- `/api/zerodha/*`
+- `/api/v1/market/*`
+- `/api/v1/comparison/*`
+
+Safety behavior:
+- Low-confidence aggressive signals are downgraded to `HOLD`.
+- Agent responses include a mandatory educational disclaimer.
+- `GET /api/v1/portfolio/decisions` now includes the same disclaimer and guardrail application.
+
+## Streamlit Regression Snapshots
+
+Capture reproducible desktop/mobile dashboard snapshots:
+
+```bash
+python3 scripts/capture-streamlit-snapshots.py --url http://127.0.0.1:8501 --output-dir artifacts/ui
+```
+
+Output files:
+- `artifacts/ui/streamlit-dashboard-desktop.png`
+- `artifacts/ui/streamlit-dashboard-mobile.png`
+
 ### Auth contract
 
 Backend mode sends:
@@ -180,3 +345,9 @@ Response includes env presence checks for:
 - `ANGEL_TOTP_SECRET`
 
 This endpoint does not authenticate with Angel; it verifies backend configuration readiness only.
+
+## Zerodha Session Notes
+
+- Zerodha session is treated as expired at the next `06:00 IST` cutoff.
+- `GET /api/zerodha/session/status` returns `expired` and emits warnings when re-login is required.
+- `POST /api/zerodha/logout` clears in-memory session and auth cookies.
