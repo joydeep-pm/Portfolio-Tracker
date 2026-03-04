@@ -1,3 +1,4 @@
+const fs = require("node:fs");
 const path = require("node:path");
 const Parser = require("rss-parser");
 const Database = require("better-sqlite3");
@@ -7,7 +8,18 @@ const RBI_PRESS_FALLBACK_URL = "https://rbi.org.in/pressreleases_rss.xml";
 const RBI_NOTIFICATIONS_FALLBACK_URL = "https://rbi.org.in/notifications_rss.xml";
 const SEBI_RSS_URL = "https://www.sebi.gov.in/sebirss.xml";
 
-const DEFAULT_DB_PATH = path.resolve(process.cwd(), "data", "macro_events.db");
+function isServerlessRuntime() {
+  return Boolean(process.env.VERCEL || process.env.AWS_REGION || process.env.LAMBDA_TASK_ROOT);
+}
+
+function resolveDbPath(dbPath = "") {
+  const candidate = String(dbPath || process.env.MACRO_EVENTS_DB_PATH || "").trim();
+  if (candidate) return path.resolve(candidate);
+  if (isServerlessRuntime()) return path.resolve("/tmp", "macro_events.db");
+  return path.resolve(process.cwd(), "data", "macro_events.db");
+}
+
+const DEFAULT_DB_PATH = resolveDbPath();
 
 const PRIORITY_PATTERNS = [
   { tag: "RBI", regex: /\b(?:rbi|reserve\s+bank\s+of\s+india)\b/i },
@@ -144,7 +156,11 @@ async function fetchRssItems(sourceType, sourceUrl, options = {}) {
 }
 
 function openDatabase(dbPath = DEFAULT_DB_PATH) {
-  const resolved = path.resolve(dbPath || DEFAULT_DB_PATH);
+  const resolved = resolveDbPath(dbPath);
+  const folder = path.dirname(resolved);
+  if (folder) {
+    fs.mkdirSync(folder, { recursive: true });
+  }
   return new Database(resolved);
 }
 
@@ -241,7 +257,7 @@ function readTotalCount(db) {
 }
 
 async function runHarvester(options = {}) {
-  const dbPath = path.resolve(options.dbPath || process.env.MACRO_EVENTS_DB_PATH || DEFAULT_DB_PATH);
+  const dbPath = resolveDbPath(options.dbPath);
   const maxItemsPerSource = Number.isFinite(options.maxItemsPerSource) ? Math.max(1, options.maxItemsPerSource) : 40;
   const latestLimit = Number.isFinite(options.latestLimit) ? Math.max(1, options.latestLimit) : 25;
 
@@ -282,7 +298,7 @@ async function runHarvester(options = {}) {
 }
 
 function getLatestFromDb(options = {}) {
-  const dbPath = path.resolve(options.dbPath || process.env.MACRO_EVENTS_DB_PATH || DEFAULT_DB_PATH);
+  const dbPath = resolveDbPath(options.dbPath);
   const db = openDatabase(dbPath);
   ensureSchema(db);
   const items = readLatestNews(db, options.limit);
@@ -303,6 +319,7 @@ module.exports = {
   RBI_NOTIFICATIONS_FALLBACK_URL,
   SEBI_RSS_URL,
   DEFAULT_DB_PATH,
+  resolveDbPath,
   PRIORITY_PATTERNS,
   normalizeWhitespace,
   stripHtml,

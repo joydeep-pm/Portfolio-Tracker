@@ -625,3 +625,22 @@
 - Validation:
   - `npm i -D @types/better-sqlite3`
   - `npx tsc --noEmit` (pass)
+
+## Macro Context 500 Hotfix Plan (2026-03-04)
+- [x] Reproduce production failure for `/api/v1/macro/context` and identify root cause.
+- [x] Fix SQLite path resolution for serverless runtime to writable storage (`/tmp` fallback).
+- [x] Add fail-open behavior for macro context route/engine when storage is unavailable.
+- [x] Re-run macro tests and full regression suite.
+
+## Macro Context 500 Hotfix Review
+- Root cause:
+  - Production endpoint returned `500` with message `unable to open database file` due read-only deployment filesystem when defaulting to `./data/macro_events.db`.
+- Code updates:
+  - `api/_lib/macroHarvester.js`
+  - `api/_lib/macroContextEngine.js`
+  - `api/macro-context.js`
+- Validation:
+  - `curl -i https://portfolio-tracker-kappa-woad.vercel.app/api/v1/macro/context?symbol=SBIN&exchange=all` (pre-fix: `500`, `unable to open database file`)
+  - `node --check api/_lib/macroHarvester.js api/_lib/macroContextEngine.js api/macro-context.js`
+  - `node --test tests/macroContextEngine.test.js tests/macroContextApi.test.js tests/macroHarvester.test.js tests/macroApi.test.js` (11/11 pass)
+  - `node --test tests/*.test.js` (78/78 pass)

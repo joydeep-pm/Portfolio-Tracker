@@ -1,8 +1,6 @@
-const path = require("node:path");
-
 const { buildView } = require("./mockMarket");
 const { bootstrapPortfolio } = require("./portfolioService");
-const { DEFAULT_DB_PATH, openDatabase, ensureSchema } = require("./macroHarvester");
+const { resolveDbPath, openDatabase, ensureSchema } = require("./macroHarvester");
 
 const DEFAULT_LIMIT = 30;
 const MAX_LIMIT = 120;
@@ -310,6 +308,37 @@ function buildPrompt({ holdings = [], symbol = "", themeHint = "", events = [] }
   };
 }
 
+function buildEmptyResult({ exchange, selectedSymbol, themeHint, dbPath, reason = "no-events" }) {
+  const output = {
+    asOf: new Date().toISOString(),
+    exchange,
+    symbol: selectedSymbol || null,
+    theme_hint: themeHint || null,
+    sentiment_score: 0,
+    key_catalyst: "No high-signal regulatory catalyst detected in current fetch window.",
+    impacted_clusters: [],
+    rationale_summary:
+      "Macro/regulatory context is currently unavailable for this selection, so no directional bias is being applied. Retry after the next harvester cycle or refresh with includeProcessed enabled.",
+    considered_events: 0,
+    sources: [],
+    source_events: [],
+    model: "heuristic-v1",
+    processed_count: 0,
+    dbPath,
+    reason,
+  };
+  return output;
+}
+
+async function loadPortfolioRowsSafe(exchange) {
+  try {
+    const portfolio = await bootstrapPortfolio({ exchange, forceRefresh: false });
+    return Array.isArray(portfolio.rows) ? portfolio.rows : [];
+  } catch (_error) {
+    return [];
+  }
+}
+
 async function analyzeMacroContext(options = {}) {
   const exchange = normalizeExchange(options.exchange);
   const selectedSymbol = String(options.symbol || "").toUpperCase().trim();
@@ -318,14 +347,33 @@ async function analyzeMacroContext(options = {}) {
   const includeProcessed = Boolean(options.includeProcessed);
   const includePromptDraft = Boolean(options.includePromptDraft);
 
-  const portfolio = await bootstrapPortfolio({ exchange, forceRefresh: false });
-  const holdings = Array.isArray(portfolio.rows) ? portfolio.rows : [];
+  const holdings = await loadPortfolioRowsSafe(exchange);
   const holdingsBySymbol = new Map(holdings.map((row) => [String(row.symbol || "").toUpperCase(), row]));
   const symbols = [...holdingsBySymbol.keys()];
 
-  const dbPath = path.resolve(options.dbPath || process.env.MACRO_EVENTS_DB_PATH || DEFAULT_DB_PATH);
-  const db = openDatabase(dbPath);
-  ensureSchema(db);
+  const dbPath = resolveDbPath(options.dbPath);
+  let db;
+  try {
+    db = openDatabase(dbPath);
+    ensureSchema(db);
+  } catch (_error) {
+    const output = buildEmptyResult({
+      exchange,
+      selectedSymbol,
+      themeHint,
+      dbPath,
+      reason: "db-unavailable",
+    });
+    if (includePromptDraft) {
+      output.promptDraft = buildPrompt({
+        holdings,
+        symbol: selectedSymbol,
+        themeHint,
+        events: [],
+      });
+    }
+    return output;
+  }
 
   const rows = selectCandidateNews(db, {
     limit,

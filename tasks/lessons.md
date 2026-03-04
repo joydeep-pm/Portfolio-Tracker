@@ -53,3 +53,6 @@
 - Preventive rule: size dense heatmap cards from required internal grid width first; set container min width so layouts gracefully step down to fewer cards per row before columns clip.
 - User correction: Phase 1 storage needed to be SQLite-backed, not JSON-file backed.
 - Preventive rule: when user specifies storage technology (e.g., SQLite), implement that exact persistence layer and schema first, and treat alternatives as non-compliant unless explicitly approved.
+- User correction: macro context backend failed in production with `unable to open database file`.
+- Preventive rule: never default SQLite paths to repo-local directories in serverless runtimes; use writable `/tmp` fallback and allow `MACRO_EVENTS_DB_PATH` override.
+- Preventive rule: optional analytics endpoints should fail open with neutral payloads (200) instead of surfacing 500s to UI panels.
