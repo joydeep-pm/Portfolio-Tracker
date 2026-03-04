@@ -247,6 +247,34 @@
   - `node --test tests/angelSession.test.js tests/mockApi.test.js` (8/8 pass)
   - `node --test tests/*.test.js` (84/84 pass)
 
+## Live Themes (Angel) Plan (2026-03-04)
+- [x] Add Angel live market service for themed `heads/clusters/stocks` payload assembly from catalog constituents.
+- [x] Wire `/api/v1/market/bootstrap` and `/api/v1/market/poll` to Angel live path when Angel session is connected.
+- [x] Keep mock fallback only when Angel session/data is unavailable.
+- [x] Wire `/api/v1/comparison/series` to live cluster IDs to avoid mismatch with Themes live mode.
+- [x] Add automated tests for live market assembly + comparison series compatibility.
+- [x] Update docs and in-app `What's New` feed.
+- [x] Run full regression suite and record evidence.
+
+## Live Themes (Angel) Verify Plan Check-In
+- Scope: Themes/Comparison market data surfaces only; portfolio ownership remains Zerodha-backed and unchanged.
+- Safety: runtime falls back to existing mock market provider only when Angel session/calls fail.
+
+## Live Themes (Angel) Review
+- Code updates:
+  - `api/_lib/angelLiveMarket.js` (new live market assembly and comparison helper)
+  - `api/market.js` (Angel live mode routing + fallback)
+  - `api/comparison.js` (Angel live comparison routing + fallback)
+  - `tests/angelLiveMarket.test.js` (live view + comparison tests)
+  - `README.md`
+  - `app.js` (`What's New` update)
+- Validation:
+  - `node --check api/_lib/angelLiveMarket.js`
+  - `node --check api/market.js`
+  - `node --check api/comparison.js`
+  - `node --test tests/angelLiveMarket.test.js tests/mockApi.test.js` (8/8 pass)
+  - `node --test tests/*.test.js` (87/87 pass)
+
 ## Phase 1 Macro Harvester Plan (2026-03-04)
 - [x] Add modular harvester service for RBI/SEBI RSS ingestion with clean field extraction (`title`, `link`, `pubDate`, `description`).
 - [x] Add RBI feed discovery from `https://www.rbi.org.in/Scripts/rss.aspx` and parse Press Releases + Notifications feeds.

@@ -143,6 +143,13 @@ const COMPARE_COLOR_PALETTE = [
 const WHATS_NEW_FEED = [
   {
     date: "2026-03-04",
+    title: "Themes Switched To Angel Live Mode",
+    detail:
+      "Themes and Comparison endpoints now use Angel-backed live quotes and historical returns when an Angel session is connected, with automatic fallback only if live fetch fails.",
+    targetView: "themes",
+  },
+  {
+    date: "2026-03-04",
     title: "Angel Historical Returns Live Path",
     detail:
       "Portfolio period returns (`1W/1M/6M/YTD`) now use Angel candle history when an Angel session is active, reducing synthetic fallback usage for market context windows.",

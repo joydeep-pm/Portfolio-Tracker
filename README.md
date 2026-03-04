@@ -354,6 +354,7 @@ Until broker account activation is complete, this repo now includes local/mock c
 - `GET /api/v1/comparison/series`
 
 These endpoints return realistic NSE/BSE-shaped payloads and allow end-to-end adapter flow testing before live Angel credentials are usable.
+When an Angel session is connected (`pt_angel_*` cookies present), `/api/v1/market/*` and `/api/v1/comparison/series` switch to Angel-backed live mode and only fall back to mock mode if live fetch fails.
 
 ### Frontend config for mock mode
 
