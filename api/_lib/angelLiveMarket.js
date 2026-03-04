@@ -100,6 +100,26 @@ function seededRng(seed) {
   };
 }
 
+async function mapWithConcurrency(items, limit, worker) {
+  const list = Array.isArray(items) ? items : [];
+  if (!list.length) return [];
+  const max = Math.max(1, Number.parseInt(String(limit || 1), 10) || 1);
+  const output = new Array(list.length);
+  let cursor = 0;
+
+  async function runOne() {
+    while (cursor < list.length) {
+      const index = cursor;
+      cursor += 1;
+      output[index] = await worker(list[index], index);
+    }
+  }
+
+  const runners = Array.from({ length: Math.min(max, list.length) }, () => runOne());
+  await Promise.all(runners);
+  return output;
+}
+
 function mapWindowToMomentumKey(windowKey) {
   if (windowKey === "5D") return "1W";
   return windowKey;
@@ -368,7 +388,7 @@ async function buildLiveMarketView(options = {}) {
     accessToken,
   };
 
-  const metricsRows = await Promise.all([...uniqueMap.values()].map((item) => fetchLiveMetrics(item, ctx)));
+  const metricsRows = await mapWithConcurrency([...uniqueMap.values()], 3, async (item) => fetchLiveMetrics(item, ctx));
   const metricsByKey = new Map(
     metricsRows
       .filter(Boolean)
@@ -513,4 +533,3 @@ module.exports = {
   normalizeExchange,
   resetLiveMarketCache,
 };
-
