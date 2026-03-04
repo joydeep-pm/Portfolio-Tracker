@@ -61,19 +61,38 @@ module.exports = async function handler(req, res) {
     if (liveMarketEnabled() && angelSession.connected) {
       liveAttempted = true;
       try {
-        const livePayload = await buildLiveMarketView({
+        const liveResult = await buildLiveMarketView({
           exchange,
           session: angelSession,
+          withDiagnostics: debug,
         });
+        const livePayload = debug ? liveResult?.view : liveResult;
+        const liveDiagnostics = debug ? liveResult?.diagnostics : null;
         if (livePayload?.stocks?.length) {
           traceLog(trace, "info", "market.bootstrap.live.success", {
             exchange,
             stocks: Array.isArray(livePayload.stocks) ? livePayload.stocks.length : 0,
             clusters: Array.isArray(livePayload.clusters) ? livePayload.clusters.length : 0,
           });
-          return respond(200, livePayload);
+          return respond(
+            200,
+            debug
+              ? {
+                  ...livePayload,
+                  debug: {
+                    liveAttempted: true,
+                    liveFallbackReason: "",
+                    angelSessionConnected: true,
+                    liveDiagnostics: liveDiagnostics || null,
+                  },
+                }
+              : livePayload,
+          );
         }
         liveFallbackReason = "live-empty-payload";
+        if (debug && liveDiagnostics) {
+          liveFallbackReason = `${liveFallbackReason}:${JSON.stringify(liveDiagnostics)}`;
+        }
       } catch (error) {
         traceLog(trace, "warn", "market.bootstrap.live.fallback", {
           exchange,

@@ -326,11 +326,41 @@ async function fetchHistoricalReturns(item, resolved, ctx) {
 
 async function fetchLiveMetrics(item, ctx) {
   try {
+    if (ctx.diagnostics) ctx.diagnostics.requested += 1;
     const resolved = await resolveSymbolToken(item, ctx);
-    if (!resolved) return null;
+    if (!resolved) {
+      if (ctx.diagnostics) {
+        ctx.diagnostics.tokenMiss += 1;
+        if (ctx.diagnostics.samples.length < 6) {
+          ctx.diagnostics.samples.push({
+            symbol: item.symbol,
+            exchange: item.exchange,
+            stage: "searchScrip",
+            reason: "token-not-found",
+          });
+        }
+      }
+      return null;
+    }
+    if (ctx.diagnostics) ctx.diagnostics.tokenResolved += 1;
     const quote = await fetchQuote(item, resolved, ctx);
-    if (!quote) return null;
+    if (!quote) {
+      if (ctx.diagnostics) {
+        ctx.diagnostics.quoteMiss += 1;
+        if (ctx.diagnostics.samples.length < 6) {
+          ctx.diagnostics.samples.push({
+            symbol: item.symbol,
+            exchange: item.exchange,
+            stage: "getLtpData",
+            reason: "quote-not-found",
+          });
+        }
+      }
+      return null;
+    }
+    if (ctx.diagnostics) ctx.diagnostics.quoteResolved += 1;
     const historical = await fetchHistoricalReturns(item, resolved, ctx);
+    if (ctx.diagnostics) ctx.diagnostics.historicalResolved += 1;
     const oneDay = quote.previousClose > 0 ? Number.parseFloat(pctChange(quote.lastPrice, quote.previousClose).toFixed(2)) : 0;
     return {
       symbol: item.symbol,
@@ -345,6 +375,17 @@ async function fetchLiveMetrics(item, ctx) {
       },
     };
   } catch (_error) {
+    if (ctx.diagnostics) {
+      ctx.diagnostics.errors += 1;
+      if (ctx.diagnostics.samples.length < 6) {
+        ctx.diagnostics.samples.push({
+          symbol: item.symbol,
+          exchange: item.exchange,
+          stage: "request",
+          reason: _error?.message || "unknown-error",
+        });
+      }
+    }
     return null;
   }
 }
@@ -362,9 +403,31 @@ async function buildLiveMarketView(options = {}) {
     return null;
   }
 
+  const diagnostics = {
+    requested: 0,
+    tokenResolved: 0,
+    tokenMiss: 0,
+    quoteResolved: 0,
+    quoteMiss: 0,
+    historicalResolved: 0,
+    errors: 0,
+    samples: [],
+  };
+
   const cacheKey = `${exchangeKey}`;
   const cached = viewCache.get(cacheKey);
-  if (cached && Date.now() - cached.updatedAtMs <= VIEW_TTL_MS) return cached.view;
+  if (cached && Date.now() - cached.updatedAtMs <= VIEW_TTL_MS) {
+    if (options.withDiagnostics) {
+      return {
+        view: cached.view,
+        diagnostics: {
+          ...diagnostics,
+          cacheHit: true,
+        },
+      };
+    }
+    return cached.view;
+  }
 
   const catalog = options.catalogOverride || (await loadThematicCatalog());
   const universe = buildUniverse(catalog, exchangeKey);
@@ -386,6 +449,7 @@ async function buildLiveMarketView(options = {}) {
     quoteApiKey,
     historicalApiKey,
     accessToken,
+    diagnostics,
   };
 
   const metricsRows = await mapWithConcurrency([...uniqueMap.values()], 3, async (item) => fetchLiveMetrics(item, ctx));
@@ -465,6 +529,18 @@ async function buildLiveMarketView(options = {}) {
   };
 
   viewCache.set(cacheKey, { view, updatedAtMs: Date.now() });
+  if (options.withDiagnostics) {
+    return {
+      view,
+      diagnostics: {
+        ...diagnostics,
+        cacheHit: false,
+        liveStocks: stocks.length,
+        liveClusters: clusters.length,
+        liveHeads: heads.length,
+      },
+    };
+  }
   return view;
 }
 
