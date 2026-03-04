@@ -143,6 +143,13 @@ const COMPARE_COLOR_PALETTE = [
 const WHATS_NEW_FEED = [
   {
     date: "2026-03-04",
+    title: "Angel Session Handshake Hardening",
+    detail:
+      "Warm-session reuse now re-issues Angel auth cookies, so the hybrid feed reliably shows Zerodha holdings with Angel market-data overlay across refreshes.",
+    targetView: "portfolio",
+  },
+  {
+    date: "2026-03-04",
     title: "Zerodha + Angel Hybrid Feed",
     detail:
       "Portfolio ownership remains on Zerodha while market quote enrichment (LTP/close) can be overlaid from live Angel SmartAPI sessions.",
