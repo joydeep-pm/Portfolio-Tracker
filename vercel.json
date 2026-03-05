@@ -161,11 +161,5 @@
       "source": "/api/v1/alerts/channels/status",
       "destination": "/api/alerts?route=channels"
     }
-  ],
-  "crons": [
-    {
-      "path": "/api/v1/alerts/dispatch",
-      "schedule": "*/15 * * * *"
-    }
   ]
 }
