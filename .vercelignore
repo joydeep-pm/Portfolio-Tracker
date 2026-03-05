@@ -1,0 +1,20 @@
+# Local/runtime dirs
+node_modules
+.git
+.DS_Store
+
+# Local agent/tooling
+.claude
+
+# Python worker local env/caches (not needed for Vercel deploy)
+quant-engine/.venv
+quant-engine/__pycache__
+quant-engine/.pytest_cache
+quant-engine/.mypy_cache
+quant-engine/.ruff_cache
+quant-engine/**/*.pyc
+
+# Misc local outputs
+artifacts
+coverage
+*.log
