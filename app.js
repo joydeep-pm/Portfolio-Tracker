@@ -1084,34 +1084,6 @@ function stockForSignalsSelection() {
         clusterId: state.stocks.find((stock) => stock.symbol === row.symbol && stock.exchange === row.exchange)?.clusterId || "",
       };
     }
-    const [exchange, symbol] = signalsState.selectedStockKey.split(":");
-    const marketStock = state.stocks.find((item) => item.symbol === symbol && item.exchange === exchange);
-    if (marketStock) {
-      return {
-        symbol: marketStock.symbol,
-        exchange: marketStock.exchange,
-        name: marketStock.name,
-        key: stockKey(marketStock.symbol, marketStock.exchange),
-        clusterId: marketStock.clusterId,
-      };
-    }
-  }
-
-  const cluster = clusterForSignalsSelection();
-  if (cluster) {
-    const leader = resolveClusterLeaderSymbol(cluster.id, "all", compareState.window);
-    if (leader) {
-      const marketStock = state.stocks.find((item) => item.symbol === leader.symbol && item.exchange === leader.exchange);
-      if (marketStock) {
-        return {
-          symbol: marketStock.symbol,
-          exchange: marketStock.exchange,
-          name: marketStock.name,
-          key: stockKey(marketStock.symbol, marketStock.exchange),
-          clusterId: marketStock.clusterId,
-        };
-      }
-    }
   }
 
   const fallbackRow = selectedPortfolioRow();
@@ -1125,24 +1097,12 @@ function stockForSignalsSelection() {
     };
   }
 
-  const fallbackStock = state.stocks[0];
-  if (!fallbackStock) return null;
-  return {
-    symbol: fallbackStock.symbol,
-    exchange: fallbackStock.exchange,
-    name: fallbackStock.name,
-    key: stockKey(fallbackStock.symbol, fallbackStock.exchange),
-    clusterId: fallbackStock.clusterId,
-  };
+  return null;
 }
 
 function signalSelectionLabel() {
   const stock = stockForSignalsSelection();
   if (!stock) return "No selection";
-  if (signalsState.selectedType === "cluster") {
-    const cluster = clusterForSignalsSelection();
-    return cluster ? `${cluster.name} (leader ${stock.exchange}:${stock.symbol})` : `${stock.exchange}:${stock.symbol}`;
-  }
   return `${stock.exchange}:${stock.symbol}`;
 }
 
@@ -4023,9 +3983,9 @@ function renderPortfolio() {
 function buildSignalsSelectorOptions() {
   const options = [];
   const seenStocks = new Set();
-  const visibleRows = filteredPortfolioRows();
+  const portfolioRows = [...portfolioState.rows];
 
-  visibleRows.slice(0, 60).forEach((row) => {
+  portfolioRows.forEach((row) => {
     const key = stockKey(row.symbol, row.exchange);
     if (seenStocks.has(key)) return;
     seenStocks.add(key);
@@ -4037,30 +3997,17 @@ function buildSignalsSelectorOptions() {
     });
   });
 
-  const rankedClusters = [...state.clusters]
-    .sort((a, b) => Number(b?.momentum?.["1M"] || 0) - Number(a?.momentum?.["1M"] || 0))
-    .slice(0, 40);
-  rankedClusters.forEach((cluster) => {
-    options.push({
-      value: `cluster|${cluster.id}`,
-      label: cluster.name,
-      sub: cluster.headName,
-      group: "Top Clusters",
-    });
-  });
-
   return options;
 }
 
 function ensureSignalsSelection() {
-  if (signalsState.selectedType === "stock" && signalsState.selectedStockKey) {
-    const [exchange, symbol] = signalsState.selectedStockKey.split(":");
-    const exists = state.stocks.some((item) => item.symbol === symbol && item.exchange === exchange);
-    if (exists) return;
-  }
-  if (signalsState.selectedType === "cluster" && signalsState.selectedClusterId) {
-    const exists = state.clusters.some((item) => item.id === signalsState.selectedClusterId);
-    if (exists) return;
+  if (signalsState.selectedStockKey) {
+    const exists = portfolioState.rows.some((item) => item.key === signalsState.selectedStockKey);
+    if (exists) {
+      signalsState.selectedType = "stock";
+      signalsState.selectedClusterId = "";
+      return;
+    }
   }
 
   const preferred = selectedPortfolioRow();
@@ -4068,14 +4015,10 @@ function ensureSignalsSelection() {
     signalsState.selectedType = "stock";
     signalsState.selectedStockKey = preferred.key;
     signalsState.selectedClusterId = "";
-    return;
-  }
-
-  const fallbackCluster = [...state.clusters].sort((a, b) => Number(b?.momentum?.["1M"] || 0) - Number(a?.momentum?.["1M"] || 0))[0];
-  if (fallbackCluster) {
-    signalsState.selectedType = "cluster";
-    signalsState.selectedClusterId = fallbackCluster.id;
+  } else {
+    signalsState.selectedType = "stock";
     signalsState.selectedStockKey = "";
+    signalsState.selectedClusterId = "";
   }
 }
 
@@ -4110,15 +4053,12 @@ function renderSignalsSelector() {
     )
     .join("");
 
-  const selectedValue =
-    signalsState.selectedType === "cluster"
-      ? `cluster|${signalsState.selectedClusterId}`
-      : (() => {
-          const [exchange, symbol] = String(signalsState.selectedStockKey || "").split(":");
-          return `stock|${exchange || "NSE"}|${symbol || ""}`;
-        })();
+  const selectedValue = (() => {
+    const [exchange, symbol] = String(signalsState.selectedStockKey || "").split(":");
+    return `stock|${exchange || "NSE"}|${symbol || ""}`;
+  })();
   signalsEntitySelect.value = selectedValue;
-  signalsEntityMeta.textContent = "Stock/cluster selection drives candlestick, macro, transcript, and execution workflows.";
+  signalsEntityMeta.textContent = "Portfolio-stock selection drives candlestick, macro, transcript, and execution workflows.";
 }
 
 function macroSentimentLabel(score) {
@@ -4239,23 +4179,16 @@ function renderSignalsCandlestick() {
 function renderSignalsHeader() {
   if (!signalsSelectedName || !signalsSelectedSub || !signalsMetaPill) return;
   const stock = stockForSignalsSelection();
-  const cluster = clusterForSignalsSelection();
   if (!stock) {
     signalsSelectedName.textContent = "No active selection";
-    signalsSelectedSub.textContent = "Choose a symbol/cluster to inspect technical and AI context.";
+    signalsSelectedSub.textContent = "Choose a portfolio stock to inspect technical and AI context.";
     signalsMetaPill.textContent = "Waiting for selection…";
     signalsMetaPill.className = "status-pill status-pill-muted";
     return;
   }
 
-  signalsSelectedName.textContent =
-    signalsState.selectedType === "cluster" && cluster
-      ? `${cluster.name}`
-      : `${stock.exchange}:${stock.symbol}`;
-  signalsSelectedSub.textContent =
-    signalsState.selectedType === "cluster" && cluster
-      ? `Cluster leader focus: ${stock.exchange}:${stock.symbol}`
-      : `${stock.name || stock.symbol}`;
+  signalsSelectedName.textContent = `${stock.exchange}:${stock.symbol}`;
+  signalsSelectedSub.textContent = `${stock.name || stock.symbol}`;
   signalsMetaPill.textContent = signalSelectionLabel();
   signalsMetaPill.className = "status-pill status-pill-ok";
 }

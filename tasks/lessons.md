@@ -97,3 +97,5 @@
 - User correction: micro-cluster constituent names looked synthetic and reduced trust in live mode.
 - Preventive rule: whenever market view falls back to synthetic/mock data, display explicit source context and avoid generic placeholder naming (`Company N`) in any user-visible constituent list.
 - Preventive rule: for every new backend capability, add a corresponding visible UI affordance (or explicit "backend-only" label) in the same delivery cycle to avoid iceberg features.
+- User correction: Signals focus selector should use the user's actual portfolio holdings, not synthetic universe/cluster entities.
+- Preventive rule: in portfolio-driven analysis views, source selectors from broker-backed holdings first and only expose synthetic/theme entities behind explicit opt-in controls.

@@ -1352,3 +1352,20 @@
   - Moved advanced tooling out of Portfolio side panel and removed hidden command-palette UX dependency.
   - Added alert-rule transparency panel with explicit trigger explanations and Telegram/Notion channel connection status.
   - Added technical-candle normalizer + backend adapter method and array-safe proxy metadata wrapping for quant responses.
+
+## Signals Focus Selector Portfolio-Only Patch (2026-03-06)
+- [x] Restrict Signals focus selector options to current portfolio holdings only.
+- [x] Remove cluster/universe fallback logic from Signals selection resolution.
+- [x] Update selector/header copy to explicitly mention portfolio-stock focus.
+- [x] Run syntax + regression validation.
+
+## Signals Focus Selector Review
+- Updated files:
+  - `app.js`: selector option source now `portfolioState.rows`; selection fallback now portfolio-only; removed cluster-driven header/label behavior.
+  - `index.html`: Signals focus-selector copy updated to portfolio-stock wording.
+- Validation commands:
+  - `node --check app.js`
+  - `node --test tests/*.test.js`
+- Outcome:
+  - Syntax check passed.
+  - Full regression suite passed.

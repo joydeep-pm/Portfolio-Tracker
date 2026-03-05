@@ -362,3 +362,5 @@
   - Evidence: 2026-03-06 IST - Updated `api/quant.js` to forward multipart form-data to `/api/v1/research/earnings/sync`.
 - [x] UXP.4 Replace generic synthetic constituent labels in fallback market generator.
   - Evidence: 2026-03-06 IST - Updated naming logic in `api/_lib/mockMarket.js` from `Company N` placeholders to deterministic corporate-style suffixes.
+- [x] UXP.5 Restrict Signals Focus Selector to portfolio holdings only.
+  - Evidence: 2026-03-06 IST - Updated Signals selector generation and fallback logic in `app.js` to use `portfolioState.rows` only; updated Signals copy in `index.html`.
