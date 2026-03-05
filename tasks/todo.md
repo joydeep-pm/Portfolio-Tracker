@@ -1124,3 +1124,20 @@
   - Backend bootstrap failures no longer hard-fail app startup.
   - App now auto-degrades to synthetic adapter with explicit warning: `Backend bootstrap failed (...). Using synthetic mode.`
   - Terminal catch now surfaces root error detail in topbar status instead of generic message-only failure.
+
+## Lightweight Charts API Compatibility Hotfix (2026-03-05)
+- [x] Add chart line-series compatibility helper supporting both `addLineSeries` and `addSeries`.
+- [x] Add marker compatibility helper supporting both `series.setMarkers` and `createSeriesMarkers`.
+- [x] Wire compare/peer chart renderers to use compatibility helper instead of direct `addLineSeries`.
+- [x] Run syntax + regression checks and capture outcomes.
+
+## Lightweight Charts API Compatibility Hotfix Review
+- Code updates:
+  - `app.js`
+- Validation:
+  - `node --check app.js` (pass)
+  - `node --test tests/*.test.js` (pass, `97/97`)
+- Outcome:
+  - Fixed runtime crash `compareChartState.chart.addLineSeries is not a function`.
+  - Comparison and peer charts now support both Lightweight Charts API variants (legacy `addLineSeries` and newer `addSeries`).
+  - Marker overlays now use compatible marker path (`setMarkers` or `createSeriesMarkers` fallback).

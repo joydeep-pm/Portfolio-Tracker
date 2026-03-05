@@ -405,6 +405,7 @@ let compareChartState = {
   chart: null,
   seriesByCluster: new Map(),
   markerHashByCluster: new Map(),
+  markerPrimitiveByCluster: new Map(),
   resizeObserver: null,
 };
 
@@ -1951,6 +1952,68 @@ function getLightweightChartsApi() {
   return api;
 }
 
+function addLineSeriesCompat(chart, options = {}) {
+  const LightweightCharts = getLightweightChartsApi();
+  if (!chart) {
+    throw new Error("chart-instance-unavailable");
+  }
+
+  if (typeof chart.addLineSeries === "function") {
+    return chart.addLineSeries(options);
+  }
+
+  if (typeof chart.addSeries === "function") {
+    const lineType = LightweightCharts?.LineSeries || LightweightCharts?.LineSeriesType || "Line";
+    try {
+      return chart.addSeries(lineType, options);
+    } catch (_error) {
+      return chart.addSeries("Line", options);
+    }
+  }
+
+  throw new Error("lightweight-line-series-api-unavailable");
+}
+
+function clearMarkerPrimitive(clusterId) {
+  const primitive = compareChartState.markerPrimitiveByCluster.get(clusterId);
+  if (primitive && typeof primitive.detach === "function") primitive.detach();
+  if (primitive && typeof primitive.remove === "function") primitive.remove();
+  compareChartState.markerPrimitiveByCluster.delete(clusterId);
+}
+
+function setSeriesMarkersCompat(clusterId, series, markers = []) {
+  if (!series) return;
+  const mappedMarkers = (Array.isArray(markers) ? markers : []).map((item) => ({
+    time: item.time,
+    position: item.position,
+    color: item.color,
+    shape: item.shape,
+    text: item.text,
+  }));
+
+  if (typeof series.setMarkers === "function") {
+    series.setMarkers(mappedMarkers);
+    return;
+  }
+
+  const LightweightCharts = getLightweightChartsApi();
+  if (!LightweightCharts || typeof LightweightCharts.createSeriesMarkers !== "function") {
+    return;
+  }
+
+  const existing = compareChartState.markerPrimitiveByCluster.get(clusterId);
+  if (existing && typeof existing.setMarkers === "function") {
+    existing.setMarkers(mappedMarkers);
+    return;
+  }
+
+  clearMarkerPrimitive(clusterId);
+  const primitive = LightweightCharts.createSeriesMarkers(series, mappedMarkers);
+  if (primitive) {
+    compareChartState.markerPrimitiveByCluster.set(clusterId, primitive);
+  }
+}
+
 function toChartTime(ts) {
   const ms = new Date(String(ts || "")).getTime();
   if (!Number.isFinite(ms)) return null;
@@ -1987,6 +2050,10 @@ function disposeCompareChart() {
   }
   compareChartState.seriesByCluster.clear();
   compareChartState.markerHashByCluster.clear();
+  compareChartState.markerPrimitiveByCluster.forEach((_value, clusterId) => {
+    clearMarkerPrimitive(clusterId);
+  });
+  compareChartState.markerPrimitiveByCluster.clear();
 }
 
 function initCompareChart() {
@@ -2035,18 +2102,10 @@ function initCompareChart() {
 
 function applyMarkersToClusterSeries(clusterId, markers) {
   const series = compareChartState.seriesByCluster.get(clusterId);
-  if (!series || typeof series.setMarkers !== "function") return;
+  if (!series) return;
   const hash = markerHash(markers);
   if (compareChartState.markerHashByCluster.get(clusterId) === hash) return;
-  series.setMarkers(
-    (Array.isArray(markers) ? markers : []).map((item) => ({
-      time: item.time,
-      position: item.position,
-      color: item.color,
-      shape: item.shape,
-      text: item.text,
-    })),
-  );
+  setSeriesMarkersCompat(clusterId, series, markers);
   compareChartState.markerHashByCluster.set(clusterId, hash);
 }
 
@@ -2089,13 +2148,14 @@ function renderCompareSeriesToChart() {
     if (series) compareChartState.chart.removeSeries(series);
     compareChartState.seriesByCluster.delete(clusterId);
     compareChartState.markerHashByCluster.delete(clusterId);
+    clearMarkerPrimitive(clusterId);
   });
 
   compareState.selectedClusterIds.forEach((clusterId) => {
     const points = compareState.seriesByCluster.get(clusterId) || [];
     let line = compareChartState.seriesByCluster.get(clusterId);
     if (!line) {
-      line = compareChartState.chart.addLineSeries({
+      line = addLineSeriesCompat(compareChartState.chart, {
         color: selectCompareColor(clusterId),
         lineWidth: 2,
         priceLineVisible: false,
@@ -2532,7 +2592,7 @@ function renderPeerChart() {
     let series = peerChartState.seriesBySymbol.get(symbol);
     const color = index === 0 ? "#4bb27a" : COMPARE_COLOR_PALETTE[index % COMPARE_COLOR_PALETTE.length];
     if (!series) {
-      series = peerChartState.chart.addLineSeries({
+      series = addLineSeriesCompat(peerChartState.chart, {
         color,
         lineWidth: index === 0 ? 3 : 2,
         priceLineVisible: false,

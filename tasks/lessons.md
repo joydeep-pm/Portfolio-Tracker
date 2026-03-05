@@ -83,3 +83,5 @@
 - Preventive rule: before shipping new API entrypoints, count `api/*.js` and consolidate gateways early (for example route-family multiplexing) to stay within plan limits.
 - User correction: production surfaced a frontend "Unable to initialize data adapter" state.
 - Preventive rule: frontend bootstrap must not hard-fail on backend adapter startup errors; always auto-fallback to synthetic mode (or equivalent degraded mode) with explicit diagnostic message.
+- User correction: production still failed with `addLineSeries is not a function` due chart library API mismatch.
+- Preventive rule: when loading charting libs via CDN unpinned latest, always wrap version-sensitive APIs with compatibility helpers (or pin explicit version) before shipping.

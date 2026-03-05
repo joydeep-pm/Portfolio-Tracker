@@ -316,3 +316,5 @@
 ## Runtime Resilience Patch (Deployment Hardening)
 - [x] R1 Harden frontend adapter bootstrap to degrade gracefully when backend bootstrap fails.
   - Evidence: 2026-03-05 IST - Updated `app.js` init flow to auto-fallback from backend adapter to synthetic adapter on bootstrap failure, preserving app startup and surfacing explicit fallback warning.
+- [x] R2 Harden chart runtime against Lightweight Charts CDN API drift.
+  - Evidence: 2026-03-05 IST - Added compatibility helpers in `app.js` for line-series creation (`addLineSeries` or `addSeries`) and marker overlay application (`setMarkers` or `createSeriesMarkers`), resolving production runtime error on comparison chart initialization.
