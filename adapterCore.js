@@ -445,6 +445,34 @@
     };
   }
 
+  function normalizeTechnicalFlag(value, path) {
+    const record = requireObject(value, path);
+    const signal = requireString(record.signal, `${path}.signal`);
+    if (!["Bullish", "Bearish", "Neutral"].includes(signal)) {
+      throw new DataValidationError(`${path}.signal must be one of Bullish/Bearish/Neutral`);
+    }
+    return {
+      symbol: requireString(record.symbol, `${path}.symbol`).toUpperCase(),
+      pattern: requireString(record.pattern, `${path}.pattern`),
+      signal,
+      date: requireString(record.date, `${path}.date`),
+    };
+  }
+
+  function normalizeTechnicalCandlesPayload(payload) {
+    let flags = [];
+    if (Array.isArray(payload)) {
+      flags = payload;
+    } else {
+      const record = requireObject(payload, "technical.candles");
+      if (Array.isArray(record.flags)) flags = record.flags;
+      else if (Array.isArray(record.data)) flags = record.data;
+      else if (Array.isArray(record.results)) flags = record.results;
+      else throw new DataValidationError("technical.candles payload must include an array at flags/data/results");
+    }
+    return flags.map((item, index) => normalizeTechnicalFlag(item, `technical.candles[${index}]`));
+  }
+
   function normalizeDecision(value, path) {
     const record = requireObject(value, path);
     const action = requireString(record.action, `${path}.action`).toUpperCase();
@@ -948,6 +976,29 @@
         });
         return normalizeNlpCommandPayload(payload);
       },
+      async fetchTechnicalCandles(tickersOrParams) {
+        const params = isObject(tickersOrParams)
+          ? tickersOrParams
+          : {
+              tickers: tickersOrParams,
+            };
+        const rawTickers = Array.isArray(params?.tickers) ? params.tickers : [];
+        const tickers = rawTickers
+          .map((ticker, index) => requireString(ticker, `technical.fetchTechnicalCandles.tickers[${index}]`).toUpperCase())
+          .filter(Boolean);
+        const timeoutSeconds =
+          params?.timeoutSeconds === undefined
+            ? undefined
+            : Math.max(3, Math.floor(requireNumber(params.timeoutSeconds, "technical.fetchTechnicalCandles.timeoutSeconds")));
+        const payload = await request("/technical/candles/scan", {}, {
+          method: "POST",
+          body: {
+            ...(tickers.length ? { tickers } : {}),
+            ...(timeoutSeconds ? { timeout_seconds: timeoutSeconds } : {}),
+          },
+        });
+        return normalizeTechnicalCandlesPayload(payload);
+      },
       async fetchPortfolioBootstrap(params) {
         const payload = await request("/portfolio/bootstrap", {
           exchange: params?.exchange || "all",
@@ -1016,6 +1067,7 @@
     normalizeStrategyBacktestPayload,
     normalizeEarningsChatPayload,
     normalizeNlpCommandPayload,
+    normalizeTechnicalCandlesPayload,
     normalizePortfolioBootstrapPayload,
     normalizePortfolioPollPayload,
     normalizePortfolioDecisionsPayload,

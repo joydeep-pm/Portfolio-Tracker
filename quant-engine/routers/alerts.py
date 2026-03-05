@@ -78,6 +78,17 @@ class AlertEventsResponse(BaseModel):
     events: List[AlertEventRecord]
 
 
+class AlertChannelStatus(BaseModel):
+    channel: str
+    connected: bool
+    configured_urls: int
+
+
+class AlertChannelsStatusResponse(BaseModel):
+    channels: List[AlertChannelStatus]
+    any_connected: bool
+
+
 def _utc_now_iso() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
 
@@ -181,6 +192,20 @@ def _all_configured_channels() -> List[str]:
         if _resolve_channel_urls(channel_name):
             configured.append(channel_name)
     return configured
+
+
+def _channel_status_rows() -> List[AlertChannelStatus]:
+    rows: List[AlertChannelStatus] = []
+    for channel_name in sorted(CHANNEL_ENV_KEYS.keys()):
+        urls = _resolve_channel_urls(channel_name)
+        rows.append(
+            AlertChannelStatus(
+                channel=channel_name,
+                connected=bool(urls),
+                configured_urls=len(urls),
+            )
+        )
+    return rows
 
 
 def _notify_urls(urls: List[str], title: str, body: str, timeout_seconds: int) -> tuple[bool, str | None]:
@@ -490,3 +515,12 @@ def list_alert_events(limit: int = Query(default=50, ge=1, le=500)) -> AlertEven
             )
 
     return AlertEventsResponse(events=events)
+
+
+@router.get("/channels/status", response_model=AlertChannelsStatusResponse)
+def channels_status() -> AlertChannelsStatusResponse:
+    channels = _channel_status_rows()
+    return AlertChannelsStatusResponse(
+        channels=channels,
+        any_connected=any(row.connected for row in channels),
+    )

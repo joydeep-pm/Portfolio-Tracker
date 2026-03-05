@@ -72,6 +72,15 @@ function toBool(value) {
   return key === "1" || key === "true" || key === "yes" || key === "y";
 }
 
+function isDemoPortfolioFallbackEnabled(options = {}) {
+  if (options.enableDemoPortfolioFallback !== undefined) {
+    return Boolean(options.enableDemoPortfolioFallback);
+  }
+  const raw = options.demoPortfolioFallback ?? process.env.ENABLE_PORTFOLIO_DEMO_FALLBACK;
+  if (raw === undefined || raw === null || String(raw).trim() === "") return false;
+  return toBool(raw);
+}
+
 function mapAngelExchange(exchange) {
   const value = String(exchange || "NSE").toUpperCase();
   if (value === "BSE") return "BSE";
@@ -129,6 +138,7 @@ function createKiteDirectProvider(options = {}) {
     overlaySetting === undefined || overlaySetting === null || String(overlaySetting).trim() === ""
       ? true
       : toBool(overlaySetting);
+  const demoPortfolioFallbackEnabled = isDemoPortfolioFallbackEnabled(options);
   const angelConnected = Boolean(
     fetchImpl &&
       angelOverlayEnabled &&
@@ -293,7 +303,7 @@ function createKiteDirectProvider(options = {}) {
 
   async function getHoldings() {
     if (!connected) {
-      return createDemoPortfolioRows();
+      return demoPortfolioFallbackEnabled ? createDemoPortfolioRows() : [];
     }
 
     const payload = await kiteGet("/portfolio/holdings");
@@ -338,6 +348,9 @@ function createKiteDirectProvider(options = {}) {
     });
 
     if (!connected) {
+      if (!demoPortfolioFallbackEnabled) {
+        return output;
+      }
       const base = mockReturnsByKey(list);
       unresolved.forEach((item, index) => {
         const key = instrumentKey(item.exchange, item.symbol);
@@ -458,7 +471,16 @@ function createKiteDirectProvider(options = {}) {
     const targetWindows = Array.isArray(windows) && windows.length ? windows : WINDOWS;
     if (!list.length) return {};
 
-    const output = mockReturnsByKey(list);
+    const output = demoPortfolioFallbackEnabled
+      ? mockReturnsByKey(list)
+      : list.reduce((acc, item) => {
+          const key = instrumentKey(item.exchange, item.symbol);
+          acc[key] = WINDOWS.reduce((windowAcc, windowKey) => {
+            windowAcc[windowKey] = 0;
+            return windowAcc;
+          }, {});
+          return acc;
+        }, {});
     const now = new Date();
 
     for (const item of list) {
@@ -500,7 +522,7 @@ function createKiteDirectProvider(options = {}) {
 
   async function getCashBalance() {
     if (!connected) {
-      return 250000;
+      return demoPortfolioFallbackEnabled ? 250000 : 0;
     }
 
     try {
@@ -535,9 +557,10 @@ function createKiteDirectProvider(options = {}) {
         provider: "kite-direct",
         mode: connected ? "live" : "demo",
         connected,
-        marketDataProvider: angelConnected ? "angel" : connected ? "kite" : "demo",
+        marketDataProvider: angelConnected ? "angel" : connected ? "kite" : demoPortfolioFallbackEnabled ? "demo" : "none",
         angelOverlayActive: angelConnected,
         angelHistoricalActive: angelHistoricalConnected,
+        demoPortfolioFallbackEnabled,
       };
     },
   };

@@ -142,6 +142,10 @@
       "destination": "/api/quant?route=interpret"
     },
     {
+      "source": "/api/v1/technical/candles/scan",
+      "destination": "/api/quant?route=technical-candles"
+    },
+    {
       "source": "/api/v1/alerts/test",
       "destination": "/api/alerts?route=test"
     },
@@ -152,6 +156,16 @@
     {
       "source": "/api/v1/alerts/events",
       "destination": "/api/alerts?route=events"
+    },
+    {
+      "source": "/api/v1/alerts/channels/status",
+      "destination": "/api/alerts?route=channels"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/v1/alerts/dispatch",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

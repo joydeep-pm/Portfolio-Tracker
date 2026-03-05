@@ -23,6 +23,10 @@ const ROUTE_CONFIG = {
     path: "/api/v1/commands/interpret",
     contractVersion: CONTRACTS.commands,
   },
+  "technical-candles": {
+    path: "/api/v1/technical/candles/scan",
+    contractVersion: CONTRACTS.technical,
+  },
 };
 
 function quantEngineBaseUrl() {
@@ -40,6 +44,15 @@ function quantEngineConfigError() {
 }
 
 function withMeta(payload, traceId, contractVersion) {
+  if (Array.isArray(payload)) {
+    return {
+      data: payload,
+      meta: {
+        contractVersion: contractVersion || CONTRACTS.quant,
+        traceId,
+      },
+    };
+  }
   return {
     ...(payload || {}),
     meta: {
@@ -54,14 +67,21 @@ async function forwardQuantRequest(pathname, body, traceId) {
   const timeoutId = setTimeout(() => controller.abort(), 45_000);
 
   try {
+    const hasRawBody = Boolean(body && body.rawBody);
+    const requestHeaders = {
+      Accept: "application/json",
+      "x-trace-id": traceId,
+    };
+    if (hasRawBody) {
+      requestHeaders["Content-Type"] = String(body.contentType || "application/octet-stream");
+    } else {
+      requestHeaders["Content-Type"] = "application/json";
+    }
+
     const response = await fetch(`${quantEngineBaseUrl()}${pathname}`, {
       method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "x-trace-id": traceId,
-      },
-      body: JSON.stringify(body || {}),
+      headers: requestHeaders,
+      body: hasRawBody ? body.rawBody : JSON.stringify((body && body.jsonBody) || {}),
       signal: controller.signal,
     });
 
@@ -85,6 +105,18 @@ async function forwardQuantRequest(pathname, body, traceId) {
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+async function readRawBody(req) {
+  if (Buffer.isBuffer(req.body)) return req.body;
+  if (typeof req.body === "string") return Buffer.from(req.body);
+
+  return await new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on("data", (chunk) => chunks.push(chunk));
+    req.on("end", () => resolve(Buffer.concat(chunks)));
+    req.on("error", reject);
+  });
 }
 
 module.exports = async function handler(req, res) {
@@ -117,7 +149,7 @@ module.exports = async function handler(req, res) {
       withMeta(
         {
           error: "not-found",
-          message: "Supported routes: optimize-allocation, thematic-rotation, earnings-chat, earnings-sync, interpret",
+          message: "Supported routes: optimize-allocation, thematic-rotation, earnings-chat, earnings-sync, interpret, technical-candles",
         },
         trace.traceId,
         contractVersion,
@@ -128,7 +160,17 @@ module.exports = async function handler(req, res) {
   if (req.method !== "POST") return methodNotAllowed(res);
 
   try {
-    const body = await parseJsonBody(req);
+    const contentType = String(req.headers?.["content-type"] || "").toLowerCase();
+    const isMultipartSync = route === "earnings-sync" && contentType.includes("multipart/form-data");
+    const body = isMultipartSync
+      ? {
+          rawBody: await readRawBody(req),
+          contentType: req.headers?.["content-type"] || "application/octet-stream",
+        }
+      : {
+          jsonBody: await parseJsonBody(req),
+        };
+
     const forwarded = await forwardQuantRequest(targetPath, body, trace.traceId);
     traceLog(trace, "info", "quant.proxy.success", {
       route,

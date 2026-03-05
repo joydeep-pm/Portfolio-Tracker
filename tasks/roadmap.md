@@ -338,3 +338,27 @@
   - Evidence: 2026-03-05 IST - Updated `app.js` init flow to auto-fallback from backend adapter to synthetic adapter on bootstrap failure, preserving app startup and surfacing explicit fallback warning.
 - [x] R2 Harden chart runtime against Lightweight Charts CDN API drift.
   - Evidence: 2026-03-05 IST - Added compatibility helpers in `app.js` for line-series creation (`addLineSeries` or `addSeries`) and marker overlay application (`setMarkers` or `createSeriesMarkers`), resolving production runtime error on comparison chart initialization.
+
+## Frontend UX Overhaul (Post-Phase 7)
+- [x] UX.1 Complete backend-to-UI surface audit and identify iceberg gaps.
+  - Evidence: 2026-03-05 IST - Mapped Node/Python feature set to UI presence; confirmed technical scanner and alert-channel transparency were missing from visible workflows.
+- [x] UX.2 Add dedicated `Signals & Analysis` hub and move advanced tools out of Portfolio side panel.
+  - Evidence: 2026-03-05 IST - Updated `index.html`/`styles.css`/`app.js` with new Signals view containing selector-reactive macro, technical, transcript, command, and sizing panels.
+- [x] UX.3 Integrate candlestick badges + macro sentiment spectrum + transcript auto-summary.
+  - Evidence: 2026-03-05 IST - Added technical scan adapter path, candlestick badge rendering, macro gauge (no raw score display), collapsed impact-cluster panel, and automatic 3-bullet transcript summary load per selected stock.
+- [x] UX.4 Replace hidden command palette with persistent AI execution console + colocated sizing table.
+  - Evidence: 2026-03-05 IST - Removed command-overlay modal UI and keyboard dependency; command interpretation now runs from visible Signals console with immediate sizing workflow integration.
+- [x] UX.5 Add `Active Alert Rules` transparency panel with channel connectivity indicators.
+  - Evidence: 2026-03-05 IST - Extended alerts UI and API wiring to display trigger rules plus Telegram/Notion connected/disconnected state from `/api/v1/alerts/channels/status`.
+- [x] UX.6 Validate regression safety after IA refactor.
+  - Evidence: 2026-03-05 IST - Passed `node --check` for app/adapter/proxies and full test suite `node --test tests/*.test.js` (`96 pass, 1 skipped, 0 fail`).
+
+## Phase 6/7 UX Parity Patch (2026-03-06)
+- [x] UXP.1 Add missing Signals UI affordances for orphaned backend routes (`earnings/sync`, `macro/harvest`, `hotspots/snapshot`).
+  - Evidence: 2026-03-06 IST - Added Data Controls row + Knowledge Base Ingestion widget + hotspot snapshot panel in frontend (`index.html`, `app.js`, `styles.css`).
+- [x] UXP.2 Add Alerts manual override control for dispatcher route (`alerts/dispatch`).
+  - Evidence: 2026-03-06 IST - Added `Force Run Automation Engine` action in Alerts view with live status refresh (`index.html`, `app.js`).
+- [x] UXP.3 Enable multipart pass-through for transcript sync proxy path.
+  - Evidence: 2026-03-06 IST - Updated `api/quant.js` to forward multipart form-data to `/api/v1/research/earnings/sync`.
+- [x] UXP.4 Replace generic synthetic constituent labels in fallback market generator.
+  - Evidence: 2026-03-06 IST - Updated naming logic in `api/_lib/mockMarket.js` from `Company N` placeholders to deterministic corporate-style suffixes.

@@ -440,7 +440,6 @@ let portfolioState = {
   angelOverlayActive: false,
   user: { userId: null, userName: null },
   selectedKey: "",
-  rationaleTab: "decision",
   macroContextByKey: new Map(),
   macroContextRequestId: 0,
   filters: {
@@ -454,12 +453,39 @@ let portfolioState = {
   allocationResult: null,
   allocationError: "",
   allocationTickers: [],
-  copilotByKey: new Map(),
-  copilotLoading: false,
 };
 
-let commandPaletteState = {
-  isOpen: false,
+let signalsState = {
+  selectedType: "stock",
+  selectedStockKey: "",
+  selectedClusterId: "",
+  controlsBusy: false,
+  controlsMessage: "",
+  loadingTechnical: false,
+  technicalError: "",
+  technicalFlag: null,
+  loadingMacro: false,
+  macroError: "",
+  macroPayload: null,
+  macroImpactExpanded: false,
+  syncLoading: false,
+  syncMessage: "",
+  syncStatus: "idle",
+  hotspotsVisible: false,
+  hotspotsLoading: false,
+  hotspotsError: "",
+  hotspotsPayload: null,
+  summaryByKey: new Map(),
+  summaryLoading: false,
+  summaryError: "",
+  chatByKey: new Map(),
+  chatLoading: false,
+  commandLoading: false,
+  commandError: "",
+  commandPayload: null,
+};
+
+let commandConsoleState = {
   loading: false,
 };
 
@@ -489,6 +515,9 @@ let alertsState = {
   requestId: 0,
   refreshTimer: null,
   testSending: false,
+  dispatchRunning: false,
+  channels: [],
+  channelsLoading: false,
 };
 
 let runtimeState = {
@@ -507,6 +536,9 @@ let runtimeState = {
   portfolioBackoffFailures: 0,
   portfolioPollInFlight: false,
   portfolioLastSuccessAtMs: 0,
+  zerodhaReconnectInFlight: false,
+  zerodhaReconnectPollTimer: null,
+  zerodhaReconnectDeadlineMs: 0,
   enablePortfolioView: true,
   enableComparisonClassic: true,
 };
@@ -515,6 +547,7 @@ const themesViewEl = document.getElementById("themesView");
 const whatsNewViewEl = document.getElementById("whatsNewView");
 const comparisonViewEl = document.getElementById("comparisonView");
 const portfolioViewEl = document.getElementById("portfolioView");
+const signalsViewEl = document.getElementById("signalsView");
 const networkViewEl = document.getElementById("networkView");
 const alertsViewEl = document.getElementById("alertsView");
 const viewLinks = [...document.querySelectorAll("[data-app-view-target]")];
@@ -550,22 +583,51 @@ const portfolioRowsEl = document.getElementById("portfolioRows");
 const portfolioMeta = document.getElementById("portfolioMeta");
 const portfolioDecisionMeta = document.getElementById("portfolioDecisionMeta");
 const portfolioDecisionPanel = document.getElementById("portfolioDecisionPanel");
-const portfolioMacroPanel = document.getElementById("portfolioMacroPanel");
-const portfolioRationaleTabs = [...document.querySelectorAll("[data-rationale-tab]")];
 const portfolioSourceChip = document.getElementById("portfolioSourceChip");
 const portfolioConnectionChip = document.getElementById("portfolioConnectionChip");
+const zerodhaReconnectBtn = document.getElementById("zerodhaReconnectBtn");
 const portfolioSearchInput = document.getElementById("portfolioSearchInput");
 const portfolioConfidenceInput = document.getElementById("portfolioConfidenceInput");
-const calculateSizingBtn = document.getElementById("calculateSizingBtn");
 const allocationSummaryCard = document.getElementById("allocationSummaryCard");
 const allocationMeta = document.getElementById("allocationMeta");
 const allocationTableWrap = document.getElementById("allocationTableWrap");
 const portfolioActionButtons = [...document.querySelectorAll("[data-portfolio-action]")];
 const portfolioExchangeButtons = [...document.querySelectorAll("[data-portfolio-exchange]")];
-const copilotChatMeta = document.getElementById("copilotChatMeta");
-const copilotChatLog = document.getElementById("copilotChatLog");
-const copilotChatInput = document.getElementById("copilotChatInput");
-const copilotChatSend = document.getElementById("copilotChatSend");
+const signalsMetaPill = document.getElementById("signalsMetaPill");
+const signalsEntitySelect = document.getElementById("signalsEntitySelect");
+const signalsEntityMeta = document.getElementById("signalsEntityMeta");
+const signalsControlsStatus = document.getElementById("signalsControlsStatus");
+const signalsForceMacroHarvestBtn = document.getElementById("signalsForceMacroHarvestBtn");
+const signalsViewHotspotsBtn = document.getElementById("signalsViewHotspotsBtn");
+const signalsSelectedName = document.getElementById("signalsSelectedName");
+const signalsSelectedSub = document.getElementById("signalsSelectedSub");
+const signalsCandleBadge = document.getElementById("signalsCandleBadge");
+const signalsCandleMeta = document.getElementById("signalsCandleMeta");
+const signalsMacroMeta = document.getElementById("signalsMacroMeta");
+const signalsMacroNeedle = document.getElementById("signalsMacroNeedle");
+const signalsMacroLabel = document.getElementById("signalsMacroLabel");
+const signalsMacroCatalyst = document.getElementById("signalsMacroCatalyst");
+const signalsImpactSummary = document.getElementById("signalsImpactSummary");
+const signalsImpactList = document.getElementById("signalsImpactList");
+const signalsImpactToggle = document.getElementById("signalsImpactToggle");
+const signalsSummaryMeta = document.getElementById("signalsSummaryMeta");
+const signalsSummaryBullets = document.getElementById("signalsSummaryBullets");
+const signalsSummaryCitations = document.getElementById("signalsSummaryCitations");
+const signalsSyncFileInput = document.getElementById("signalsSyncFileInput");
+const signalsSyncUrlInput = document.getElementById("signalsSyncUrlInput");
+const signalsSyncBtn = document.getElementById("signalsSyncBtn");
+const signalsSyncStatus = document.getElementById("signalsSyncStatus");
+const signalsChatLog = document.getElementById("signalsChatLog");
+const signalsChatInput = document.getElementById("signalsChatInput");
+const signalsChatSend = document.getElementById("signalsChatSend");
+const signalsCommandInput = document.getElementById("signalsCommandInput");
+const signalsCommandRun = document.getElementById("signalsCommandRun");
+const signalsCommandStatus = document.getElementById("signalsCommandStatus");
+const calculateSizingBtnSignals = document.getElementById("calculateSizingBtnSignals");
+const signalsHotspotsCard = document.getElementById("signalsHotspotsCard");
+const signalsHotspotsMeta = document.getElementById("signalsHotspotsMeta");
+const signalsHotspotsList = document.getElementById("signalsHotspotsList");
+const signalsHotspotsCloseBtn = document.getElementById("signalsHotspotsCloseBtn");
 const networkRefreshBtn = document.getElementById("networkRefreshBtn");
 const networkLastChecked = document.getElementById("networkLastChecked");
 const networkSummaryRow = document.getElementById("networkSummaryRow");
@@ -576,9 +638,11 @@ const networkFlowCards = document.getElementById("networkFlowCards");
 const networkEndpointsMeta = document.getElementById("networkEndpointsMeta");
 const networkEndpointsTable = document.getElementById("networkEndpointsTable");
 const alertsTestBtn = document.getElementById("alertsTestBtn");
+const alertsDispatchBtn = document.getElementById("alertsDispatchBtn");
 const alertsMeta = document.getElementById("alertsMeta");
 const alertsEventsMeta = document.getElementById("alertsEventsMeta");
 const alertsEventsTable = document.getElementById("alertsEventsTable");
+const alertsChannelsStatus = document.getElementById("alertsChannelsStatus");
 
 const modal = document.getElementById("clusterModal");
 const modalHead = document.getElementById("modalHead");
@@ -589,9 +653,8 @@ const closeModal = document.getElementById("closeModal");
 const liveSourceText = document.getElementById("liveSourceText");
 const freshnessStatus = document.getElementById("freshnessStatus");
 const healthStatus = document.getElementById("healthStatus");
-const commandPaletteOverlay = document.getElementById("commandPaletteOverlay");
-const commandInput = document.getElementById("commandInput");
-const commandResults = document.getElementById("commandResults");
+const commandInput = signalsCommandInput;
+const commandResults = document.getElementById("signalsCommandResults");
 
 function mulberry32(seed) {
   return () => {
@@ -642,14 +705,14 @@ function selectedPortfolioRow() {
   );
 }
 
-function getCopilotMessages(rowKey) {
-  if (!rowKey) return [];
-  return portfolioState.copilotByKey.get(rowKey) || [];
+function getSignalsChatMessages(key) {
+  if (!key) return [];
+  return signalsState.chatByKey.get(key) || [];
 }
 
-function setCopilotMessages(rowKey, messages) {
-  if (!rowKey) return;
-  portfolioState.copilotByKey.set(rowKey, messages);
+function setSignalsChatMessages(key, messages) {
+  if (!key) return;
+  signalsState.chatByKey.set(key, messages);
 }
 
 function colorClass(value) {
@@ -976,6 +1039,113 @@ function toQuantTicker(symbol, exchange) {
   return `${normalizedSymbol}.NS`;
 }
 
+function stockKey(symbol, exchange) {
+  return `${String(exchange || "NSE").toUpperCase()}:${String(symbol || "").toUpperCase()}`;
+}
+
+function parseSignalsSelectionValue(value) {
+  const raw = String(value || "");
+  const [type, argA, argB] = raw.split("|");
+  if (type === "stock") {
+    return {
+      type: "stock",
+      stockKey: stockKey(argB, argA),
+      clusterId: "",
+    };
+  }
+  if (type === "cluster") {
+    return {
+      type: "cluster",
+      stockKey: "",
+      clusterId: String(argA || ""),
+    };
+  }
+  return {
+    type: "stock",
+    stockKey: "",
+    clusterId: "",
+  };
+}
+
+function clusterForSignalsSelection() {
+  if (!signalsState.selectedClusterId) return null;
+  return state.clusters.find((cluster) => cluster.id === signalsState.selectedClusterId) || null;
+}
+
+function stockForSignalsSelection() {
+  if (signalsState.selectedType === "stock" && signalsState.selectedStockKey) {
+    const row = portfolioState.rows.find((item) => item.key === signalsState.selectedStockKey);
+    if (row) {
+      return {
+        symbol: row.symbol,
+        exchange: row.exchange,
+        name: row.symbol,
+        key: row.key,
+        clusterId: state.stocks.find((stock) => stock.symbol === row.symbol && stock.exchange === row.exchange)?.clusterId || "",
+      };
+    }
+    const [exchange, symbol] = signalsState.selectedStockKey.split(":");
+    const marketStock = state.stocks.find((item) => item.symbol === symbol && item.exchange === exchange);
+    if (marketStock) {
+      return {
+        symbol: marketStock.symbol,
+        exchange: marketStock.exchange,
+        name: marketStock.name,
+        key: stockKey(marketStock.symbol, marketStock.exchange),
+        clusterId: marketStock.clusterId,
+      };
+    }
+  }
+
+  const cluster = clusterForSignalsSelection();
+  if (cluster) {
+    const leader = resolveClusterLeaderSymbol(cluster.id, "all", compareState.window);
+    if (leader) {
+      const marketStock = state.stocks.find((item) => item.symbol === leader.symbol && item.exchange === leader.exchange);
+      if (marketStock) {
+        return {
+          symbol: marketStock.symbol,
+          exchange: marketStock.exchange,
+          name: marketStock.name,
+          key: stockKey(marketStock.symbol, marketStock.exchange),
+          clusterId: marketStock.clusterId,
+        };
+      }
+    }
+  }
+
+  const fallbackRow = selectedPortfolioRow();
+  if (fallbackRow) {
+    return {
+      symbol: fallbackRow.symbol,
+      exchange: fallbackRow.exchange,
+      name: fallbackRow.symbol,
+      key: fallbackRow.key,
+      clusterId: state.stocks.find((item) => item.symbol === fallbackRow.symbol && item.exchange === fallbackRow.exchange)?.clusterId || "",
+    };
+  }
+
+  const fallbackStock = state.stocks[0];
+  if (!fallbackStock) return null;
+  return {
+    symbol: fallbackStock.symbol,
+    exchange: fallbackStock.exchange,
+    name: fallbackStock.name,
+    key: stockKey(fallbackStock.symbol, fallbackStock.exchange),
+    clusterId: fallbackStock.clusterId,
+  };
+}
+
+function signalSelectionLabel() {
+  const stock = stockForSignalsSelection();
+  if (!stock) return "No selection";
+  if (signalsState.selectedType === "cluster") {
+    const cluster = clusterForSignalsSelection();
+    return cluster ? `${cluster.name} (leader ${stock.exchange}:${stock.symbol})` : `${stock.exchange}:${stock.symbol}`;
+  }
+  return `${stock.exchange}:${stock.symbol}`;
+}
+
 function toDisplayPercent(value, options = {}) {
   const digits = Number.isFinite(options.digits) ? options.digits : 2;
   const asPercent = Boolean(options.asPercent);
@@ -1127,6 +1297,20 @@ function applyPortfolioBootstrap(payload) {
       portfolioState.macroContextByKey.delete(key);
     }
   });
+  [...signalsState.summaryByKey.keys()].forEach((key) => {
+    if (!validKeys.has(key)) {
+      signalsState.summaryByKey.delete(key);
+    }
+  });
+  [...signalsState.chatByKey.keys()].forEach((key) => {
+    if (!validKeys.has(key)) {
+      signalsState.chatByKey.delete(key);
+    }
+  });
+
+  if (signalsState.selectedType === "stock" && signalsState.selectedStockKey && !validKeys.has(signalsState.selectedStockKey)) {
+    signalsState.selectedStockKey = "";
+  }
 }
 
 function syntheticBootstrapPayload(universe) {
@@ -1545,6 +1729,69 @@ function createSyntheticAdapter() {
         },
         equity_curve: curve,
       });
+    },
+    async sendEarningsQuery(symbol, query) {
+      const cleanSymbol = String(symbol || "").toUpperCase();
+      const question = String(query || "");
+      const row = portfolioState.rows.find((item) => item.symbol === cleanSymbol) || state.stocks.find((item) => item.symbol === cleanSymbol);
+      const oneMonth = Number(row?.returns?.["1M"] || 0);
+      const sixMonth = Number(row?.returns?.["6M"] || 0);
+      const bias = sixMonth >= 8 ? "positive" : sixMonth <= -8 ? "cautious" : "balanced";
+      const answer = [
+        `Revenue commentary remains ${bias} for ${cleanSymbol}, with management framing near-term demand as ${oneMonth >= 0 ? "stable to improving" : "mixed"}.`,
+        `Margin guidance suggests execution focus on cost control, while sector-wide conditions remain sensitive to policy and rates.`,
+        `Management signaling implies monitoring capital allocation discipline before aggressive expansion.`,
+      ].join("\n");
+      return AdapterCore.normalizeEarningsChatPayload({
+        symbol: cleanSymbol,
+        query: question,
+        answer,
+        model: "synthetic-rag",
+        citations: [
+          { rank: 1, score: 0.82, chunk_id: 1, text: `${cleanSymbol} management commentary excerpt.` },
+          { rank: 2, score: 0.77, chunk_id: 2, text: `Quarterly performance excerpt for ${cleanSymbol}.` },
+        ],
+      });
+    },
+    async submitNlpCommand(commandText) {
+      const command = String(commandText || "");
+      const match = command.match(/rotate\s+(\d+(?:\.\d+)?)%\s+of\s+(.+?)\s+into\s+(.+)$/i);
+      const pct = match ? Number(match[1]) : 10;
+      const sourceEntity = match ? match[2].trim() : "IT cluster";
+      const targetEntity = match ? match[3].trim() : "PSU Banks";
+      const sellSymbols = ["INFY", "TCS", "WIPRO"];
+      const buySymbols = ["SBIN", "PNB", "BANKBARODA"];
+      return AdapterCore.normalizeNlpCommandPayload({
+        intent: "rotate",
+        source_entity: sourceEntity,
+        target_entity: targetEntity,
+        capital_pct: pct,
+        mock_basket: {
+          sell: sellSymbols.map((symbol) => ({ symbol, action: "SELL", allocation_pct: Number((pct / sellSymbols.length).toFixed(2)) })),
+          buy: buySymbols.map((symbol) => ({ symbol, action: "BUY", allocation_pct: Number((pct / buySymbols.length).toFixed(2)) })),
+        },
+      });
+    },
+    async fetchTechnicalCandles(params) {
+      const tickers = Array.isArray(params?.tickers) && params.tickers.length
+        ? params.tickers
+        : [stockForSignalsSelection()?.symbol || ""];
+      const flags = tickers
+        .map((rawTicker) => String(rawTicker || "").replace(/\.(NS|BO)$/i, "").toUpperCase())
+        .filter(Boolean)
+        .map((symbol) => {
+          const row = portfolioState.rows.find((item) => item.symbol === symbol) || state.stocks.find((item) => item.symbol === symbol);
+          const oneDay = Number(row?.returns?.["1D"] || 0);
+          const oneWeek = Number(row?.returns?.["1W"] || 0);
+          if (oneDay >= 1.2 || oneWeek >= 2.5) {
+            return { symbol, pattern: "Bullish Engulfing", signal: "Bullish", date: new Date().toISOString().slice(0, 10) };
+          }
+          if (oneDay <= -1.2 || oneWeek <= -2.5) {
+            return { symbol, pattern: "Bearish Engulfing", signal: "Bearish", date: new Date().toISOString().slice(0, 10) };
+          }
+          return { symbol, pattern: "Doji", signal: "Neutral", date: new Date().toISOString().slice(0, 10) };
+        });
+      return AdapterCore.normalizeTechnicalCandlesPayload(flags);
     },
     async fetchPortfolioBootstrap() {
       return syntheticPortfolioBootstrapPayload();
@@ -2803,6 +3050,106 @@ function filteredPortfolioRows() {
   return sortPortfolioRows(rows);
 }
 
+async function fetchZerodhaAuthUrl() {
+  const response = await fetch("/api/zerodha/auth/url", {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+    credentials: "same-origin",
+  });
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(payload?.message || payload?.error || `Auth URL request failed (${response.status})`);
+  }
+  return payload;
+}
+
+async function fetchZerodhaSessionStatus() {
+  const response = await fetch("/api/zerodha/session/status", {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+    credentials: "same-origin",
+  });
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(payload?.message || payload?.error || `Session status failed (${response.status})`);
+  }
+  return payload;
+}
+
+function clearZerodhaReconnectPoll() {
+  if (runtimeState.zerodhaReconnectPollTimer) {
+    clearTimeout(runtimeState.zerodhaReconnectPollTimer);
+    runtimeState.zerodhaReconnectPollTimer = null;
+  }
+}
+
+function scheduleZerodhaReconnectPoll(delayMs) {
+  clearZerodhaReconnectPoll();
+  runtimeState.zerodhaReconnectPollTimer = window.setTimeout(() => {
+    pollZerodhaReconnectStatus().catch((error) => {
+      console.error("Zerodha reconnect poll failed", error);
+    });
+  }, Math.max(0, delayMs));
+}
+
+async function pollZerodhaReconnectStatus() {
+  if (!runtimeState.zerodhaReconnectInFlight) return;
+  const nowMs = Date.now();
+  if (nowMs > runtimeState.zerodhaReconnectDeadlineMs) {
+    runtimeState.zerodhaReconnectInFlight = false;
+    clearZerodhaReconnectPoll();
+    setRuntimeHealth("stale", "Zerodha reconnect timed out. Complete login and retry.");
+    renderPortfolioStatusChips();
+    return;
+  }
+
+  try {
+    const status = await fetchZerodhaSessionStatus();
+    if (status.connected) {
+      runtimeState.zerodhaReconnectInFlight = false;
+      clearZerodhaReconnectPoll();
+      await refreshPortfolioBootstrap({ forceRefresh: true });
+      renderPortfolio();
+      setRuntimeHealth("ok", "Zerodha session reconnected");
+      return;
+    }
+  } catch (error) {
+    console.error("Zerodha session status poll error", error);
+  }
+
+  scheduleZerodhaReconnectPoll(3000);
+}
+
+async function handleZerodhaReconnect() {
+  if (runtimeState.zerodhaReconnectInFlight) return;
+  runtimeState.zerodhaReconnectInFlight = true;
+  renderPortfolioStatusChips();
+
+  try {
+    const auth = await fetchZerodhaAuthUrl();
+    if (!auth?.ready || !auth?.authUrl) {
+      throw new Error(auth?.message || "Zerodha auth URL is not ready. Verify KITE_API_KEY and KITE_API_SECRET.");
+    }
+
+    const popup = window.open(auth.authUrl, "_blank", "noopener,noreferrer,width=920,height=780");
+    if (!popup) {
+      throw new Error("Popup blocked. Allow popups for this site and retry reconnect.");
+    }
+
+    runtimeState.zerodhaReconnectDeadlineMs = Date.now() + 4 * 60 * 1000;
+    setRuntimeHealth("stale", "Complete Zerodha login in popup. Syncing session...");
+    scheduleZerodhaReconnectPoll(2500);
+  } catch (error) {
+    runtimeState.zerodhaReconnectInFlight = false;
+    clearZerodhaReconnectPoll();
+    renderPortfolioStatusChips();
+    setRuntimeHealth("error", error.message || "Unable to start Zerodha reconnect flow");
+    throw error;
+  }
+}
+
 function renderPortfolioStatusChips() {
   if (!portfolioSourceChip || !portfolioConnectionChip) return;
   const providerLabel = portfolioState.provider || runtimeState.adapterMode || "synthetic";
@@ -2814,13 +3161,22 @@ function renderPortfolioStatusChips() {
   portfolioSourceChip.classList.add("status-pill-muted");
 
   if (portfolioState.connected) {
-    portfolioConnectionChip.textContent = "Connected";
+    portfolioConnectionChip.textContent = "Connected • Live holdings";
     portfolioConnectionChip.classList.remove("status-pill-alert", "status-pill-warn", "status-pill-muted");
     portfolioConnectionChip.classList.add("status-pill-ok");
   } else {
-    portfolioConnectionChip.textContent = "Read-only / Demo";
+    const hasRows = Array.isArray(portfolioState.rows) && portfolioState.rows.length > 0;
+    const isDemoRows = hasRows && String(portfolioState.providerMode || "").toLowerCase() === "demo";
+    portfolioConnectionChip.textContent = isDemoRows ? "Disconnected • Demo data" : "Disconnected • No live holdings";
     portfolioConnectionChip.classList.remove("status-pill-ok", "status-pill-warn", "status-pill-alert");
     portfolioConnectionChip.classList.add("status-pill-muted");
+  }
+
+  if (zerodhaReconnectBtn) {
+    const showReconnect = !portfolioState.connected;
+    zerodhaReconnectBtn.classList.toggle("hidden", !showReconnect);
+    zerodhaReconnectBtn.disabled = runtimeState.zerodhaReconnectInFlight;
+    zerodhaReconnectBtn.textContent = runtimeState.zerodhaReconnectInFlight ? "Waiting for login..." : "Reconnect Zerodha";
   }
 }
 
@@ -2843,30 +3199,6 @@ function renderPortfolioSummary() {
   portfolioSummaryRow.innerHTML = cards
     .map((card) => `<article class="stat-card"><p>${card.label}</p><h3>${card.value}</h3></article>`)
     .join("");
-}
-
-function setRationaleTab(nextTab) {
-  const tab = nextTab === "macro" ? "macro" : "decision";
-  portfolioState.rationaleTab = tab;
-
-  portfolioRationaleTabs.forEach((button) => {
-    const active = button.dataset.rationaleTab === tab;
-    button.classList.toggle("active", active);
-    button.setAttribute("aria-selected", active ? "true" : "false");
-  });
-
-  if (portfolioDecisionPanel) {
-    portfolioDecisionPanel.classList.toggle("hidden", tab !== "decision");
-  }
-  if (portfolioMacroPanel) {
-    portfolioMacroPanel.classList.toggle("hidden", tab !== "macro");
-  }
-}
-
-function macroScoreClass(score) {
-  if (score >= 0.2) return "pos";
-  if (score <= -0.2) return "neg";
-  return "neu";
 }
 
 function syntheticMacroContextForRow(row) {
@@ -2957,140 +3289,6 @@ function withSyntheticMacroFallback(basePayload, row, reasonTag) {
   };
 }
 
-function renderMacroContextPanel(row) {
-  if (!portfolioMacroPanel) return;
-  if (!row) {
-    portfolioMacroPanel.innerHTML = `<div class="scan-empty">Select a portfolio row to load macro context.</div>`;
-    return;
-  }
-
-  const entry = portfolioState.macroContextByKey.get(row.key);
-  if (!entry || entry.status === "loading") {
-    portfolioMacroPanel.innerHTML = `<div class="scan-empty">Loading macro/regulatory context for ${row.exchange}:${row.symbol}...</div>`;
-    return;
-  }
-
-  if (entry.status === "error") {
-    portfolioMacroPanel.innerHTML = `<div class="scan-empty">${entry.error || "Macro context unavailable right now."}</div>`;
-    return;
-  }
-
-  const payload = entry.data;
-  if (!payload) {
-    portfolioMacroPanel.innerHTML = `<div class="scan-empty">No macro context payload found.</div>`;
-    return;
-  }
-
-  const scoreClass = macroScoreClass(payload.sentiment_score || 0);
-  const sentimentLabel =
-    scoreClass === "pos" ? "Constructive" : scoreClass === "neg" ? "Defensive" : "Balanced";
-  const sourceLine = (payload.sources || []).length ? payload.sources.join(", ") : "--";
-  const asOfLabel = payload.asOf ? new Date(payload.asOf).toLocaleTimeString("en-IN") : "--";
-  const fallbackMessage = buildMacroFallbackMessage(payload.reason);
-
-  portfolioMacroPanel.innerHTML = `
-    ${
-      fallbackMessage
-        ? `<article class="decision-card"><h4>Context Note</h4><p>${escapeHtml(fallbackMessage)}</p></article>`
-        : ""
-    }
-    <article class="decision-card">
-      <h4>Macro Sentiment</h4>
-      <p>
-        <span class="macro-score-chip ${scoreClass}">${sentimentLabel} ${(payload.sentiment_score || 0).toFixed(2)}</span>
-        • Sources ${sourceLine} • as of ${asOfLabel}
-      </p>
-    </article>
-    <article class="decision-card">
-      <h4>Key Catalyst</h4>
-      <p>${payload.key_catalyst || "No catalyst detected."}</p>
-    </article>
-    <article class="decision-card">
-      <h4>Impacted Micro-Clusters</h4>
-      ${
-        Array.isArray(payload.impacted_clusters) && payload.impacted_clusters.length
-          ? `<div class="macro-cluster-list">
-              ${payload.impacted_clusters
-                .slice(0, 8)
-                .map(
-                  (cluster) => `
-                    <div class="macro-cluster-item">
-                      <span class="macro-cluster-name">${cluster.cluster_name}</span>
-                      <span class="macro-cluster-meta">${cluster.head_name} • Impact ${(cluster.impact_score || 0).toFixed(2)}</span>
-                    </div>
-                  `,
-                )
-                .join("")}
-            </div>`
-          : `<p>No impacted micro-clusters detected for current context window.</p>`
-      }
-    </article>
-    <article class="decision-card">
-      <h4>Rationale Summary</h4>
-      <p>${payload.rationale_summary || "No rationale summary available."}</p>
-    </article>
-  `;
-}
-
-async function requestMacroContextForRow(row, options = {}) {
-  if (!row) return;
-  const key = row.key;
-  const cached = portfolioState.macroContextByKey.get(key);
-  const ttlMs = 3 * 60 * 1000;
-  if (!options.force && cached && cached.status === "ready" && Date.now() - cached.fetchedAtMs <= ttlMs) {
-    return;
-  }
-  if (cached && cached.status === "loading") return;
-
-  portfolioState.macroContextByKey.set(key, {
-    status: "loading",
-    fetchedAtMs: Date.now(),
-    data: null,
-    error: "",
-  });
-  renderMacroContextPanel(row);
-
-  const requestId = portfolioState.macroContextRequestId + 1;
-  portfolioState.macroContextRequestId = requestId;
-
-  try {
-    const hasMacroAdapter = Boolean(runtimeState.adapter?.fetchMacroContext);
-    const backendPayload = hasMacroAdapter
-      ? await runtimeState.adapter.fetchMacroContext({
-          symbol: row.symbol,
-          exchange: String(row.exchange || "all").toLowerCase(),
-          limit: 30,
-          includeProcessed: true,
-        })
-      : null;
-    const payload = hasMacroAdapter
-      ? shouldUseSyntheticMacroFallback(backendPayload)
-        ? withSyntheticMacroFallback(backendPayload, row, backendPayload?.reason || "empty-context")
-        : backendPayload
-      : withSyntheticMacroFallback(null, row, "adapter-unavailable");
-
-    if (requestId !== portfolioState.macroContextRequestId) {
-      return;
-    }
-
-    portfolioState.macroContextByKey.set(key, {
-      status: "ready",
-      fetchedAtMs: Date.now(),
-      data: payload,
-      error: "",
-    });
-    if (portfolioState.selectedKey === key) renderMacroContextPanel(row);
-  } catch (error) {
-    portfolioState.macroContextByKey.set(key, {
-      status: "error",
-      fetchedAtMs: Date.now(),
-      data: null,
-      error: error.message || "Macro context request failed",
-    });
-    if (portfolioState.selectedKey === key) renderMacroContextPanel(row);
-  }
-}
-
 function renderPortfolioDecisionPanel() {
   const row =
     portfolioState.rows.find((item) => item.key === portfolioState.selectedKey) ||
@@ -3100,8 +3298,6 @@ function renderPortfolioDecisionPanel() {
   if (!row) {
     portfolioDecisionMeta.textContent = "No selection";
     portfolioDecisionPanel.innerHTML = `<div class="scan-empty">No portfolio rows match current filters.</div>`;
-    renderMacroContextPanel(null);
-    renderCopilotChat();
     return;
   }
 
@@ -3125,12 +3321,6 @@ function renderPortfolioDecisionPanel() {
       }
     </article>
   `;
-
-  renderMacroContextPanel(row);
-  renderCopilotChat();
-  requestMacroContextForRow(row).catch((error) => {
-    console.error("Macro context fetch failed", error);
-  });
 }
 
 function buyRowsForOptimalSizing() {
@@ -3138,9 +3328,13 @@ function buyRowsForOptimalSizing() {
 }
 
 function renderOptimalSizingPanel() {
-  if (!calculateSizingBtn || !allocationSummaryCard || !allocationTableWrap || !allocationMeta) return;
+  if (!calculateSizingBtnSignals || !allocationSummaryCard || !allocationTableWrap || !allocationMeta) return;
   const buyRows = buyRowsForOptimalSizing();
-  calculateSizingBtn.disabled = portfolioState.allocationLoading || buyRows.length < 2;
+  const commandBuyLegs = Array.isArray(signalsState.commandPayload?.mock_basket?.buy)
+    ? signalsState.commandPayload.mock_basket.buy
+    : [];
+  const canRun = commandBuyLegs.length >= 2 || buyRows.length >= 2;
+  calculateSizingBtnSignals.disabled = portfolioState.allocationLoading || !canRun;
   allocationSummaryCard.classList.toggle("hidden", false);
 
   if (portfolioState.allocationLoading) {
@@ -3157,7 +3351,7 @@ function renderOptimalSizingPanel() {
 
   const payload = portfolioState.allocationResult;
   if (!payload) {
-    allocationMeta.textContent = buyRows.length >= 2 ? `${buyRows.length} BUY signals available` : "Need at least 2 BUY signals";
+    allocationMeta.textContent = canRun ? "Sizing inputs ready" : "Need at least 2 BUY symbols";
     allocationTableWrap.innerHTML = `<div class="scan-empty">Click “Calculate Optimal Sizing” to generate weights and share counts.</div>`;
     return;
   }
@@ -3203,15 +3397,24 @@ function renderOptimalSizingPanel() {
 }
 
 async function handleCalculateOptimalSizing() {
+  const commandBuyLegs = Array.isArray(signalsState.commandPayload?.mock_basket?.buy)
+    ? signalsState.commandPayload.mock_basket.buy
+    : [];
+  const commandTickers = commandBuyLegs
+    .map((leg) => toQuantTicker(leg.symbol, "NSE"))
+    .filter(Boolean);
+
   const buyRows = buyRowsForOptimalSizing();
-  if (buyRows.length < 2) {
+  const fallbackTickers = buyRows.slice(0, 20).map((row) => toQuantTicker(row.symbol, row.exchange));
+  const tickers = commandTickers.length ? commandTickers : fallbackTickers;
+
+  if (tickers.length < 2) {
     portfolioState.allocationResult = null;
-    portfolioState.allocationError = "Need at least 2 BUY signals to optimize allocation.";
+    portfolioState.allocationError = "Need at least 2 BUY symbols from command output or portfolio signals to optimize allocation.";
     renderOptimalSizingPanel();
     return;
   }
 
-  const tickers = buyRows.slice(0, 20).map((row) => toQuantTicker(row.symbol, row.exchange));
   portfolioState.allocationTickers = tickers;
   portfolioState.allocationLoading = true;
   portfolioState.allocationError = "";
@@ -3265,35 +3468,24 @@ function renderCommandPaletteResult(payload) {
   `;
 }
 
-function setCommandPaletteOpen(isOpen) {
-  commandPaletteState.isOpen = Boolean(isOpen);
-  if (!commandPaletteOverlay) return;
-  commandPaletteOverlay.classList.toggle("hidden", !commandPaletteState.isOpen);
-  commandPaletteOverlay.setAttribute("aria-hidden", commandPaletteState.isOpen ? "false" : "true");
-
-  if (commandPaletteState.isOpen) {
-    if (commandInput) commandInput.focus();
-  }
-}
-
-function toggleCommandPalette() {
-  setCommandPaletteOpen(!commandPaletteState.isOpen);
-  if (commandPaletteState.isOpen && commandInput) {
-    commandInput.select();
-  }
-}
-
-async function handleCommandPaletteSubmit() {
+async function handleCommandConsoleSubmit() {
   if (!commandInput) return;
-  if (commandPaletteState.loading) return;
+  if (commandConsoleState.loading) return;
   const text = commandInput.value.trim();
   if (!text) {
     renderCommandPaletteIdle();
     return;
   }
 
-  commandPaletteState.loading = true;
+  commandConsoleState.loading = true;
   commandInput.disabled = true;
+  if (signalsCommandRun) {
+    signalsCommandRun.disabled = true;
+    signalsCommandRun.textContent = "Running...";
+  }
+  if (signalsCommandStatus) {
+    signalsCommandStatus.textContent = "Interpreting command and generating mock basket…";
+  }
   renderCommandPaletteLoading();
 
   try {
@@ -3301,32 +3493,360 @@ async function handleCommandPaletteSubmit() {
       throw new Error("Command adapter unavailable");
     }
     const payload = await runtimeState.adapter.submitNlpCommand(text);
+    signalsState.commandPayload = payload;
+    signalsState.commandError = "";
     renderCommandPaletteResult(payload);
+    if (signalsCommandStatus) {
+      signalsCommandStatus.textContent = `Intent ${String(payload.intent || "").toUpperCase()} ready • sizing can be computed now`;
+    }
   } catch (error) {
+    signalsState.commandPayload = null;
+    signalsState.commandError = error.message || "Command interpretation failed";
     renderCommandPaletteError(error.message || "Command interpretation failed");
   } finally {
-    commandPaletteState.loading = false;
+    commandConsoleState.loading = false;
     commandInput.disabled = false;
+    if (signalsCommandRun) {
+      signalsCommandRun.disabled = false;
+      signalsCommandRun.textContent = "Run";
+    }
   }
 }
 
-function renderCopilotChat() {
-  if (!copilotChatLog || !copilotChatMeta || !copilotChatInput || !copilotChatSend) return;
-  const row = selectedPortfolioRow();
-  if (!row) {
-    copilotChatMeta.textContent = "Ask about the selected symbol transcript";
-    copilotChatSend.disabled = true;
-    copilotChatLog.innerHTML = `<div class="scan-empty">Select a portfolio symbol, then ask a question.</div>`;
+function setSignalsSyncStatus(status, message, options = {}) {
+  if (!signalsSyncStatus) return;
+  const text = String(message || "").trim() || "Ready";
+  const key = String(status || "idle").toLowerCase();
+  signalsState.syncStatus = key;
+  signalsState.syncMessage = text;
+  signalsSyncStatus.classList.remove("success", "error", "loading");
+  if (key === "success") signalsSyncStatus.classList.add("success");
+  else if (key === "error") signalsSyncStatus.classList.add("error");
+  else if (key === "loading") signalsSyncStatus.classList.add("loading");
+  signalsSyncStatus.innerHTML = options.loading
+    ? `<span class="command-loader">Syncing transcript to vector DB...</span>`
+    : escapeHtml(text);
+}
+
+function setSignalsControlsStatus(message, variant = "idle") {
+  if (!signalsControlsStatus) return;
+  const text = String(message || "").trim();
+  signalsState.controlsMessage = text;
+  if (!text) {
+    signalsControlsStatus.textContent = "Manual controls for macro ingestion and thematic hotspot snapshots.";
+    signalsControlsStatus.className = "";
+    return;
+  }
+  signalsControlsStatus.textContent = text;
+  signalsControlsStatus.className = variant === "error" ? "signals-sync-status error" : "signals-sync-status";
+}
+
+function normalizeHotspotRows(payload) {
+  const rows = Array.isArray(payload?.hotspots)
+    ? payload.hotspots
+    : Array.isArray(payload?.data?.hotspots)
+      ? payload.data.hotspots
+      : [];
+  return rows;
+}
+
+function renderSignalsHotspotsPanel() {
+  if (!signalsHotspotsCard || !signalsHotspotsList || !signalsHotspotsMeta) return;
+  signalsHotspotsCard.classList.toggle("hidden", !signalsState.hotspotsVisible);
+  if (!signalsState.hotspotsVisible) return;
+
+  if (signalsState.hotspotsLoading) {
+    signalsHotspotsMeta.textContent = "Loading hotspot snapshot...";
+    signalsHotspotsList.innerHTML = `<div class="command-loader">Fetching hotspot snapshot...</div>`;
     return;
   }
 
-  const symbolLabel = `${row.exchange}:${row.symbol}`;
-  copilotChatMeta.textContent = `Transcript chat for ${symbolLabel}`;
-  copilotChatSend.disabled = portfolioState.copilotLoading;
+  if (signalsState.hotspotsError) {
+    signalsHotspotsMeta.textContent = "Snapshot failed";
+    signalsHotspotsList.innerHTML = `<div class="scan-empty">${escapeHtml(signalsState.hotspotsError)}</div>`;
+    return;
+  }
 
-  const messages = getCopilotMessages(row.key);
-  if (!messages.length && !portfolioState.copilotLoading) {
-    copilotChatLog.innerHTML = `<div class="scan-empty">No chat history yet for ${escapeHtml(symbolLabel)}.</div>`;
+  const payload = signalsState.hotspotsPayload;
+  const rows = normalizeHotspotRows(payload);
+  const asOf = payload?.asOf ? asOfClockLabel(payload.asOf) : "--";
+  signalsHotspotsMeta.textContent = `${rows.length} themes • as of ${asOf}`;
+  if (!rows.length) {
+    signalsHotspotsList.innerHTML = `<div class="scan-empty">No hotspots returned for current snapshot.</div>`;
+    return;
+  }
+
+  signalsHotspotsList.innerHTML = rows
+    .slice(0, 12)
+    .map((item, index) => {
+      const catalysts = Array.isArray(item.catalystFlags) && item.catalystFlags.length ? item.catalystFlags.join(", ") : "none";
+      return `
+        <article class="scan-item">
+          <div>
+            <strong>#${index + 1} ${escapeHtml(item.themeName || "Unnamed Theme")}</strong>
+            <span class="scan-meta">${escapeHtml(item.sectorTag || "Unknown")} • ${escapeHtml(item.indexCategory || "unclassified")}</span>
+          </div>
+          <div class="scan-badges">
+            <span class="scan-badge">${toDisplayPercent(item.breadthPct || 0, { asPercent: false, digits: 1 })} breadth</span>
+            <span class="scan-badge">${Number(item.score || 0).toFixed(1)} score</span>
+            <span class="scan-badge">${escapeHtml(catalysts)}</span>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+async function handleForceMacroHarvest() {
+  if (signalsState.controlsBusy || !signalsForceMacroHarvestBtn) return;
+  signalsState.controlsBusy = true;
+  signalsForceMacroHarvestBtn.disabled = true;
+  signalsForceMacroHarvestBtn.textContent = "Harvesting...";
+  setSignalsControlsStatus("Running macro harvester...", "loading");
+
+  try {
+    const response = await fetch("/api/v1/macro/harvest?perSource=40&limit=25", {
+      method: "POST",
+      headers: { Accept: "application/json" },
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload?.message || payload?.error || `Harvest failed (${response.status})`);
+    }
+    const fetched = Number(payload?.fetchedCount || 0);
+    const inserted = Number(payload?.insertedCount || 0);
+    const duplicates = Number(payload?.duplicateCount || 0);
+    setSignalsControlsStatus(`Macro harvest complete • fetched ${fetched}, inserted ${inserted}, duplicates ${duplicates}`);
+    await refreshSignalsMacro();
+  } catch (error) {
+    setSignalsControlsStatus(error.message || "Macro harvest failed", "error");
+  } finally {
+    signalsState.controlsBusy = false;
+    signalsForceMacroHarvestBtn.disabled = false;
+    signalsForceMacroHarvestBtn.textContent = "Force Macro Harvest";
+  }
+}
+
+async function handleViewMarketHotspots() {
+  if (!signalsViewHotspotsBtn || signalsState.hotspotsLoading) return;
+  signalsState.controlsBusy = true;
+  signalsState.hotspotsVisible = true;
+  signalsState.hotspotsLoading = true;
+  signalsState.hotspotsError = "";
+  signalsState.hotspotsPayload = null;
+  signalsViewHotspotsBtn.disabled = true;
+  signalsViewHotspotsBtn.textContent = "Loading...";
+  renderSignalsHotspotsPanel();
+  setSignalsControlsStatus("Fetching latest hotspot snapshot...");
+
+  try {
+    const response = await fetch("/api/v1/hotspots/snapshot?exchange=all&refresh=true", {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload?.message || payload?.error || `Hotspot fetch failed (${response.status})`);
+    }
+    signalsState.hotspotsPayload = payload;
+    signalsState.hotspotsError = "";
+    const rows = normalizeHotspotRows(payload);
+    setSignalsControlsStatus(`Hotspot snapshot loaded • ${rows.length} themes ranked`);
+  } catch (error) {
+    signalsState.hotspotsError = error.message || "Hotspot snapshot failed";
+    signalsState.hotspotsPayload = null;
+    setSignalsControlsStatus(signalsState.hotspotsError, "error");
+  } finally {
+    signalsState.controlsBusy = false;
+    signalsState.hotspotsLoading = false;
+    signalsViewHotspotsBtn.disabled = false;
+    signalsViewHotspotsBtn.textContent = "View Market Hotspots";
+    renderSignalsHotspotsPanel();
+  }
+}
+
+function dismissSignalsHotspotsPanel() {
+  signalsState.hotspotsVisible = false;
+  renderSignalsHotspotsPanel();
+}
+
+async function handleSignalsKnowledgeSync() {
+  if (signalsState.syncLoading || !signalsSyncBtn) return;
+  const stock = stockForSignalsSelection();
+  if (!stock) {
+    setSignalsSyncStatus("error", "Select a stock before syncing transcripts.");
+    return;
+  }
+
+  const file = signalsSyncFileInput?.files?.[0] || null;
+  const url = String(signalsSyncUrlInput?.value || "").trim();
+  if (!file && !url) {
+    setSignalsSyncStatus("error", "Upload a PDF or paste a transcript URL.");
+    return;
+  }
+
+  signalsState.syncLoading = true;
+  signalsSyncBtn.disabled = true;
+  signalsSyncBtn.textContent = "Syncing...";
+  setSignalsSyncStatus("loading", "Syncing transcript to vector DB...", { loading: true });
+
+  try {
+    const formData = new FormData();
+    formData.set("symbol", stock.symbol);
+    if (file) formData.set("file", file, file.name);
+    if (url) formData.set("url", url);
+    formData.set("chunk_words", "500");
+    formData.set("chunk_overlap", "120");
+
+    const response = await fetch("/api/v1/research/earnings/sync", {
+      method: "POST",
+      body: formData,
+      credentials: "same-origin",
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload?.message || payload?.detail || payload?.error || `Sync failed (${response.status})`);
+    }
+    const chunks = Number(payload?.chunks_indexed || payload?.data?.chunks_indexed || 0);
+    setSignalsSyncStatus("success", `Knowledge base updated • ${chunks} chunks indexed for ${stock.symbol}.`);
+    if (signalsSyncFileInput) signalsSyncFileInput.value = "";
+    if (signalsSyncUrlInput) signalsSyncUrlInput.value = "";
+    signalsState.summaryByKey.delete(stock.key);
+    await ensureSignalsSummary({ force: true });
+  } catch (error) {
+    setSignalsSyncStatus("error", error.message || "Knowledge sync failed");
+  } finally {
+    signalsState.syncLoading = false;
+    signalsSyncBtn.disabled = false;
+    signalsSyncBtn.textContent = "Sync to Vector DB";
+  }
+}
+
+function summaryBulletsFromAnswer(answer) {
+  const lines = String(answer || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const explicit = lines
+    .filter((line) => /^[-*•]/.test(line))
+    .map((line) => line.replace(/^[-*•]\s*/, "").trim())
+    .filter(Boolean);
+  if (explicit.length >= 3) return explicit.slice(0, 3);
+
+  return String(answer || "")
+    .replace(/\s+/g, " ")
+    .split(/(?<=[.!?])\s+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+}
+
+function renderSignalsSummary() {
+  if (!signalsSummaryBullets || !signalsSummaryMeta || !signalsSummaryCitations) return;
+  const stock = stockForSignalsSelection();
+  if (!stock) {
+    signalsSummaryMeta.textContent = "Auto-summary loads when selection changes.";
+    signalsSummaryBullets.innerHTML = "<li>Select a stock to generate a 3-point AI summary.</li>";
+    signalsSummaryCitations.innerHTML = "";
+    return;
+  }
+
+  const summary = signalsState.summaryByKey.get(stock.key);
+  if (signalsState.summaryLoading && !summary) {
+    signalsSummaryMeta.textContent = `Summarizing ${stock.exchange}:${stock.symbol} transcript...`;
+    signalsSummaryBullets.innerHTML = "<li>Generating summary...</li>";
+    signalsSummaryCitations.innerHTML = "";
+    return;
+  }
+
+  if (signalsState.summaryError && !summary) {
+    signalsSummaryMeta.textContent = signalsState.summaryError;
+    signalsSummaryBullets.innerHTML = "<li>Summary unavailable for current selection.</li>";
+    signalsSummaryCitations.innerHTML = "";
+    return;
+  }
+
+  if (!summary) {
+    signalsSummaryMeta.textContent = `No summary cached for ${stock.exchange}:${stock.symbol}`;
+    signalsSummaryBullets.innerHTML = "<li>No summary available yet.</li>";
+    signalsSummaryCitations.innerHTML = "";
+    return;
+  }
+
+  const bullets = Array.isArray(summary.bullets) ? summary.bullets : [];
+  signalsSummaryMeta.textContent = `${stock.exchange}:${stock.symbol} • grounded transcript summary`;
+  signalsSummaryBullets.innerHTML = bullets.length
+    ? bullets.map((bullet) => `<li>${escapeHtml(bullet)}</li>`).join("")
+    : "<li>No summary points returned.</li>";
+
+  const citations = Array.isArray(summary.citations) ? summary.citations : [];
+  signalsSummaryCitations.innerHTML = citations.length
+    ? citations
+        .slice(0, 3)
+        .map(
+          (citation) =>
+            `<div class="signals-summary-citation"><strong>[C${citation.rank}]</strong> ${escapeHtml(
+              String(citation.text || "").slice(0, 260),
+            )}${String(citation.text || "").length > 260 ? "..." : ""}</div>`,
+        )
+        .join("")
+    : "";
+}
+
+async function ensureSignalsSummary(options = {}) {
+  const stock = stockForSignalsSelection();
+  if (!stock) return;
+  const existing = signalsState.summaryByKey.get(stock.key);
+  if (existing && !options.force) {
+    renderSignalsSummary();
+    return;
+  }
+  if (signalsState.summaryLoading) return;
+
+  signalsState.summaryLoading = true;
+  signalsState.summaryError = "";
+  renderSignalsSummary();
+  try {
+    if (!runtimeState.adapter?.sendEarningsQuery) {
+      throw new Error("Research adapter unavailable");
+    }
+    const payload = await runtimeState.adapter.sendEarningsQuery(
+      stock.symbol,
+      "Summarize the latest earnings transcript in exactly 3 concise bullet points for an investor.",
+    );
+    signalsState.summaryByKey.set(stock.key, {
+      bullets: summaryBulletsFromAnswer(payload.answer),
+      answer: payload.answer || "",
+      citations: payload.citations || [],
+    });
+    signalsState.summaryError = "";
+  } catch (error) {
+    signalsState.summaryError = error.message || "Unable to generate transcript summary.";
+  } finally {
+    signalsState.summaryLoading = false;
+    renderSignalsSummary();
+  }
+}
+
+function renderSignalsChat() {
+  if (!signalsChatLog || !signalsChatSend || !signalsChatInput) return;
+  const stock = stockForSignalsSelection();
+  if (!stock) {
+    signalsChatSend.disabled = true;
+    signalsChatLog.innerHTML = `<div class="scan-empty">Select a stock before asking transcript questions.</div>`;
+    return;
+  }
+
+  signalsChatSend.disabled = signalsState.chatLoading;
+  const messages = getSignalsChatMessages(stock.key);
+  if (!messages.length && !signalsState.chatLoading) {
+    signalsChatLog.innerHTML = `<div class="scan-empty">No chat history yet for ${escapeHtml(
+      `${stock.exchange}:${stock.symbol}`,
+    )}.</div>`;
     return;
   }
 
@@ -3356,48 +3876,48 @@ function renderCopilotChat() {
     })
     .join("");
 
-  copilotChatLog.innerHTML = `
+  signalsChatLog.innerHTML = `
     ${messageHtml}
-    ${portfolioState.copilotLoading ? '<div class="command-loader">Retrieving grounded answer...</div>' : ""}
+    ${signalsState.chatLoading ? '<div class="command-loader">Retrieving grounded answer...</div>' : ""}
   `;
-  copilotChatLog.scrollTop = copilotChatLog.scrollHeight;
+  signalsChatLog.scrollTop = signalsChatLog.scrollHeight;
 }
 
-async function handleCopilotChatSubmit() {
-  const row = selectedPortfolioRow();
-  if (!row || !copilotChatInput) return;
-  if (portfolioState.copilotLoading) return;
-  const query = copilotChatInput.value.trim();
+async function handleSignalsChatSubmit() {
+  const stock = stockForSignalsSelection();
+  if (!stock || !signalsChatInput) return;
+  if (signalsState.chatLoading) return;
+  const query = signalsChatInput.value.trim();
   if (!query) return;
 
-  const history = getCopilotMessages(row.key);
+  const history = getSignalsChatMessages(stock.key);
   history.push({ role: "user", text: query, citations: [] });
-  setCopilotMessages(row.key, history);
-  copilotChatInput.value = "";
-  portfolioState.copilotLoading = true;
-  renderCopilotChat();
+  setSignalsChatMessages(stock.key, history);
+  signalsChatInput.value = "";
+  signalsState.chatLoading = true;
+  renderSignalsChat();
 
   try {
     if (!runtimeState.adapter?.sendEarningsQuery) {
       throw new Error("Research adapter unavailable");
     }
-    const payload = await runtimeState.adapter.sendEarningsQuery(row.symbol, query);
+    const payload = await runtimeState.adapter.sendEarningsQuery(stock.symbol, query);
     history.push({
       role: "assistant",
       text: payload.answer || "No answer returned.",
       citations: payload.citations || [],
     });
-    setCopilotMessages(row.key, history);
+    setSignalsChatMessages(stock.key, history);
   } catch (error) {
     history.push({
       role: "assistant",
       text: error.message || "Unable to fetch transcript answer right now.",
       citations: [],
     });
-    setCopilotMessages(row.key, history);
+    setSignalsChatMessages(stock.key, history);
   } finally {
-    portfolioState.copilotLoading = false;
-    renderCopilotChat();
+    signalsState.chatLoading = false;
+    renderSignalsChat();
   }
 }
 
@@ -3446,10 +3966,15 @@ async function handlePrepareOrder(rowKey) {
 function renderPortfolioRows() {
   const rows = filteredPortfolioRows();
   const asOfLabel = portfolioState.asOf ? new Date(portfolioState.asOf).toLocaleTimeString("en-IN") : "--";
-  portfolioMeta.textContent = `${rows.length}/${portfolioState.rows.length} symbols • ${portfolioState.connected ? "Connected" : "Demo"} • as of ${asOfLabel}`;
+  const modeLabel = portfolioState.connected ? "Connected" : "Disconnected";
+  portfolioMeta.textContent = `${rows.length}/${portfolioState.rows.length} symbols • ${modeLabel} • as of ${asOfLabel}`;
 
   if (!rows.length) {
-    portfolioRowsEl.innerHTML = `<div class="scan-empty">No holdings match the current filters.</div>`;
+    if (!portfolioState.connected) {
+      portfolioRowsEl.innerHTML = `<div class="scan-empty">No live holdings available. Connect Zerodha session to load portfolio data.</div>`;
+    } else {
+      portfolioRowsEl.innerHTML = `<div class="scan-empty">No holdings match the current filters.</div>`;
+    }
     return;
   }
 
@@ -3491,10 +4016,343 @@ function renderPortfolio() {
   applyPortfolioButtonStates();
   renderPortfolioStatusChips();
   renderPortfolioSummary();
-  renderOptimalSizingPanel();
   renderPortfolioRows();
   renderPortfolioDecisionPanel();
-  setRationaleTab(portfolioState.rationaleTab);
+}
+
+function buildSignalsSelectorOptions() {
+  const options = [];
+  const seenStocks = new Set();
+  const visibleRows = filteredPortfolioRows();
+
+  visibleRows.slice(0, 60).forEach((row) => {
+    const key = stockKey(row.symbol, row.exchange);
+    if (seenStocks.has(key)) return;
+    seenStocks.add(key);
+    options.push({
+      value: `stock|${row.exchange}|${row.symbol}`,
+      label: `${row.exchange}:${row.symbol}`,
+      sub: "portfolio",
+      group: "Portfolio Symbols",
+    });
+  });
+
+  const rankedClusters = [...state.clusters]
+    .sort((a, b) => Number(b?.momentum?.["1M"] || 0) - Number(a?.momentum?.["1M"] || 0))
+    .slice(0, 40);
+  rankedClusters.forEach((cluster) => {
+    options.push({
+      value: `cluster|${cluster.id}`,
+      label: cluster.name,
+      sub: cluster.headName,
+      group: "Top Clusters",
+    });
+  });
+
+  return options;
+}
+
+function ensureSignalsSelection() {
+  if (signalsState.selectedType === "stock" && signalsState.selectedStockKey) {
+    const [exchange, symbol] = signalsState.selectedStockKey.split(":");
+    const exists = state.stocks.some((item) => item.symbol === symbol && item.exchange === exchange);
+    if (exists) return;
+  }
+  if (signalsState.selectedType === "cluster" && signalsState.selectedClusterId) {
+    const exists = state.clusters.some((item) => item.id === signalsState.selectedClusterId);
+    if (exists) return;
+  }
+
+  const preferred = selectedPortfolioRow();
+  if (preferred) {
+    signalsState.selectedType = "stock";
+    signalsState.selectedStockKey = preferred.key;
+    signalsState.selectedClusterId = "";
+    return;
+  }
+
+  const fallbackCluster = [...state.clusters].sort((a, b) => Number(b?.momentum?.["1M"] || 0) - Number(a?.momentum?.["1M"] || 0))[0];
+  if (fallbackCluster) {
+    signalsState.selectedType = "cluster";
+    signalsState.selectedClusterId = fallbackCluster.id;
+    signalsState.selectedStockKey = "";
+  }
+}
+
+function renderSignalsSelector() {
+  if (!signalsEntitySelect || !signalsEntityMeta) return;
+  ensureSignalsSelection();
+  const options = buildSignalsSelectorOptions();
+  if (!options.length) {
+    signalsEntitySelect.innerHTML = `<option value="">No symbols available</option>`;
+    signalsEntityMeta.textContent = "No portfolio rows available yet.";
+    return;
+  }
+
+  const groups = new Map();
+  options.forEach((item) => {
+    if (!groups.has(item.group)) groups.set(item.group, []);
+    groups.get(item.group).push(item);
+  });
+
+  signalsEntitySelect.innerHTML = [...groups.entries()]
+    .map(
+      ([groupName, groupItems]) => `
+      <optgroup label="${escapeHtml(groupName)}">
+        ${groupItems
+          .map(
+            (item) =>
+              `<option value="${escapeHtml(item.value)}">${escapeHtml(item.label)}${item.sub ? ` • ${escapeHtml(item.sub)}` : ""}</option>`,
+          )
+          .join("")}
+      </optgroup>
+    `,
+    )
+    .join("");
+
+  const selectedValue =
+    signalsState.selectedType === "cluster"
+      ? `cluster|${signalsState.selectedClusterId}`
+      : (() => {
+          const [exchange, symbol] = String(signalsState.selectedStockKey || "").split(":");
+          return `stock|${exchange || "NSE"}|${symbol || ""}`;
+        })();
+  signalsEntitySelect.value = selectedValue;
+  signalsEntityMeta.textContent = "Stock/cluster selection drives candlestick, macro, transcript, and execution workflows.";
+}
+
+function macroSentimentLabel(score) {
+  if (score >= 0.25) return "Bullish";
+  if (score <= -0.25) return "Bearish";
+  return "Neutral";
+}
+
+function renderSignalsMacroPanel() {
+  if (!signalsMacroMeta || !signalsMacroNeedle || !signalsMacroLabel || !signalsMacroCatalyst || !signalsImpactSummary || !signalsImpactList) return;
+  const stock = stockForSignalsSelection();
+  if (!stock) {
+    signalsMacroMeta.textContent = "Awaiting context";
+    signalsMacroLabel.textContent = "Balanced";
+    signalsMacroNeedle.style.left = "50%";
+    signalsMacroCatalyst.textContent = "Select a stock to load macro/regulatory context.";
+    signalsImpactSummary.textContent = "Collapsed to reduce noise.";
+    signalsImpactList.innerHTML = "";
+    signalsImpactList.classList.add("hidden");
+    if (signalsImpactToggle) signalsImpactToggle.textContent = "Show";
+    return;
+  }
+
+  if (signalsState.loadingMacro && !signalsState.macroPayload) {
+    signalsMacroMeta.textContent = `Loading macro context for ${stock.exchange}:${stock.symbol}...`;
+    signalsMacroLabel.textContent = "Neutral";
+    signalsMacroNeedle.style.left = "50%";
+    signalsMacroCatalyst.textContent = "Loading catalyst...";
+    signalsImpactSummary.textContent = "Collapsed to reduce noise.";
+    signalsImpactList.innerHTML = "";
+    signalsImpactList.classList.add("hidden");
+    if (signalsImpactToggle) signalsImpactToggle.textContent = "Show";
+    return;
+  }
+
+  if (signalsState.macroError && !signalsState.macroPayload) {
+    signalsMacroMeta.textContent = signalsState.macroError;
+    signalsMacroLabel.textContent = "Neutral";
+    signalsMacroNeedle.style.left = "50%";
+    signalsMacroCatalyst.textContent = "Macro context unavailable.";
+    signalsImpactSummary.textContent = "No impacted micro-clusters available.";
+    signalsImpactList.innerHTML = "";
+    signalsImpactList.classList.add("hidden");
+    if (signalsImpactToggle) signalsImpactToggle.textContent = "Show";
+    return;
+  }
+
+  const payload = signalsState.macroPayload;
+  const score = Number(payload?.sentiment_score || 0);
+  const normalized = clamp((score + 1) / 2, 0, 1);
+  signalsMacroNeedle.style.left = `${(normalized * 100).toFixed(2)}%`;
+  const label = macroSentimentLabel(score);
+  signalsMacroLabel.textContent = label;
+  const sourceLine = Array.isArray(payload?.sources) && payload.sources.length ? payload.sources.join(", ") : "macro-engine";
+  signalsMacroMeta.textContent = `${sourceLine} • ${payload?.asOf ? asOfClockLabel(payload.asOf) : "--"}`;
+  const fallbackNote = buildMacroFallbackMessage(payload?.reason);
+  signalsMacroCatalyst.textContent = payload?.key_catalyst || "No catalyst available.";
+  if (fallbackNote) {
+    signalsMacroCatalyst.textContent = `${signalsMacroCatalyst.textContent} ${fallbackNote}`;
+  }
+
+  const impacted = Array.isArray(payload?.impacted_clusters) ? payload.impacted_clusters : [];
+  signalsImpactSummary.textContent = impacted.length
+    ? `${impacted.length} impacted micro-clusters detected`
+    : "No impacted micro-clusters detected";
+  signalsImpactList.innerHTML = impacted.length
+    ? impacted
+        .slice(0, 12)
+        .map(
+          (cluster) => `
+            <div class="macro-cluster-item">
+              <span class="macro-cluster-name">${escapeHtml(cluster.cluster_name)}</span>
+              <span class="macro-cluster-meta">${escapeHtml(cluster.head_name)} • Impact ${Number(
+                cluster.impact_score || 0,
+              ).toFixed(2)}</span>
+            </div>
+          `,
+        )
+        .join("")
+    : `<div class="scan-empty">No impacted clusters in current context.</div>`;
+  signalsImpactList.classList.toggle("hidden", !signalsState.macroImpactExpanded);
+  if (signalsImpactToggle) {
+    signalsImpactToggle.textContent = signalsState.macroImpactExpanded ? "Hide" : "Show";
+  }
+}
+
+function renderSignalsCandlestick() {
+  if (!signalsCandleBadge || !signalsCandleMeta) return;
+  if (signalsState.loadingTechnical && !signalsState.technicalFlag) {
+    signalsCandleBadge.className = "signals-candle-badge neutral";
+    signalsCandleBadge.textContent = "Scanning...";
+    signalsCandleMeta.textContent = "Running PKScreener candlestick scan";
+    return;
+  }
+
+  if (signalsState.technicalError && !signalsState.technicalFlag) {
+    signalsCandleBadge.className = "signals-candle-badge neutral";
+    signalsCandleBadge.textContent = "Scanner Unavailable";
+    signalsCandleMeta.textContent = signalsState.technicalError;
+    return;
+  }
+
+  const flag = signalsState.technicalFlag;
+  if (!flag) {
+    signalsCandleBadge.className = "signals-candle-badge neutral";
+    signalsCandleBadge.textContent = "No pattern";
+    signalsCandleMeta.textContent = "No latest candlestick pattern detected.";
+    return;
+  }
+
+  const signalClass = String(flag.signal || "").toLowerCase();
+  const cls = signalClass === "bullish" ? "bullish" : signalClass === "bearish" ? "bearish" : "neutral";
+  signalsCandleBadge.className = `signals-candle-badge ${cls}`;
+  signalsCandleBadge.textContent = flag.pattern;
+  signalsCandleMeta.textContent = `${flag.signal} • ${flag.date}`;
+}
+
+function renderSignalsHeader() {
+  if (!signalsSelectedName || !signalsSelectedSub || !signalsMetaPill) return;
+  const stock = stockForSignalsSelection();
+  const cluster = clusterForSignalsSelection();
+  if (!stock) {
+    signalsSelectedName.textContent = "No active selection";
+    signalsSelectedSub.textContent = "Choose a symbol/cluster to inspect technical and AI context.";
+    signalsMetaPill.textContent = "Waiting for selection…";
+    signalsMetaPill.className = "status-pill status-pill-muted";
+    return;
+  }
+
+  signalsSelectedName.textContent =
+    signalsState.selectedType === "cluster" && cluster
+      ? `${cluster.name}`
+      : `${stock.exchange}:${stock.symbol}`;
+  signalsSelectedSub.textContent =
+    signalsState.selectedType === "cluster" && cluster
+      ? `Cluster leader focus: ${stock.exchange}:${stock.symbol}`
+      : `${stock.name || stock.symbol}`;
+  signalsMetaPill.textContent = signalSelectionLabel();
+  signalsMetaPill.className = "status-pill status-pill-ok";
+}
+
+async function refreshSignalsTechnical() {
+  const stock = stockForSignalsSelection();
+  if (!stock) return;
+  signalsState.loadingTechnical = true;
+  signalsState.technicalError = "";
+  renderSignalsCandlestick();
+
+  try {
+    if (!runtimeState.adapter?.fetchTechnicalCandles) {
+      throw new Error("Technical scanner adapter unavailable");
+    }
+    const flags = await runtimeState.adapter.fetchTechnicalCandles({
+      tickers: [stock.symbol],
+      timeoutSeconds: 25,
+    });
+    const match = (flags || []).find((item) => String(item.symbol || "").toUpperCase() === stock.symbol.toUpperCase()) || null;
+    signalsState.technicalFlag = match;
+  } catch (error) {
+    signalsState.technicalFlag = null;
+    signalsState.technicalError = error.message || "Candlestick scan failed";
+  } finally {
+    signalsState.loadingTechnical = false;
+    renderSignalsCandlestick();
+  }
+}
+
+async function refreshSignalsMacro() {
+  const stock = stockForSignalsSelection();
+  if (!stock) return;
+  signalsState.loadingMacro = true;
+  signalsState.macroError = "";
+  renderSignalsMacroPanel();
+
+  try {
+    const marketStock = state.stocks.find((item) => item.symbol === stock.symbol && item.exchange === stock.exchange);
+    const pseudoRow = {
+      key: stock.key,
+      symbol: stock.symbol,
+      exchange: stock.exchange,
+      returns: marketStock?.returns || { "1D": 0, "1W": 0, "1M": 0, "6M": 0, YTD: 0 },
+    };
+    const hasMacroAdapter = Boolean(runtimeState.adapter?.fetchMacroContext);
+    const backendPayload = hasMacroAdapter
+      ? await runtimeState.adapter.fetchMacroContext({
+          symbol: stock.symbol,
+          exchange: String(stock.exchange || "all").toLowerCase(),
+          limit: 30,
+          includeProcessed: true,
+        })
+      : null;
+    signalsState.macroPayload = hasMacroAdapter
+      ? shouldUseSyntheticMacroFallback(backendPayload)
+        ? withSyntheticMacroFallback(backendPayload, pseudoRow, backendPayload?.reason || "empty-context")
+        : backendPayload
+      : withSyntheticMacroFallback(null, pseudoRow, "adapter-unavailable");
+    signalsState.macroError = "";
+  } catch (error) {
+    signalsState.macroPayload = null;
+    signalsState.macroError = error.message || "Macro context request failed";
+  } finally {
+    signalsState.loadingMacro = false;
+    renderSignalsMacroPanel();
+  }
+}
+
+function renderSignalsView() {
+  renderSignalsSelector();
+  renderSignalsHeader();
+  renderSignalsCandlestick();
+  renderSignalsMacroPanel();
+  renderSignalsHotspotsPanel();
+  renderSignalsSummary();
+  renderSignalsChat();
+  renderOptimalSizingPanel();
+  if (!signalsState.controlsBusy && !signalsState.controlsMessage) {
+    setSignalsControlsStatus("");
+  }
+  if (!signalsState.syncMessage && !signalsState.syncLoading) {
+    setSignalsSyncStatus("idle", "Upload a transcript PDF or provide URL, then sync to vector DB.");
+  }
+  if (signalsCommandStatus && !signalsState.commandError && !signalsState.commandPayload && !commandConsoleState.loading) {
+    signalsCommandStatus.textContent = "Type a natural-language instruction to generate mock basket orders.";
+  }
+}
+
+async function refreshSignalsData(options = {}) {
+  renderSignalsView();
+  await Promise.all([
+    refreshSignalsTechnical(),
+    refreshSignalsMacro(),
+    ensureSignalsSummary({ force: Boolean(options.forceSummary) }),
+  ]);
+  renderSignalsView();
 }
 
 function statusPillClass(status) {
@@ -3720,14 +4578,14 @@ function deriveNetworkModel(probes) {
     },
     {
       name: "Macro & Regulatory Engine",
-      status: macroContext?.status === "down" ? "down" : macroEvents > 0 ? "up" : "degraded",
+      status: macroContext?.status === "down" ? "down" : "up",
       source: macroSources.length ? macroSources.join(", ") : "macro-engine",
       detail:
         macroContext?.status === "down"
           ? "Macro context endpoint unavailable"
           : macroEvents > 0
             ? `${macroEvents} relevant events in context window`
-            : "No high-signal events in current context window",
+            : "Endpoint healthy • no high-signal events in current context window",
       apis: ["/api/v1/macro/context", "/api/v1/macro/latest"],
     },
   ];
@@ -3753,9 +4611,9 @@ function deriveNetworkModel(probes) {
     },
     {
       name: "Macro Context Feed",
-      status: macroContext?.status === "down" ? "down" : macroEvents > 0 ? "up" : "degraded",
+      status: macroContext?.status === "down" ? "down" : "up",
       source: macroSources.length ? macroSources.join(", ") : "macro-engine",
-      detail: macroEvents > 0 ? "Regulatory/news events mapped to context" : "No events matched current selection window",
+      detail: macroEvents > 0 ? "Regulatory/news events mapped to context" : "Endpoint healthy, no events matched current selection window",
     },
   ];
 
@@ -3994,12 +4852,74 @@ function summarizeDeliveries(deliveries) {
     .join("");
 }
 
+function renderAlertsChannelsStatus() {
+  if (!alertsChannelsStatus) return;
+  if (alertsState.channelsLoading && !alertsState.channels.length) {
+    alertsChannelsStatus.innerHTML = `<div class="scan-empty">Checking Telegram and Notion connectivity...</div>`;
+    return;
+  }
+  if (!alertsState.channels.length) {
+    alertsChannelsStatus.innerHTML = `<div class="scan-empty">No channel status available.</div>`;
+    return;
+  }
+  alertsChannelsStatus.innerHTML = alertsState.channels
+    .map((channel) => {
+      const normalized = String(channel.channel || "unknown").toLowerCase();
+      const icon = normalized === "telegram" ? "TG" : normalized === "notion" ? "NT" : "CH";
+      const connected = Boolean(channel.connected);
+      return `
+        <div class="alerts-channel-row">
+          <div class="alerts-channel-left">
+            <span class="alerts-channel-icon">${icon}</span>
+            <span>${escapeHtml(normalized)}</span>
+          </div>
+          <div class="alerts-channel-state">
+            <span class="alerts-channel-dot ${connected ? "connected" : "disconnected"}"></span>
+            <span>${connected ? "connected" : "disconnected"} • ${Number(channel.configured_urls || 0)} webhook(s)</span>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+async function refreshAlertsChannels(options = {}) {
+  if (!alertsChannelsStatus) return;
+  alertsState.channelsLoading = true;
+  if (!options.silent) renderAlertsChannelsStatus();
+  try {
+    const response = await fetch("/api/alerts?route=channels", {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      credentials: "same-origin",
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload?.message || payload?.error || `channels request failed (${response.status})`);
+    }
+    alertsState.channels = Array.isArray(payload?.channels) ? payload.channels : [];
+  } catch (error) {
+    alertsState.channels = [];
+    if (!alertsState.error) {
+      alertsState.error = error.message || "Failed to load channels";
+    }
+  } finally {
+    alertsState.channelsLoading = false;
+    renderAlertsChannelsStatus();
+  }
+}
+
 function renderAlertsView() {
   if (!alertsEventsTable) return;
 
   if (alertsTestBtn) {
     alertsTestBtn.disabled = alertsState.testSending;
     alertsTestBtn.textContent = alertsState.testSending ? "Sending Test..." : "Test Channels";
+  }
+  if (alertsDispatchBtn) {
+    alertsDispatchBtn.disabled = alertsState.dispatchRunning;
+    alertsDispatchBtn.textContent = alertsState.dispatchRunning ? "Dispatching..." : "Force Run Automation Engine";
   }
 
   if (alertsMeta) {
@@ -4024,6 +4944,7 @@ function renderAlertsView() {
 
   if (!alertsState.events.length) {
     alertsEventsTable.innerHTML = `<div class="scan-empty">No alerts yet. Run "Test Channels" to create a delivery audit record.</div>`;
+    renderAlertsChannelsStatus();
     return;
   }
 
@@ -4071,6 +4992,7 @@ function renderAlertsView() {
       <tbody>${rows}</tbody>
     </table>
   `;
+  renderAlertsChannelsStatus();
 }
 
 async function refreshAlertsView(options = {}) {
@@ -4082,15 +5004,18 @@ async function refreshAlertsView(options = {}) {
   if (!options.silent) renderAlertsView();
 
   try {
-    const response = await fetch("/api/alerts?route=events&limit=50", {
-      method: "GET",
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-      credentials: "same-origin",
-    });
-    const payload = await response.json();
-    if (!response.ok) {
-      throw new Error(payload?.message || payload?.error || `events request failed (${response.status})`);
+    const [eventsResponse] = await Promise.all([
+      fetch("/api/alerts?route=events&limit=50", {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+        credentials: "same-origin",
+      }),
+      refreshAlertsChannels({ silent: true }),
+    ]);
+    const payload = await eventsResponse.json();
+    if (!eventsResponse.ok) {
+      throw new Error(payload?.message || payload?.error || `events request failed (${eventsResponse.status})`);
     }
     if (requestId !== alertsState.requestId) return;
     alertsState.events = Array.isArray(payload?.events) ? payload.events : [];
@@ -4134,6 +5059,39 @@ async function handleAlertsTestChannels() {
     renderAlertsView();
   } finally {
     alertsState.testSending = false;
+    renderAlertsView();
+  }
+}
+
+async function handleAlertsManualDispatch() {
+  if (!alertsDispatchBtn || alertsState.dispatchRunning) return;
+  alertsState.dispatchRunning = true;
+  alertsState.error = "";
+  renderAlertsView();
+  try {
+    const response = await fetch("/api/alerts?route=dispatch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ limit: 200, timeout_seconds: 15 }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload?.message || payload?.error || `dispatch request failed (${response.status})`);
+    }
+    const processed = Number(payload?.processed_events || payload?.data?.processed_events || 0);
+    const pending = Number(payload?.pending_remaining || payload?.data?.pending_remaining || 0);
+    alertsState.error = "";
+    if (alertsMeta) {
+      alertsMeta.textContent = `Dispatch complete • processed ${processed}, pending ${pending}`;
+      alertsMeta.className = "status-pill status-pill-ok";
+    }
+    await refreshAlertsView({ silent: false });
+  } catch (error) {
+    alertsState.error = error.message || "Failed to dispatch pending alerts";
+    renderAlertsView();
+  } finally {
+    alertsState.dispatchRunning = false;
     renderAlertsView();
   }
 }
@@ -4213,6 +5171,9 @@ async function refreshComparisonSeries() {
   if (requestId !== compareState.seriesRequestId) return;
   compareState.seriesByCluster = AdapterCore.mapComparisonSeries(adapterPayload);
   renderComparison();
+  if (state.activeView === "signals") {
+    renderSignalsSelector();
+  }
   await Promise.all([
     refreshDecisionMarkers(),
     fetchPeerRelativeStrength().catch((error) => {
@@ -4237,6 +5198,11 @@ async function refreshPortfolioBootstrap(options = {}) {
     portfolioState.selectedKey = payload.rows[0].key;
   }
   renderPortfolio();
+  if (state.activeView === "signals") {
+    await refreshSignalsData({ forceSummary: Boolean(options.forceRefresh) });
+  } else {
+    renderSignalsSelector();
+  }
 }
 
 async function pollPortfolioAndApplyUpdates() {
@@ -4255,6 +5221,13 @@ async function pollPortfolioAndApplyUpdates() {
     runtimeState.portfolioBackoffFailures = 0;
     if (state.activeView === "portfolio") {
       renderPortfolio();
+    }
+    if (state.activeView === "signals") {
+      refreshSignalsData({ forceSummary: false }).catch((error) => {
+        console.error("Signals auto-refresh failed", error);
+      });
+    } else {
+      renderSignalsSelector();
     }
   } catch (error) {
     runtimeState.portfolioConsecutiveFailures += 1;
@@ -4322,7 +5295,7 @@ function renderPlanTraceGrid() {
 }
 
 function setActiveView(target) {
-  const allowedViews = new Set(["themes", "whatsnew", "comparison", "portfolio", "network", "alerts"]);
+  const allowedViews = new Set(["themes", "whatsnew", "comparison", "portfolio", "signals", "network", "alerts"]);
   if (!allowedViews.has(target)) {
     target = "themes";
   }
@@ -4334,6 +5307,9 @@ function setActiveView(target) {
   whatsNewViewEl.classList.toggle("active-view", target === "whatsnew");
   comparisonViewEl.classList.toggle("active-view", target === "comparison");
   portfolioViewEl.classList.toggle("active-view", target === "portfolio");
+  if (signalsViewEl) {
+    signalsViewEl.classList.toggle("active-view", target === "signals");
+  }
   networkViewEl.classList.toggle("active-view", target === "network");
   alertsViewEl.classList.toggle("active-view", target === "alerts");
 
@@ -4362,6 +5338,13 @@ function setActiveView(target) {
     });
     clearNetworkRefreshTimer();
     clearAlertsRefreshTimer();
+  } else if (target === "signals") {
+    clearNetworkRefreshTimer();
+    clearAlertsRefreshTimer();
+    renderSignalsView();
+    refreshSignalsData({ forceSummary: false }).catch((error) => {
+      console.error("Failed to refresh signals view", error);
+    });
   } else if (target === "network") {
     clearAlertsRefreshTimer();
     refreshNetworkDashboard({ silent: false }).catch((error) => {
@@ -4456,16 +5439,8 @@ function attachHandlers() {
 
   document.addEventListener("keydown", (event) => {
     const key = String(event.key || "").toLowerCase();
-    const isPaletteToggle = key === "k" && (event.metaKey || event.ctrlKey);
-    if (isPaletteToggle) {
-      event.preventDefault();
-      toggleCommandPalette();
-      return;
-    }
-
-    if (key === "escape" && commandPaletteState.isOpen) {
-      event.preventDefault();
-      setCommandPaletteOpen(false);
+    if (key === "escape" && document.activeElement === signalsCommandInput) {
+      signalsCommandInput.blur();
     }
   });
 
@@ -4555,24 +5530,6 @@ function attachHandlers() {
     renderPortfolio();
   });
 
-  portfolioRationaleTabs.forEach((button) => {
-    button.addEventListener("click", () => {
-      const tab = button.dataset.rationaleTab;
-      setRationaleTab(tab);
-      if (tab === "macro") {
-        const selectedRow =
-          portfolioState.rows.find((item) => item.key === portfolioState.selectedKey) ||
-          filteredPortfolioRows()[0] ||
-          null;
-        if (selectedRow) {
-          requestMacroContextForRow(selectedRow, { force: true }).catch((error) => {
-            console.error("Macro context refresh failed", error);
-          });
-        }
-      }
-    });
-  });
-
   portfolioActionButtons.forEach((button) => {
     button.addEventListener("click", () => {
       portfolioState.filters.action = button.dataset.portfolioAction;
@@ -4590,8 +5547,16 @@ function attachHandlers() {
     });
   });
 
-  if (calculateSizingBtn) {
-    calculateSizingBtn.addEventListener("click", () => {
+  if (zerodhaReconnectBtn) {
+    zerodhaReconnectBtn.addEventListener("click", () => {
+      handleZerodhaReconnect().catch((error) => {
+        console.error("Zerodha reconnect failed", error);
+      });
+    });
+  }
+
+  if (calculateSizingBtnSignals) {
+    calculateSizingBtnSignals.addEventListener("click", () => {
       handleCalculateOptimalSizing().catch((error) => {
         console.error("Optimal sizing failed", error);
         portfolioState.allocationLoading = false;
@@ -4617,12 +5582,78 @@ function attachHandlers() {
       });
     });
   }
+  if (alertsDispatchBtn) {
+    alertsDispatchBtn.addEventListener("click", () => {
+      handleAlertsManualDispatch().catch((error) => {
+        console.error("Alerts dispatch trigger failed", error);
+      });
+    });
+  }
 
-  if (commandPaletteOverlay) {
-    commandPaletteOverlay.addEventListener("click", (event) => {
-      if (event.target === commandPaletteOverlay) {
-        setCommandPaletteOpen(false);
-      }
+  if (signalsEntitySelect) {
+    signalsEntitySelect.addEventListener("change", (event) => {
+      const next = parseSignalsSelectionValue(event.target.value);
+      signalsState.selectedType = next.type;
+      signalsState.selectedStockKey = next.stockKey;
+      signalsState.selectedClusterId = next.clusterId;
+      refreshSignalsData({ forceSummary: true }).catch((error) => {
+        console.error("Signals selection refresh failed", error);
+      });
+    });
+  }
+
+  if (signalsImpactToggle) {
+    signalsImpactToggle.addEventListener("click", () => {
+      signalsState.macroImpactExpanded = !signalsState.macroImpactExpanded;
+      renderSignalsMacroPanel();
+    });
+  }
+  if (signalsForceMacroHarvestBtn) {
+    signalsForceMacroHarvestBtn.addEventListener("click", () => {
+      handleForceMacroHarvest().catch((error) => {
+        console.error("Force macro harvest failed", error);
+        setSignalsControlsStatus(error.message || "Macro harvest failed", "error");
+      });
+    });
+  }
+  if (signalsViewHotspotsBtn) {
+    signalsViewHotspotsBtn.addEventListener("click", () => {
+      handleViewMarketHotspots().catch((error) => {
+        console.error("Hotspots snapshot failed", error);
+        setSignalsControlsStatus(error.message || "Hotspot snapshot failed", "error");
+      });
+    });
+  }
+  if (signalsHotspotsCloseBtn) {
+    signalsHotspotsCloseBtn.addEventListener("click", () => {
+      dismissSignalsHotspotsPanel();
+    });
+  }
+  if (signalsSyncBtn) {
+    signalsSyncBtn.addEventListener("click", () => {
+      handleSignalsKnowledgeSync().catch((error) => {
+        console.error("Knowledge sync failed", error);
+        setSignalsSyncStatus("error", error.message || "Knowledge sync failed");
+      });
+    });
+  }
+  if (signalsSyncUrlInput) {
+    signalsSyncUrlInput.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      handleSignalsKnowledgeSync().catch((error) => {
+        console.error("Knowledge sync failed", error);
+        setSignalsSyncStatus("error", error.message || "Knowledge sync failed");
+      });
+    });
+  }
+
+  if (signalsCommandRun) {
+    signalsCommandRun.addEventListener("click", () => {
+      handleCommandConsoleSubmit().catch((error) => {
+        console.error("Command console submit failed", error);
+        renderCommandPaletteError(error.message || "Command interpretation failed");
+      });
     });
   }
 
@@ -4630,27 +5661,27 @@ function attachHandlers() {
     commandInput.addEventListener("keydown", (event) => {
       if (event.key !== "Enter") return;
       event.preventDefault();
-      handleCommandPaletteSubmit().catch((error) => {
-        console.error("Command palette submit failed", error);
+      handleCommandConsoleSubmit().catch((error) => {
+        console.error("Command console submit failed", error);
         renderCommandPaletteError(error.message || "Command interpretation failed");
       });
     });
   }
 
-  if (copilotChatSend) {
-    copilotChatSend.addEventListener("click", () => {
-      handleCopilotChatSubmit().catch((error) => {
-        console.error("Copilot chat send failed", error);
+  if (signalsChatSend) {
+    signalsChatSend.addEventListener("click", () => {
+      handleSignalsChatSubmit().catch((error) => {
+        console.error("Signals chat send failed", error);
       });
     });
   }
 
-  if (copilotChatInput) {
-    copilotChatInput.addEventListener("keydown", (event) => {
+  if (signalsChatInput) {
+    signalsChatInput.addEventListener("keydown", (event) => {
       if (event.key !== "Enter") return;
       event.preventDefault();
-      handleCopilotChatSubmit().catch((error) => {
-        console.error("Copilot chat submit failed", error);
+      handleSignalsChatSubmit().catch((error) => {
+        console.error("Signals chat submit failed", error);
       });
     });
   }
@@ -4859,6 +5890,7 @@ async function init() {
   if (runtimeState.enablePortfolioView) {
     renderPortfolio();
   }
+  renderSignalsView();
   renderNetworkDashboard();
   renderAlertsView();
   await initializeComparisonState();

@@ -4,16 +4,24 @@ const { json, methodNotAllowed, parseJsonBody } = require("./_lib/http");
 
 const ROUTE_CONFIG = {
   test: {
-    method: "POST",
+    methods: ["POST"],
+    targetMethod: "POST",
     path: "/api/v1/alerts/test",
   },
   dispatch: {
-    method: "POST",
+    methods: ["POST", "GET"],
+    targetMethod: "POST",
     path: "/api/v1/alerts/dispatch",
   },
   events: {
-    method: "GET",
+    methods: ["GET"],
+    targetMethod: "GET",
     path: "/api/v1/alerts/events",
+  },
+  channels: {
+    methods: ["GET"],
+    targetMethod: "GET",
+    path: "/api/v1/alerts/channels/status",
   },
 };
 
@@ -39,6 +47,14 @@ function withMeta(payload, traceId) {
       traceId,
     },
   };
+}
+
+function isAuthorizedCronRequest(req) {
+  const expected = String(process.env.CRON_SECRET || "").trim();
+  if (!expected) return false;
+  const authHeader = String(req.headers?.authorization || req.headers?.Authorization || "").trim();
+  if (!authHeader) return false;
+  return authHeader === `Bearer ${expected}`;
 }
 
 async function forwardRequest({ method, pathname, body, traceId, query = {} }) {
@@ -111,25 +127,52 @@ module.exports = async function handler(req, res) {
       withMeta(
         {
           error: "not-found",
-          message: "Supported routes: test, dispatch, events",
+          message: "Supported routes: test, dispatch, events, channels",
         },
         trace.traceId,
       ),
     );
   }
 
-  if (req.method !== routeConfig.method) {
-    if (routeConfig.method === "GET") {
-      return methodNotAllowed(res);
-    }
+  if (!routeConfig.methods.includes(req.method)) {
     return methodNotAllowed(res);
   }
 
   try {
-    const body = routeConfig.method === "POST" ? await parseJsonBody(req) : null;
+    const isCronDispatch = route === "dispatch" && req.method === "GET";
+    if (isCronDispatch) {
+      if (!process.env.CRON_SECRET) {
+        return json(
+          res,
+          503,
+          withMeta(
+            {
+              error: "alerts-cron-misconfigured",
+              message: "CRON_SECRET is not set. Add CRON_SECRET in Vercel project settings.",
+            },
+            trace.traceId,
+          ),
+        );
+      }
+      if (!isAuthorizedCronRequest(req)) {
+        return json(
+          res,
+          401,
+          withMeta(
+            {
+              error: "alerts-cron-unauthorized",
+              message: "Unauthorized cron request",
+            },
+            trace.traceId,
+          ),
+        );
+      }
+    }
+
+    const body = routeConfig.targetMethod === "POST" ? await parseJsonBody(req) : null;
     const query = route === "events" ? { limit: req.query?.limit } : {};
     const forwarded = await forwardRequest({
-      method: routeConfig.method,
+      method: routeConfig.targetMethod,
       pathname: routeConfig.path,
       body,
       traceId: trace.traceId,

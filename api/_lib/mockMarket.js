@@ -72,6 +72,34 @@ const SYMBOL_PREFIXES = [
   "IRCT",
 ];
 
+const STOCK_SUFFIX_A = [
+  "Capital",
+  "Holdings",
+  "Ventures",
+  "Technologies",
+  "Industries",
+  "Logistics",
+  "Energy",
+  "Motors",
+  "Finance",
+  "Systems",
+  "Labs",
+  "Foods",
+  "Digital",
+  "Infra",
+];
+
+const STOCK_SUFFIX_B = [
+  "India",
+  "Limited",
+  "Group",
+  "Works",
+  "Global",
+  "Networks",
+  "Services",
+  "Enterprises",
+];
+
 const EXCHANGES = ["NSE", "BSE"];
 const COMPARE_WINDOWS = new Set(["1D", "5D", "1M", "6M", "YTD"]);
 
@@ -195,7 +223,10 @@ function makeClusterName(headName, localIndex, globalIndex) {
 }
 
 function makeStockName(clusterName, index) {
-  return `${clusterName.split(" ").slice(0, 2).join(" ")} Company ${index + 1}`;
+  const first = clusterName.split(" ").slice(0, 2).join(" ");
+  const a = STOCK_SUFFIX_A[index % STOCK_SUFFIX_A.length];
+  const b = STOCK_SUFFIX_B[(index + 2) % STOCK_SUFFIX_B.length];
+  return `${first} ${a} ${b}`;
 }
 
 function buildInitialState() {

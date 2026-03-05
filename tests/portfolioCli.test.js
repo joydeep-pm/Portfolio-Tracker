@@ -16,6 +16,7 @@ function runCli(args = []) {
       KITE_API_KEY: "",
       KITE_API_SECRET: "",
       KITE_ACCESS_TOKEN: "",
+      ENABLE_PORTFOLIO_DEMO_FALLBACK: "true",
     },
   });
 }

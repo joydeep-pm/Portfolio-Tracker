@@ -80,6 +80,7 @@ test("kite-direct falls back to demo quotes when Angel overlay is unavailable", 
     accessToken: "",
     fetchImpl: null,
     enableAngelMarketData: false,
+    enableDemoPortfolioFallback: true,
     session: {
       angel: {
         connected: false,
@@ -97,6 +98,7 @@ test("kite-direct falls back to demo quotes when Angel overlay is unavailable", 
 
   const meta = provider.meta();
   assert.equal(meta.marketDataProvider, "demo");
+  assert.equal(meta.demoPortfolioFallbackEnabled, true);
   assert.equal(meta.angelOverlayActive, false);
 });
 

@@ -87,3 +87,13 @@
 - Preventive rule: when loading charting libs via CDN unpinned latest, always wrap version-sensitive APIs with compatibility helpers (or pin explicit version) before shipping.
 - User correction: Railway quant-engine deployment failed during `scipy` metadata generation in build.
 - Preventive rule: for Python microservices with heavy scientific dependencies, explicitly pin deployment Python runtime (e.g., `3.11`) in repo/service config before first cloud deploy to avoid source-build failures on unsupported interpreter versions.
+- User correction: portfolio panel showed incorrect values while APIs looked healthy.
+- Preventive rule: never return synthetic portfolio holdings by default when broker session is disconnected; only enable demo holdings behind explicit opt-in flags for local testing.
+- Preventive rule: treat network status `degraded` as "reachable but not fully live" and surface disconnected/fallback reasons directly in UI copy to avoid ambiguity.
+- User correction: repeated manual broker re-login flow caused friction and confusion.
+- Preventive rule: when broker sessions are short-lived by policy, ship one-click reconnect UX tied to existing auth endpoints plus session polling, instead of relying on manual API-route navigation.
+
+## 2026-03-06
+- User correction: micro-cluster constituent names looked synthetic and reduced trust in live mode.
+- Preventive rule: whenever market view falls back to synthetic/mock data, display explicit source context and avoid generic placeholder naming (`Company N`) in any user-visible constituent list.
+- Preventive rule: for every new backend capability, add a corresponding visible UI affordance (or explicit "backend-only" label) in the same delivery cycle to avoid iceberg features.

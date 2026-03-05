@@ -17,6 +17,7 @@
         <a href="#" class="active" data-app-view-target="themes">Themes</a>
         <a href="#" class="muted" data-app-view-target="whatsnew">What's New</a>
         <a href="#" class="muted" data-app-view-target="portfolio">Portfolio</a>
+        <a href="#" class="muted" data-app-view-target="signals">Signals &amp; Analysis</a>
         <a href="#" class="muted" data-app-view-target="comparison">Comparison</a>
         <a href="#" class="muted" data-app-view-target="network">Network</a>
         <a href="#" class="muted" data-app-view-target="alerts">Alerts</a>
@@ -235,6 +236,7 @@
           <div class="portfolio-status-chips">
             <span id="portfolioSourceChip" class="status-pill status-pill-muted">Source: --</span>
             <span id="portfolioConnectionChip" class="status-pill status-pill-muted">Disconnected</span>
+            <button id="zerodhaReconnectBtn" class="mode-btn portfolio-reconnect-btn hidden" type="button">Reconnect Zerodha</button>
           </div>
         </section>
 
@@ -255,20 +257,10 @@
             </div>
             <input id="portfolioSearchInput" type="text" placeholder="Search symbol..." />
             <input id="portfolioConfidenceInput" type="number" min="0" max="100" step="1" value="0" />
-            <button id="calculateSizingBtn" class="mode-btn quant-action-btn">Calculate Optimal Sizing</button>
           </div>
         </section>
 
         <section id="portfolioSummaryRow" class="stats snapshot-strip"></section>
-        <section id="allocationSummaryCard" class="chart-card quant-allocation-card">
-          <header class="compare-card-head">
-            <h3>Optimal Sizing (Mock Capital ₹100,000)</h3>
-            <p id="allocationMeta">Awaiting buy signal selection</p>
-          </header>
-          <div id="allocationTableWrap" class="quant-allocation-wrap">
-            <div class="scan-empty">Click “Calculate Optimal Sizing” to generate weights and share counts.</div>
-          </div>
-        </section>
 
         <section class="portfolio-grid">
           <article class="chart-card portfolio-table-card">
@@ -298,35 +290,184 @@
               <h3>Signal Rationale</h3>
               <p id="portfolioDecisionMeta">Select a row</p>
             </header>
-            <div class="portfolio-rationale-tabs" role="tablist" aria-label="Signal rationale views">
-              <button class="portfolio-rationale-tab active" data-rationale-tab="decision" role="tab" aria-selected="true">
-                Decision
-              </button>
-              <button class="portfolio-rationale-tab" data-rationale-tab="macro" role="tab" aria-selected="false">
-                Macro &amp; Regulatory Context
-              </button>
-            </div>
             <div id="portfolioDecisionPanel" class="portfolio-decision-panel"></div>
-            <div id="portfolioMacroPanel" class="portfolio-decision-panel hidden"></div>
-            <section class="copilot-chat-section" aria-label="Copilot earnings chat">
-              <header class="compare-card-head">
-                <h3>Copilot Chat</h3>
-                <p id="copilotChatMeta">Ask about the selected symbol transcript</p>
-              </header>
-              <div id="copilotChatLog" class="copilot-chat-log">
-                <div class="scan-empty">Select a portfolio symbol, then ask a question.</div>
+          </aside>
+        </section>
+      </section>
+
+      <section id="signalsView" class="app-view">
+        <section class="hero signals-hero">
+          <div>
+            <p class="kicker">AI Decision Intelligence Workspace</p>
+            <h1>Signals <span>&amp; Analysis</span></h1>
+            <p class="subhead">
+              Unified technical, macro, research, and execution workflows for the selected stock or cluster.
+            </p>
+          </div>
+          <div class="signals-hero-controls">
+            <span id="signalsMetaPill" class="status-pill status-pill-muted">Waiting for selection…</span>
+          </div>
+        </section>
+
+        <section class="chart-card signals-selector-card">
+          <header class="compare-card-head">
+            <h3>Focus Selector</h3>
+            <p id="signalsEntityMeta">Select a stock or cluster to activate all analysis panels.</p>
+          </header>
+          <div class="signals-selector-body">
+            <div class="signals-selector-inputs">
+              <select id="signalsEntitySelect" class="signals-select">
+                <option value="">Loading focus entities...</option>
+              </select>
+            </div>
+            <div class="signals-selected-summary">
+              <h4 id="signalsSelectedName">No active selection</h4>
+              <p id="signalsSelectedSub">Choose a symbol/cluster to inspect technical and AI context.</p>
+              <div class="signals-candle-row">
+                <span id="signalsCandleBadge" class="signals-candle-badge neutral">No candlestick signal</span>
+                <span id="signalsCandleMeta" class="signals-candle-meta">Scanner idle</span>
               </div>
-              <div class="copilot-chat-controls">
+            </div>
+          </div>
+        </section>
+
+        <section class="chart-card signals-controls-card">
+          <header class="compare-card-head">
+            <h3>Data Controls</h3>
+            <p id="signalsControlsStatus">Manual controls for macro ingestion and thematic hotspot snapshots.</p>
+          </header>
+          <div class="signals-controls-row">
+            <button id="signalsForceMacroHarvestBtn" class="mode-btn" type="button">Force Macro Harvest</button>
+            <button id="signalsViewHotspotsBtn" class="mode-btn" type="button">View Market Hotspots</button>
+          </div>
+        </section>
+
+        <section class="signals-grid">
+          <article class="chart-card signals-macro-card">
+            <header class="compare-card-head">
+              <h3>Macro Sentiment Spectrum</h3>
+              <p id="signalsMacroMeta">Awaiting context</p>
+            </header>
+            <div class="signals-macro-body">
+              <div class="signals-spectrum-wrap" aria-label="Macro sentiment gauge">
+                <div class="signals-spectrum-scale">
+                  <span>Bearish</span>
+                  <span>Neutral</span>
+                  <span>Bullish</span>
+                </div>
+                <div class="signals-spectrum-track">
+                  <span id="signalsMacroNeedle" class="signals-spectrum-needle"></span>
+                </div>
+                <p id="signalsMacroLabel" class="signals-spectrum-label">Balanced</p>
+              </div>
+              <article class="decision-card">
+                <h4>Current Catalyst</h4>
+                <p id="signalsMacroCatalyst">Select a stock to load macro/regulatory context.</p>
+              </article>
+              <article class="decision-card">
+                <div class="signals-impact-head">
+                  <h4>Impacted Micro-Clusters</h4>
+                  <button id="signalsImpactToggle" class="portfolio-inline-btn" type="button">Show</button>
+                </div>
+                <p id="signalsImpactSummary">Collapsed to reduce noise.</p>
+                <div id="signalsImpactList" class="macro-cluster-list hidden"></div>
+              </article>
+            </div>
+          </article>
+
+          <article class="chart-card signals-research-card">
+            <header class="compare-card-head">
+              <h3>Earnings Copilot</h3>
+              <p id="signalsSummaryMeta">Auto-summary loads when selection changes.</p>
+            </header>
+            <div class="signals-research-body">
+              <section class="signals-ingestion-card">
+                <h4>Knowledge Base Ingestion</h4>
+                <div class="signals-ingestion-grid">
+                  <input id="signalsSyncFileInput" type="file" accept="application/pdf" />
+                  <input
+                    id="signalsSyncUrlInput"
+                    type="text"
+                    placeholder="Or paste transcript PDF URL..."
+                    autocomplete="off"
+                  />
+                  <button id="signalsSyncBtn" class="mode-btn" type="button">Sync to Vector DB</button>
+                </div>
+                <p id="signalsSyncStatus" class="signals-sync-status">
+                  Upload a transcript PDF or provide URL, then sync to vector DB.
+                </p>
+              </section>
+              <section class="signals-summary-card">
+                <h4>Latest Transcript Snapshot</h4>
+                <ul id="signalsSummaryBullets" class="signals-summary-list">
+                  <li>Select a stock to generate a 3-point AI summary.</li>
+                </ul>
+                <div id="signalsSummaryCitations" class="signals-summary-citations"></div>
+              </section>
+              <section class="copilot-chat-section" aria-label="Copilot earnings chat">
+                <div id="signalsChatLog" class="copilot-chat-log">
+                  <div class="scan-empty">Ask grounded questions after selecting a stock.</div>
+                </div>
+                <div class="copilot-chat-controls">
+                  <input
+                    id="signalsChatInput"
+                    type="text"
+                    placeholder="Ask about earnings transcript..."
+                    autocomplete="off"
+                  />
+                  <button id="signalsChatSend" class="portfolio-inline-btn">Send</button>
+                </div>
+              </section>
+            </div>
+          </article>
+
+          <article class="chart-card signals-command-card">
+            <header class="compare-card-head">
+              <h3>AI Execution Console</h3>
+              <p id="signalsCommandStatus">Type a natural-language instruction to generate mock basket orders.</p>
+            </header>
+            <div class="signals-command-body">
+              <div class="signals-command-input-row">
                 <input
-                  id="copilotChatInput"
+                  id="signalsCommandInput"
                   type="text"
-                  placeholder="Ask earnings transcript question..."
+                  placeholder="Rotate 10% of IT cluster into PSU Banks"
                   autocomplete="off"
                 />
-                <button id="copilotChatSend" class="portfolio-inline-btn">Send</button>
+                <button id="signalsCommandRun" class="mode-btn">Run</button>
               </div>
-            </section>
-          </aside>
+              <div id="signalsCommandResults" class="command-results">
+                <div class="scan-empty">Command output appears here.</div>
+              </div>
+            </div>
+          </article>
+
+          <article id="allocationSummaryCard" class="chart-card quant-allocation-card">
+            <header class="compare-card-head">
+              <h3>Optimal Sizing (Mock Capital ₹100,000)</h3>
+              <p id="allocationMeta">Awaiting buy-signal selection</p>
+            </header>
+            <div class="signals-sizing-controls">
+              <button id="calculateSizingBtnSignals" class="mode-btn quant-action-btn">Calculate Optimal Sizing</button>
+              <p class="signals-sizing-note">Uses PyPortfolioOpt max-Sharpe allocation and discrete share sizing.</p>
+            </div>
+            <div id="allocationTableWrap" class="quant-allocation-wrap">
+              <div class="scan-empty">Run sizing after command interpretation or buy-signal selection.</div>
+            </div>
+          </article>
+        </section>
+
+        <section id="signalsHotspotsCard" class="chart-card signals-hotspots-card hidden">
+          <header class="compare-card-head">
+            <h3>Market Hotspots Snapshot</h3>
+            <div class="signals-hotspots-head-right">
+              <p id="signalsHotspotsMeta">Run snapshot to load thematic hotspots.</p>
+              <button id="signalsHotspotsCloseBtn" class="portfolio-inline-btn" type="button">Dismiss</button>
+            </div>
+          </header>
+          <div id="signalsHotspotsList" class="scan-list">
+            <div class="scan-empty">No hotspot data loaded yet.</div>
+          </div>
         </section>
       </section>
 
@@ -385,6 +526,7 @@
           </div>
           <div class="alerts-hero-controls">
             <button id="alertsTestBtn" class="mode-btn">Test Channels</button>
+            <button id="alertsDispatchBtn" class="mode-btn" type="button">Force Run Automation Engine</button>
             <span id="alertsMeta" class="status-pill status-pill-muted">Waiting for alert events…</span>
           </div>
         </section>
@@ -396,6 +538,35 @@
           </header>
           <div id="alertsEventsTable" class="alerts-events-table">
             <div class="scan-empty">No alerts yet. Run “Test Channels” to create a delivery audit record.</div>
+          </div>
+        </section>
+
+        <section class="chart-card alerts-rules-card">
+          <header class="compare-card-head">
+            <h3>Active Alert Rules</h3>
+            <p>What triggers pings and whether outbound channels are connected.</p>
+          </header>
+          <div class="alerts-rules-grid">
+            <article class="alerts-rules-list">
+              <div class="alerts-rule-item">
+                <h4>Macro / Regulatory Swings</h4>
+                <p>Sends an alert when RBI/SEBI context shifts macro sentiment into a high-conviction zone.</p>
+              </div>
+              <div class="alerts-rule-item">
+                <h4>Technical Breakouts</h4>
+                <p>Sends an alert if candlestick scanner flags bullish/bearish reversal patterns on tracked holdings.</p>
+              </div>
+              <div class="alerts-rule-item">
+                <h4>AI Agent Rebalances</h4>
+                <p>Sends an alert when command interpretation or portfolio agents produce a new rebalance basket.</p>
+              </div>
+            </article>
+            <article class="alerts-channel-status-card">
+              <h4>Channel Connection Status</h4>
+              <div id="alertsChannelsStatus" class="alerts-channel-status-list">
+                <div class="scan-empty">Checking Telegram and Notion connectivity...</div>
+              </div>
+            </article>
           </div>
         </section>
       </section>
@@ -412,19 +583,6 @@
       </div>
       <div id="modalTableWrap" class="modal-table-wrap"></div>
     </dialog>
-
-    <div id="commandPaletteOverlay" class="command-palette-overlay hidden" aria-hidden="true">
-      <div class="command-palette-panel" role="dialog" aria-modal="true" aria-label="Command palette">
-        <div class="command-palette-head">
-          <span class="kicker">Command Palette</span>
-          <span class="status-pill status-pill-muted">Cmd/Ctrl + K</span>
-        </div>
-        <input id="commandInput" type="text" placeholder="Type a command (e.g., Rotate 10% of IT cluster into PSU Banks)" autocomplete="off" />
-        <div id="commandResults" class="command-results">
-          <div class="scan-empty">Enter a natural-language portfolio command and press Enter.</div>
-        </div>
-      </div>
-    </div>
 
     <script>
       window.PORTFOLIO_TRACKER_CONFIG = window.PORTFOLIO_TRACKER_CONFIG || {

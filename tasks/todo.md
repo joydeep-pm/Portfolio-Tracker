@@ -218,6 +218,119 @@
 - [x] Add idempotency test for EOD snapshot persistence in memory mode.
 - [x] Verify EOD runner with sample date output.
 
+## Phase 7 Auto-Dispatch Cron Wiring Plan (2026-03-05)
+- [x] Add secure cron-compatible `dispatch` handling in `api/alerts.js` without adding new serverless functions.
+- [x] Add Vercel cron schedule in `vercel.json` targeting existing alerts dispatch route.
+- [x] Validate syntax for updated files and record operator runbook for enablement/verification.
+
+## Signals Hub Missing UI + Fallback Naming Patch Plan (2026-03-06)
+- [x] Confirm current backend route/proxy capabilities for `earnings/sync`, `macro/harvest`, `hotspots/snapshot`, and `alerts/dispatch`.
+- [x] Add `earnings/sync` multipart pass-through support in `api/quant.js` so PDF uploads work from frontend.
+- [x] Improve fallback synthetic stock labels in `api/_lib/mockMarket.js` to remove placeholder `Company N` naming.
+- [x] Add Signals data-controls row (`Force Macro Harvest`, `View Market Hotspots`) in `index.html`.
+- [x] Add Signals knowledge-ingestion widget (PDF upload + URL + `Sync to Vector DB`) in `index.html`.
+- [x] Add Signals hotspots output panel (dismissible) in `index.html`.
+- [x] Add Alerts manual override button (`Force Run Automation Engine`) in `index.html`.
+- [x] Wire all new UI controls in `app.js` with loading, success/error messaging, and refresh behavior.
+- [x] Add/adjust styles in `styles.css` for new controls/widgets while keeping existing design tokens.
+- [x] Run syntax checks and targeted tests; document outcomes.
+
+## Signals Hub Missing UI + Fallback Naming Verify Plan Check-In
+- Scope: add frontend interfaces for previously orphaned routes and unblock RAG sync upload flow without changing product architecture.
+- Safety: preserve existing endpoint contracts and view routing; new features are additive and should not alter existing portfolio/comparison/network behavior.
+
+## Signals Hub Missing UI + Fallback Naming Review
+- Updated files:
+  - `api/quant.js`: added multipart proxy pass-through for `/api/v1/research/earnings/sync` while preserving JSON forwarding for all other quant routes.
+  - `api/_lib/mockMarket.js`: replaced placeholder `Company N` constituent naming with deterministic suffix-based corporate labels.
+  - `index.html`: added Signals data controls row, RAG ingestion widget (PDF + URL + sync button), hotspots snapshot panel, and alerts manual dispatch button.
+  - `styles.css`: added styling for Signals controls/ingestion/hotspots components and responsive behavior.
+  - `app.js`: wired macro harvest trigger, hotspots fetch/render/dismiss flow, knowledge sync workflow with loading/success/error states, and manual alerts dispatch trigger.
+- Validation commands:
+  - `node --check app.js`
+  - `node --check api/quant.js`
+  - `node --check api/_lib/mockMarket.js`
+  - `node --check api/alerts.js`
+  - `node --test tests/*.test.js`
+- Validation results:
+  - syntax checks passed for all touched runtime files.
+  - full test suite passed (`96 pass`, `0 fail`, `1 skipped`).
+
+## Phase 7 Auto-Dispatch Verify Plan Check-In
+- Scope: automation trigger only; no changes to alert storage or Apprise delivery logic.
+- Safety: preserve manual `POST /api/alerts?route=dispatch` behavior and keep cron path protected by `CRON_SECRET`.
+
+## Phase 7 Auto-Dispatch Review
+- Updated `api/alerts.js`:
+  - `dispatch` route now supports `GET` (cron) and `POST` (manual/UI).
+  - Cron `GET` path is protected via `Authorization: Bearer <CRON_SECRET>`.
+  - Quant-engine call remains `POST /api/v1/alerts/dispatch`.
+- Updated `vercel.json`:
+  - Added cron schedule: `*/15 * * * *` for `/api/v1/alerts/dispatch`.
+- Validation evidence:
+  - `node --check api/alerts.js` passed.
+  - `node -e "JSON.parse(require('fs').readFileSync('vercel.json','utf8')); console.log('vercel.json ok')"` passed.
+  - `node --test tests/*.test.js` passed (`97/97`).
+
+## Portfolio Accuracy Hotfix Plan (2026-03-05)
+- [x] Stop disconnected `kite-direct` provider from emitting synthetic demo holdings by default.
+- [x] Keep explicit opt-in fallback support via env/config for local demos only.
+- [x] Update portfolio UI connection chips/empty states to distinguish API reachability vs live holdings connection.
+- [x] Run focused + full test suite and document results.
+
+## Portfolio Accuracy Verify Plan Check-In
+- Scope: accuracy and clarity hotfix only; no auth flow or order APIs changed.
+- Safety: preserve provider contract and allow explicit demo fallback opt-in for local demos.
+
+## Portfolio Accuracy Review
+- Runtime diagnosis (production):
+  - `GET /api/v1/portfolio/bootstrap` returned `connected:false`, `providerMode:"demo"`, and synthetic symbols; API availability was healthy but holdings were fallback data.
+  - `GET /api/zerodha/session/status` returned `connected:false`.
+- Code updates:
+  - `api/_lib/brokers/kiteDirectProvider.js`:
+    - disconnected mode now returns empty holdings by default.
+    - demo holdings/quotes/cash now require explicit `ENABLE_PORTFOLIO_DEMO_FALLBACK=true` (or options override).
+    - metadata now exposes `demoPortfolioFallbackEnabled` and `marketDataProvider:"none"` when disconnected with fallback disabled.
+  - `app.js`:
+    - portfolio connection chip now distinguishes `Connected • Live holdings`, `Disconnected • Demo data`, and `Disconnected • No live holdings`.
+    - empty portfolio state now explicitly prompts Zerodha connection.
+    - portfolio meta label uses `Disconnected` instead of ambiguous `Demo`.
+  - `tests/kiteAngelOverlay.test.js` updated to opt in demo fallback explicitly.
+  - `tests/portfolioCli.test.js` updated to opt in demo fallback for CLI fixture expectations.
+- Validation:
+  - `node --check api/_lib/brokers/kiteDirectProvider.js` passed.
+  - `node --check app.js` passed.
+  - `node --test tests/kiteAngelOverlay.test.js tests/providerFactory.test.js tests/legacyApiMeta.test.js` passed.
+  - `node --test tests/*.test.js` passed (`96 pass, 1 skipped, 0 fail`).
+
+## Zerodha Reconnect UX Plan (2026-03-05)
+- [x] Add one-click `Reconnect Zerodha` button in Portfolio header without changing existing visual system.
+- [x] Implement frontend reconnect flow via `/api/zerodha/auth/url` in popup and poll `/api/zerodha/session/status` until connected.
+- [x] Auto-refresh portfolio bootstrap after successful reconnect and keep clear runtime health messaging for disconnected/failed states.
+- [x] Run syntax checks and document operator behavior.
+
+## Zerodha Reconnect Verify Plan Check-In
+- Scope: frontend UX only; no Zerodha backend auth contract changes.
+- Safety: keep existing session routes unchanged and preserve current read-only behavior.
+
+## Zerodha Reconnect Review
+- UI updates:
+  - Added `Reconnect Zerodha` button in Portfolio header status chip group.
+  - Button is shown only when disconnected, and switches to `Waiting for login...` while reconnect flow is active.
+- Reconnect flow:
+  - Fetches `/api/zerodha/auth/url`.
+  - Opens Zerodha login in popup (dashboard remains open).
+  - Polls `/api/zerodha/session/status` every ~3s for up to 4 minutes.
+  - On success: refreshes portfolio bootstrap and re-renders with connected state.
+  - On timeout/failure: surfaces explicit runtime health message.
+- Disconnected clarity:
+  - Portfolio meta now shows `Disconnected` mode label.
+  - Empty table state explicitly says `Connect Zerodha session to load portfolio data`.
+- Validation:
+  - `node --check app.js` passed.
+  - `node --check api/_lib/brokers/kiteDirectProvider.js` passed.
+  - `node --test tests/*.test.js` passed (`96 pass, 1 skipped, 0 fail`).
+
 ## Network Connectivity Dashboard Plan (2026-03-04)
 - [x] Add a dedicated `Network` top-nav view and section shell in `index.html`.
 - [x] Implement live connectivity probe logic in `app.js` for Zerodha, Angel, market, portfolio, and macro endpoints.
@@ -1204,3 +1317,38 @@
   - `cd quant-engine && source .venv/bin/activate && python -c "from routers import alerts; print(alerts._resolve_channel_urls('telegram')); print(alerts.AlertTestRequest().body)"` (pass; URL resolved and required message confirmed)
 - Notes:
   - `quant-engine/.env` is ignored by git (`!! quant-engine/.env` in status output).
+
+## Signals & Analysis UX Overhaul Plan (2026-03-05)
+- [x] Audit backend feature coverage vs UI surfaces (Node `api/` + Python `quant-engine/routers/`).
+- [x] Add a dedicated `Signals - [ ] Add a dedicated `Signals & Analysis` top-nav view and page shell. Analysis` top-nav view and page shell.
+- [x] Move advanced tooling (macro analysis, transcript chat, NLP command execution, optimal sizing) out of Portfolio side panel into Signals view.
+- [x] Integrate technical candlestick scan badges (`/api/v1/technical/candles/scan`) for selected stock.
+- [x] Replace macro raw score display with sentiment spectrum gauge + collapsed impacted-clusters summary.
+- [x] Add auto-run earnings 3-bullet summary on stock selection and keep conversational transcript chat below it.
+- [x] Replace hidden command palette with persistent AI execution console and colocated optimal sizing table.
+- [x] Add Active Alert Rules transparency panel with trigger descriptions and Telegram/Notion connection indicators.
+- [x] Extend adapter normalizers/methods for technical scan payloads.
+- [x] Run syntax checks and tests, then document review evidence.
+
+## Signals & Analysis UX Overhaul Verify Check-In
+- Scope: frontend IA/UX restructure and adapter wiring only; no backend decision logic changes.
+- Safety: preserve existing dark-mode token system and existing API contracts while adding missing UI surfaces.
+
+## Signals & Analysis UX Overhaul Review
+- Code updates:
+  - `index.html`
+  - `styles.css`
+  - `app.js`
+  - `adapterCore.js`
+  - `api/quant.js`
+- Validation:
+  - `node --check app.js` (pass)
+  - `node --check adapterCore.js` (pass)
+  - `node --check api/quant.js` (pass)
+  - `node --check api/alerts.js` (pass)
+  - `node --test tests/*.test.js` (pass, `96 pass, 1 skipped, 0 fail`)
+- Outcome:
+  - Added new dedicated `Signals & Analysis` view with selector-reactive technical/macro/research/command/sizing workflows.
+  - Moved advanced tooling out of Portfolio side panel and removed hidden command-palette UX dependency.
+  - Added alert-rule transparency panel with explicit trigger explanations and Telegram/Notion channel connection status.
+  - Added technical-candle normalizer + backend adapter method and array-safe proxy metadata wrapping for quant responses.
