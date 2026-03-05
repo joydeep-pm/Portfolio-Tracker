@@ -287,15 +287,39 @@ async function buildDecisionMarkers(req) {
 
 module.exports = async function handler(req, res) {
   const trace = initTrace(req, res, "charts-api");
+  const route = String(req.query?.route || "").toLowerCase();
+  const contractVersionForRoute = route === "series" ? CONTRACTS.comparison : CONTRACTS.charts;
   const respond = (statusCode, payload) =>
     json(res, statusCode, {
       ...(payload || {}),
       meta: {
-        contractVersion: CONTRACTS.charts,
+        contractVersion: contractVersionForRoute,
         traceId: trace.traceId,
       },
     });
-  const route = String(req.query?.route || "").toLowerCase();
+
+  if (route === "series") {
+    if (req.method !== "GET") return respond(405, { error: "Method not allowed" });
+    try {
+      const context = await buildComparisonContext(req, {
+        clusterIds: req.query?.clusterIds,
+        window: req.query?.window,
+        exchange: req.query?.exchange,
+        points: req.query?.points,
+      });
+      traceLog(trace, "info", "comparison.series.success", {
+        exchange: context.payload?.exchange,
+        clusters: Object.keys(context.payload?.seriesByClusterId || {}).length,
+      });
+      return respond(200, context.payload);
+    } catch (error) {
+      traceLog(trace, "error", "comparison.series.failed", { message: error.message });
+      return respond(500, {
+        error: "comparison-series-failed",
+        message: error.message,
+      });
+    }
+  }
 
   if (route === "normalized-returns") {
     if (req.method !== "GET") return respond(405, { error: "Method not allowed" });

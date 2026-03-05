@@ -27,3 +27,4 @@ NorenRestApiPy>=0.0.22
 requests>=2.32.0
 sentence-transformers>=3.0.1
 faiss-cpu>=1.8.0
+apprise>=1.9.0

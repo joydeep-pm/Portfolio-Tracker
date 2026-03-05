@@ -1697,6 +1697,116 @@ body[data-ui-variant="classic"] .compare-chart {
   background: rgba(16, 24, 38, 0.88);
 }
 
+.alerts-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.9rem;
+}
+
+.alerts-hero-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.alerts-table-card {
+  margin-top: 0.86rem;
+}
+
+.alerts-events-table {
+  padding: 0.56rem 0.72rem 0.82rem;
+  overflow: auto;
+}
+
+.alerts-events-table table {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: collapse;
+}
+
+.alerts-events-table th,
+.alerts-events-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 0.38rem 0.32rem;
+  text-align: left;
+  font-size: 0.62rem;
+  vertical-align: top;
+}
+
+.alerts-events-table th {
+  color: var(--muted);
+  font-size: 0.56rem;
+  letter-spacing: 0.04rem;
+  text-transform: uppercase;
+}
+
+.alerts-events-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.alert-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+}
+
+.alert-status-dot {
+  width: 0.52rem;
+  height: 0.52rem;
+  border-radius: 50%;
+  box-shadow: 0 0 0.34rem rgba(18, 24, 36, 0.35);
+}
+
+.alert-status-dot.ok {
+  background: var(--cell-pos-strong);
+  box-shadow: 0 0 0.34rem rgba(31, 169, 113, 0.6);
+}
+
+.alert-status-dot.fail {
+  background: var(--cell-neg-strong);
+  box-shadow: 0 0 0.34rem rgba(201, 69, 93, 0.6);
+}
+
+.alert-status-text {
+  font-weight: 700;
+  letter-spacing: 0.03rem;
+}
+
+.alert-delivery-stack {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.alert-delivery-chip {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.12rem 0.36rem;
+  font-size: 0.55rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+  width: fit-content;
+}
+
+.alert-delivery-chip.success {
+  border-color: rgba(31, 169, 113, 0.45);
+  background: rgba(31, 169, 113, 0.16);
+  color: #c5f7e5;
+}
+
+.alert-delivery-chip.failed {
+  border-color: rgba(201, 69, 93, 0.45);
+  background: rgba(201, 69, 93, 0.16);
+  color: #ffdbe1;
+}
+
+.alert-delivery-message {
+  color: var(--muted);
+}
+
 .command-palette-overlay {
   position: fixed;
   inset: 0;
@@ -1929,6 +2039,7 @@ body[data-ui-variant="classic"] .compare-chart {
   .themes-header,
   .portfolio-header,
   .network-hero,
+  .alerts-hero,
   .hero {
     flex-direction: column;
     align-items: stretch;

@@ -51,7 +51,7 @@
     },
     {
       "source": "/api/v1/comparison/series",
-      "destination": "/api/comparison?route=series"
+      "destination": "/api/charts?route=series"
     },
     {
       "source": "/api/v1/charts/normalized-returns",
@@ -140,6 +140,18 @@
     {
       "source": "/api/v1/commands/interpret",
       "destination": "/api/quant?route=interpret"
+    },
+    {
+      "source": "/api/v1/alerts/test",
+      "destination": "/api/alerts?route=test"
+    },
+    {
+      "source": "/api/v1/alerts/dispatch",
+      "destination": "/api/alerts?route=dispatch"
+    },
+    {
+      "source": "/api/v1/alerts/events",
+      "destination": "/api/alerts?route=events"
     }
   ]
 }

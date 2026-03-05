@@ -19,6 +19,7 @@
         <a href="#" class="muted" data-app-view-target="portfolio">Portfolio</a>
         <a href="#" class="muted" data-app-view-target="comparison">Comparison</a>
         <a href="#" class="muted" data-app-view-target="network">Network</a>
+        <a href="#" class="muted" data-app-view-target="alerts">Alerts</a>
       </nav>
       <div class="topbar-status">
         <div id="liveSourcePill" class="live-pill"><span class="dot"></span><span id="liveSourceText">LIVE DATA</span></div>
@@ -370,6 +371,32 @@
             <p id="networkEndpointsMeta">--</p>
           </header>
           <div id="networkEndpointsTable" class="network-endpoints-table"></div>
+        </section>
+      </section>
+
+      <section id="alertsView" class="app-view">
+        <section class="hero alerts-hero">
+          <div>
+            <p class="kicker">Asynchronous Automation</p>
+            <h1>Alerts <span>&amp; Automation</span></h1>
+            <p class="subhead">
+              Trigger test notifications and monitor delivery audit logs from the quant-engine dispatcher.
+            </p>
+          </div>
+          <div class="alerts-hero-controls">
+            <button id="alertsTestBtn" class="mode-btn">Test Channels</button>
+            <span id="alertsMeta" class="status-pill status-pill-muted">Waiting for alert events…</span>
+          </div>
+        </section>
+
+        <section class="chart-card alerts-table-card">
+          <header class="compare-card-head">
+            <h3>Alert Delivery Log</h3>
+            <p id="alertsEventsMeta">Auto-refresh every 30s</p>
+          </header>
+          <div id="alertsEventsTable" class="alerts-events-table">
+            <div class="scan-empty">No alerts yet. Run “Test Channels” to create a delivery audit record.</div>
+          </div>
         </section>
       </section>
     </main>

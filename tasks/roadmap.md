@@ -309,6 +309,26 @@
 - [x] P6.7 Consolidate Node proxy entrypoints to satisfy Vercel Hobby function limits.
   - Evidence: 2026-03-05 IST - Merged research/commands forwarding into `api/quant.js`, rewired `/api/v1/research/*` + `/api/v1/commands/interpret` rewrites to `api/quant`, removed redundant `api/research.js` and `api/commands.js`; root function count now `12`.
 
+## Phase 7 — Asynchronous Automation (Apprise Alerts)
+- [x] P7.1 Implement quant-engine alerts router with test/dispatch/events endpoints.
+  - Evidence: 2026-03-05 IST - Added `quant-engine/routers/alerts.py` with:
+    - `POST /api/v1/alerts/test` (channel fan-out test)
+    - `POST /api/v1/alerts/dispatch` (pending-event dispatcher)
+    - `GET /api/v1/alerts/events` (historical audit feed)
+    Backed by SQLite tables `alert_events` and `alert_deliveries`.
+- [x] P7.2 Register alerts router and dependency surface in quant-engine runtime.
+  - Evidence: 2026-03-05 IST - Updated `quant-engine/main.py` to mount alerts at `/api/v1/alerts`; updated `quant-engine/requirements.txt` with `apprise>=1.9.0`.
+- [x] P7.3 Add Vercel alerts gateway endpoints.
+  - Evidence: 2026-03-05 IST - Added `api/alerts.js` proxy and rewrites for `/api/v1/alerts/test`, `/api/v1/alerts/dispatch`, and `/api/v1/alerts/events` in `vercel.json`.
+- [x] P7.4 Add Alerts & Automation dashboard view in vanilla frontend.
+  - Evidence: 2026-03-05 IST - Updated `index.html`, `styles.css`, and `app.js` with new top-nav `Alerts` view, "Test Channels" action, auto-refreshing event table, and success/failure delivery indicators.
+- [x] P7.5 Preserve Vercel Hobby function cap while shipping alerts.
+  - Evidence: 2026-03-05 IST - Moved comparison-series handling into `api/charts.js` (`route=series`), updated rewrite `/api/v1/comparison/series -> /api/charts?route=series`, removed `api/comparison.js`; root function count remains `12`.
+- [x] P7.6 Validate regression safety and contract behavior.
+  - Evidence: 2026-03-05 IST - Passed `node --check` for changed JS files, `python3 -m py_compile` for alerts router/main, targeted tests (`mockApi/chartsApi/peersApi`) and full suite (`node --test tests/*.test.js`, `97/97` pass).
+- [x] P7.7 Finalize Telegram live-secret wiring and dotenv channel resolution.
+  - Evidence: 2026-03-05 IST - Added `quant-engine/.env` with `TELEGRAM_URL` Apprise URI, added `quant-engine/.gitignore` to ignore `.env`, updated `quant-engine/routers/alerts.py` to `load_dotenv()` and resolve `TELEGRAM_URL`; verified resolved URL + required test message default via local Python import check.
+
 ## Macro Context Reliability Patch (Post-M2 Hardening)
 - [x] M2.5 Prevent misleading all-neutral macro sentiment in sparse/unavailable contexts.
   - Evidence: 2026-03-05 IST - Added momentum-bias tie-breaker in `api/_lib/macroContextEngine.js` for near-neutral heuristic outputs; preserved backend `reason` in `adapterCore.js`; added symbol-level synthetic fallback + explicit context note in `app.js` when macro storage/context is unavailable.

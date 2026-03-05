@@ -4,6 +4,7 @@ const TARGET_CLUSTERS = 175;
 const MAX_COMPARE_SELECTION = 8;
 const PORTFOLIO_ACTIONS = ["BUY", "ACCUMULATE", "HOLD", "REDUCE", "SELL"];
 const NETWORK_REFRESH_INTERVAL_MS = 30000;
+const ALERTS_REFRESH_INTERVAL_MS = 30000;
 const NETWORK_ENDPOINTS = [
   {
     id: "zerodha-session",
@@ -186,6 +187,13 @@ const COMPARE_COLOR_PALETTE = [
 
 // Keep this feed updated whenever new user-facing capabilities ship.
 const WHATS_NEW_FEED = [
+  {
+    date: "2026-03-05",
+    title: "Alerts & Automation Console",
+    detail:
+      "Added a dedicated Alerts tab with test-channel trigger and delivery audit log powered by the quant-engine Apprise dispatcher.",
+    targetView: "alerts",
+  },
   {
     date: "2026-03-04",
     title: "Network Connectivity Dashboard",
@@ -473,6 +481,16 @@ let networkState = {
   refreshTimer: null,
 };
 
+let alertsState = {
+  loading: false,
+  events: [],
+  lastCheckedAt: "",
+  error: "",
+  requestId: 0,
+  refreshTimer: null,
+  testSending: false,
+};
+
 let runtimeState = {
   adapter: null,
   adapterMode: "synthetic",
@@ -498,6 +516,7 @@ const whatsNewViewEl = document.getElementById("whatsNewView");
 const comparisonViewEl = document.getElementById("comparisonView");
 const portfolioViewEl = document.getElementById("portfolioView");
 const networkViewEl = document.getElementById("networkView");
+const alertsViewEl = document.getElementById("alertsView");
 const viewLinks = [...document.querySelectorAll("[data-app-view-target]")];
 const whatsNewLogEl = document.getElementById("whatsNewLog");
 const planTraceGridEl = document.getElementById("planTraceGrid");
@@ -556,6 +575,10 @@ const networkFlowsMeta = document.getElementById("networkFlowsMeta");
 const networkFlowCards = document.getElementById("networkFlowCards");
 const networkEndpointsMeta = document.getElementById("networkEndpointsMeta");
 const networkEndpointsTable = document.getElementById("networkEndpointsTable");
+const alertsTestBtn = document.getElementById("alertsTestBtn");
+const alertsMeta = document.getElementById("alertsMeta");
+const alertsEventsMeta = document.getElementById("alertsEventsMeta");
+const alertsEventsTable = document.getElementById("alertsEventsTable");
 
 const modal = document.getElementById("clusterModal");
 const modalHead = document.getElementById("modalHead");
@@ -3931,6 +3954,190 @@ async function refreshNetworkDashboard(options = {}) {
   }
 }
 
+function clearAlertsRefreshTimer() {
+  if (alertsState.refreshTimer) {
+    clearTimeout(alertsState.refreshTimer);
+    alertsState.refreshTimer = null;
+  }
+}
+
+function scheduleAlertsRefresh() {
+  clearAlertsRefreshTimer();
+  if (state.activeView !== "alerts") return;
+  alertsState.refreshTimer = window.setTimeout(() => {
+    refreshAlertsView({ silent: true }).catch((error) => {
+      console.error("Alerts auto-refresh failed", error);
+      scheduleAlertsRefresh();
+    });
+  }, ALERTS_REFRESH_INTERVAL_MS);
+}
+
+function alertStatusToPill(status) {
+  const key = String(status || "").toLowerCase();
+  if (key === "sent" || key === "success") return "status-pill-ok";
+  if (key === "partial" || key === "pending") return "status-pill-warn";
+  if (key === "failed" || key === "error") return "status-pill-alert";
+  return "status-pill-muted";
+}
+
+function summarizeDeliveries(deliveries) {
+  if (!Array.isArray(deliveries) || !deliveries.length) return "--";
+  return deliveries
+    .slice(0, 4)
+    .map((item) => {
+      const channel = String(item.channel || "unknown").toLowerCase();
+      const status = String(item.status || "failed").toLowerCase();
+      const statusClass = status === "success" ? "success" : "failed";
+      const message = item.message ? ` <span class="alert-delivery-message">(${escapeHtml(item.message)})</span>` : "";
+      return `<span class="alert-delivery-chip ${statusClass}">${escapeHtml(channel)} • ${escapeHtml(status)}${message}</span>`;
+    })
+    .join("");
+}
+
+function renderAlertsView() {
+  if (!alertsEventsTable) return;
+
+  if (alertsTestBtn) {
+    alertsTestBtn.disabled = alertsState.testSending;
+    alertsTestBtn.textContent = alertsState.testSending ? "Sending Test..." : "Test Channels";
+  }
+
+  if (alertsMeta) {
+    if (alertsState.loading) {
+      alertsMeta.textContent = "Loading alert events...";
+      alertsMeta.className = "status-pill status-pill-muted";
+    } else if (alertsState.error) {
+      alertsMeta.textContent = alertsState.error;
+      alertsMeta.className = "status-pill status-pill-alert";
+    } else {
+      const checkedLabel = alertsState.lastCheckedAt ? asOfClockLabel(alertsState.lastCheckedAt) : "--";
+      alertsMeta.textContent = `Last checked ${checkedLabel}`;
+      alertsMeta.className = "status-pill status-pill-muted";
+    }
+  }
+
+  if (alertsEventsMeta) {
+    alertsEventsMeta.textContent = alertsState.loading
+      ? "Refreshing events..."
+      : `${alertsState.events.length} events • auto-refresh every 30s`;
+  }
+
+  if (!alertsState.events.length) {
+    alertsEventsTable.innerHTML = `<div class="scan-empty">No alerts yet. Run "Test Channels" to create a delivery audit record.</div>`;
+    return;
+  }
+
+  const rows = alertsState.events
+    .map((event) => {
+      const status = String(event.status || "unknown").toLowerCase();
+      const deliveryCount = Array.isArray(event.deliveries) ? event.deliveries.length : 0;
+      const dotClass = status === "sent" || status === "success" ? "ok" : "fail";
+      return `
+        <tr>
+          <td>${escapeHtml(event.event_type || "generic")}</td>
+          <td>${escapeHtml(event.severity || "info")}</td>
+          <td>${escapeHtml(event.title || "--")}</td>
+          <td>${escapeHtml(event.created_at ? asOfClockLabel(event.created_at) : "--")}</td>
+          <td>
+            <span class="alert-status">
+              <span class="alert-status-dot ${dotClass}"></span>
+              <span class="alert-status-text">
+                <span class="status-pill ${alertStatusToPill(status)}">${escapeHtml(status.toUpperCase())}</span>
+              </span>
+            </span>
+          </td>
+          <td>${deliveryCount}</td>
+          <td>
+            <div class="alert-delivery-stack">${summarizeDeliveries(event.deliveries)}</div>
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  alertsEventsTable.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Severity</th>
+          <th>Title</th>
+          <th>Created At</th>
+          <th>Status</th>
+          <th>Deliveries</th>
+          <th>Channel Results</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+async function refreshAlertsView(options = {}) {
+  if (!alertsEventsTable) return;
+  const requestId = alertsState.requestId + 1;
+  alertsState.requestId = requestId;
+  alertsState.loading = true;
+  alertsState.error = "";
+  if (!options.silent) renderAlertsView();
+
+  try {
+    const response = await fetch("/api/alerts?route=events&limit=50", {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      credentials: "same-origin",
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload?.message || payload?.error || `events request failed (${response.status})`);
+    }
+    if (requestId !== alertsState.requestId) return;
+    alertsState.events = Array.isArray(payload?.events) ? payload.events : [];
+    alertsState.lastCheckedAt = new Date().toISOString();
+    alertsState.loading = false;
+    alertsState.error = "";
+    renderAlertsView();
+  } catch (error) {
+    if (requestId !== alertsState.requestId) return;
+    alertsState.loading = false;
+    alertsState.error = error.message || "Failed to load alert events";
+    alertsState.lastCheckedAt = new Date().toISOString();
+    renderAlertsView();
+  } finally {
+    scheduleAlertsRefresh();
+  }
+}
+
+async function handleAlertsTestChannels() {
+  if (!alertsTestBtn || alertsState.testSending) return;
+  alertsState.testSending = true;
+  renderAlertsView();
+  try {
+    const response = await fetch("/api/alerts?route=test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({
+        title: "Portfolio Tracker Test Alert",
+        body: "Test alert from your AI Portfolio Tracker! Phase 7 is live.",
+        channels: ["telegram"],
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload?.message || payload?.error || `test request failed (${response.status})`);
+    }
+    await refreshAlertsView({ silent: false });
+  } catch (error) {
+    alertsState.error = error.message || "Failed to send test alert";
+    renderAlertsView();
+  } finally {
+    alertsState.testSending = false;
+    renderAlertsView();
+  }
+}
+
 function freshnessLabel(nowMs) {
   if (!runtimeState.lastSuccessAtMs) return "No successful sync yet";
   const deltaSec = Math.max(0, Math.floor((nowMs - runtimeState.lastSuccessAtMs) / 1000));
@@ -4115,7 +4322,7 @@ function renderPlanTraceGrid() {
 }
 
 function setActiveView(target) {
-  const allowedViews = new Set(["themes", "whatsnew", "comparison", "portfolio", "network"]);
+  const allowedViews = new Set(["themes", "whatsnew", "comparison", "portfolio", "network", "alerts"]);
   if (!allowedViews.has(target)) {
     target = "themes";
   }
@@ -4128,6 +4335,7 @@ function setActiveView(target) {
   comparisonViewEl.classList.toggle("active-view", target === "comparison");
   portfolioViewEl.classList.toggle("active-view", target === "portfolio");
   networkViewEl.classList.toggle("active-view", target === "network");
+  alertsViewEl.classList.toggle("active-view", target === "alerts");
 
   viewLinks.forEach((link) => {
     const active = link.dataset.appViewTarget === target;
@@ -4137,6 +4345,7 @@ function setActiveView(target) {
 
   if (target === "comparison") {
     clearNetworkRefreshTimer();
+    clearAlertsRefreshTimer();
     if (modal.open) closeClusterModal();
     requestAnimationFrame(() => {
       initCompareChart();
@@ -4152,13 +4361,22 @@ function setActiveView(target) {
       renderPortfolio();
     });
     clearNetworkRefreshTimer();
+    clearAlertsRefreshTimer();
   } else if (target === "network") {
+    clearAlertsRefreshTimer();
     refreshNetworkDashboard({ silent: false }).catch((error) => {
       console.error("Failed to refresh network dashboard on view switch", error);
       renderNetworkDashboard();
     });
+  } else if (target === "alerts") {
+    clearNetworkRefreshTimer();
+    refreshAlertsView({ silent: false }).catch((error) => {
+      console.error("Failed to refresh alerts view on switch", error);
+      renderAlertsView();
+    });
   } else {
     clearNetworkRefreshTimer();
+    clearAlertsRefreshTimer();
   }
 }
 
@@ -4388,6 +4606,14 @@ function attachHandlers() {
     networkRefreshBtn.addEventListener("click", () => {
       refreshNetworkDashboard({ silent: false }).catch((error) => {
         console.error("Manual network refresh failed", error);
+      });
+    });
+  }
+
+  if (alertsTestBtn) {
+    alertsTestBtn.addEventListener("click", () => {
+      handleAlertsTestChannels().catch((error) => {
+        console.error("Alerts test trigger failed", error);
       });
     });
   }
@@ -4634,6 +4860,7 @@ async function init() {
     renderPortfolio();
   }
   renderNetworkDashboard();
+  renderAlertsView();
   await initializeComparisonState();
   setActiveView("themes");
   renderDataStatus();

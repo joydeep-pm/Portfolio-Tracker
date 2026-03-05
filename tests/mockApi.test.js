@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 
 const mockMarket = require("../api/_lib/mockMarket");
 const marketHandler = require("../api/market");
-const comparisonHandler = require("../api/comparison");
+const chartsHandler = require("../api/charts");
 const angelHandler = require("../api/angel");
 
 function createRes() {
@@ -91,7 +91,7 @@ test("comparison series endpoint maps requested cluster IDs", async () => {
   };
 
   const res = createRes();
-  await comparisonHandler(req, res);
+  await chartsHandler(req, res);
 
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.window, "1M");

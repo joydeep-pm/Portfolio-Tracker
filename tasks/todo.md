@@ -1141,3 +1141,66 @@
   - Fixed runtime crash `compareChartState.chart.addLineSeries is not a function`.
   - Comparison and peer charts now support both Lightweight Charts API variants (legacy `addLineSeries` and newer `addSeries`).
   - Marker overlays now use compatible marker path (`setMarkers` or `createSeriesMarkers` fallback).
+
+## Phase 7 Alerts & Automation Plan (2026-03-05)
+- [x] Add `quant-engine/routers/alerts.py` with `test`, `dispatch`, and `events` endpoints using Apprise + SQLite delivery logging.
+- [x] Register alerts router in `quant-engine/main.py` and add `apprise` dependency in `quant-engine/requirements.txt`.
+- [x] Add Node proxy `api/alerts.js` and route rewrites for `/api/v1/alerts/*`.
+- [x] Add a new `Alerts` dashboard view in `index.html` with test button and events audit table shell.
+- [x] Wire alerts fetch/render/auto-refresh logic in `app.js`.
+- [x] Add native-token styling in `styles.css` for the alerts card/table/status chips.
+- [x] Run syntax/regression checks and record outcomes.
+
+## Phase 7 Verify Check-In
+- Scope: Phase 7 automation layer only (alerts router + proxy + frontend audit view).
+- Safety: preserve current dashboard visual system and existing views/routes.
+- Deployment constraint: keep Vercel Hobby root function count `<=12` while adding alerts route support.
+
+## Phase 7 Alerts & Automation Review
+- Code updates:
+  - `quant-engine/routers/alerts.py`
+  - `quant-engine/main.py`
+  - `quant-engine/requirements.txt`
+  - `api/alerts.js`
+  - `api/charts.js`
+  - deleted `api/comparison.js`
+  - `vercel.json`
+  - `api/_lib/contracts.js`
+  - `index.html`
+  - `styles.css`
+  - `app.js`
+  - `tests/mockApi.test.js`
+- Validation:
+  - `node --check app.js` (pass)
+  - `node --check api/alerts.js` (pass)
+  - `node --check api/charts.js` (pass)
+  - `node --check api/quant.js` (pass)
+  - `python3 -m py_compile quant-engine/main.py quant-engine/routers/alerts.py` (pass)
+  - `node --test tests/mockApi.test.js tests/chartsApi.test.js tests/peersApi.test.js` (pass, `10/10`)
+  - `node --test tests/*.test.js` (pass, `97/97`)
+  - `ls -1 api/*.js | wc -l` => `12`
+- Outcome:
+  - Phase 7 alert dispatcher endpoints are live in quant-engine (`/api/v1/alerts/test`, `/api/v1/alerts/dispatch`, `/api/v1/alerts/events`) with SQLite-backed event + delivery audit logging.
+  - Vercel now proxies alerts through `api/alerts.js`, and frontend has a dedicated `Alerts` tab with test trigger + auto-refreshing delivery log.
+  - Function-cap safety preserved on Vercel Hobby by moving comparison-series handling into `api/charts.js` and removing `api/comparison.js`.
+
+## Telegram Live Integration Finalization (2026-03-05)
+- [x] Create `quant-engine/.env` with `TELEGRAM_URL`.
+- [x] Add `quant-engine/.gitignore` entry to ignore `.env`.
+- [x] Update `quant-engine/routers/alerts.py` to load `.env` via `python-dotenv` and resolve `TELEGRAM_URL` for telegram channel.
+- [x] Ensure `/api/v1/alerts/test` default message uses: `Test alert from your AI Portfolio Tracker! Phase 7 is live.`
+- [x] Align frontend test trigger payload in `app.js` to use required message text.
+- [x] Run syntax checks and record outcome.
+
+## Telegram Live Integration Review
+- Code updates:
+  - `quant-engine/.env`
+  - `quant-engine/.gitignore`
+  - `quant-engine/routers/alerts.py`
+  - `app.js`
+- Validation:
+  - `node --check app.js` (pass)
+  - `python3 -m py_compile quant-engine/routers/alerts.py` (pass)
+  - `cd quant-engine && source .venv/bin/activate && python -c "from routers import alerts; print(alerts._resolve_channel_urls('telegram')); print(alerts.AlertTestRequest().body)"` (pass; URL resolved and required message confirmed)
+- Notes:
+  - `quant-engine/.env` is ignored by git (`!! quant-engine/.env` in status output).

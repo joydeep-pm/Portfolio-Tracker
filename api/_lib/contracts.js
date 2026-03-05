@@ -13,6 +13,7 @@ const CONTRACTS = {
   quant: "2026-03-05.quant.v1",
   research: "2026-03-05.research.v1",
   commands: "2026-03-05.commands.v1",
+  alerts: "2026-03-05.alerts.v1",
   cliPortfolioSnapshot: "2026-03-04.cli.portfolio-snapshot.v1",
   cliEodSnapshot: "2026-03-04.cli.run-eod-snapshot.v1",
   cliHotspotsSnapshot: "2026-03-04.cli.hotspots-snapshot.v1",
