@@ -85,3 +85,5 @@
 - Preventive rule: frontend bootstrap must not hard-fail on backend adapter startup errors; always auto-fallback to synthetic mode (or equivalent degraded mode) with explicit diagnostic message.
 - User correction: production still failed with `addLineSeries is not a function` due chart library API mismatch.
 - Preventive rule: when loading charting libs via CDN unpinned latest, always wrap version-sensitive APIs with compatibility helpers (or pin explicit version) before shipping.
+- User correction: Railway quant-engine deployment failed during `scipy` metadata generation in build.
+- Preventive rule: for Python microservices with heavy scientific dependencies, explicitly pin deployment Python runtime (e.g., `3.11`) in repo/service config before first cloud deploy to avoid source-build failures on unsupported interpreter versions.
