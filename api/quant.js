@@ -30,6 +30,15 @@ function quantEngineBaseUrl() {
   return raw.replace(/\/$/, "");
 }
 
+function quantEngineConfigError() {
+  const base = quantEngineBaseUrl();
+  const isLocal = /^https?:\/\/(localhost|127(?:\.\d{1,3}){3})(?::\d+)?$/i.test(base);
+  if (process.env.VERCEL && isLocal) {
+    return "QUANT_ENGINE_URL points to localhost in Vercel runtime. Set QUANT_ENGINE_URL to your public quant-engine URL.";
+  }
+  return "";
+}
+
 function withMeta(payload, traceId, contractVersion) {
   return {
     ...(payload || {}),
@@ -80,6 +89,22 @@ async function forwardQuantRequest(pathname, body, traceId) {
 
 module.exports = async function handler(req, res) {
   const trace = initTrace(req, res, "quant-proxy-api");
+  const configError = quantEngineConfigError();
+  if (configError) {
+    return json(
+      res,
+      503,
+      withMeta(
+        {
+          error: "quant-config-error",
+          message: configError,
+        },
+        trace.traceId,
+        CONTRACTS.quant,
+      ),
+    );
+  }
+
   const route = String(req.query?.route || "").toLowerCase();
   const routeConfig = ROUTE_CONFIG[route];
   const targetPath = routeConfig?.path;
@@ -113,7 +138,11 @@ module.exports = async function handler(req, res) {
   } catch (error) {
     const timedOut = error?.name === "AbortError";
     const statusCode = timedOut ? 504 : 502;
-    const message = timedOut ? "Quant engine request timed out" : error.message || "Quant engine unavailable";
+    const message = timedOut
+      ? "Quant engine request timed out"
+      : error?.message === "fetch failed"
+        ? `Unable to reach quant engine at ${quantEngineBaseUrl()}. Verify QUANT_ENGINE_URL and quant-engine uptime.`
+        : error.message || "Quant engine unavailable";
     traceLog(trace, "error", "quant.proxy.failed", { route, message });
     return json(
       res,
