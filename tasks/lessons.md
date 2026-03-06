@@ -99,3 +99,5 @@
 - Preventive rule: for every new backend capability, add a corresponding visible UI affordance (or explicit "backend-only" label) in the same delivery cycle to avoid iceberg features.
 - User correction: Signals focus selector should use the user's actual portfolio holdings, not synthetic universe/cluster entities.
 - Preventive rule: in portfolio-driven analysis views, source selectors from broker-backed holdings first and only expose synthetic/theme entities behind explicit opt-in controls.
+- User correction: cluster drill-down must not present fabricated stock names without source clarity.
+- Preventive rule: any fallback/synthetic market list must either (a) use verifiable symbol-derived naming, or (b) label unresolved names explicitly and surface a source badge at point-of-use.

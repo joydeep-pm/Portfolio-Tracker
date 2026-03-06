@@ -647,6 +647,7 @@ const alertsChannelsStatus = document.getElementById("alertsChannelsStatus");
 const modal = document.getElementById("clusterModal");
 const modalHead = document.getElementById("modalHead");
 const modalTitle = document.getElementById("modalTitle");
+const modalSourceBadge = document.getElementById("modalSourceBadge");
 const modalMeta = document.getElementById("modalMeta");
 const modalTableWrap = document.getElementById("modalTableWrap");
 const closeModal = document.getElementById("closeModal");
@@ -1997,11 +1998,79 @@ function openClusterModal(cluster) {
   if (!modal.open) modal.showModal();
 }
 
+const STOCK_NAME_OVERRIDES = {
+  RELIANCE: "Reliance Industries Ltd",
+  TCS: "Tata Consultancy Services",
+  INFY: "Infosys Ltd",
+  HDFCBANK: "HDFC Bank Ltd",
+  ICICIBANK: "ICICI Bank Ltd",
+  SBIN: "State Bank of India",
+  ITC: "ITC Ltd",
+  BHARTIARTL: "Bharti Airtel Ltd",
+  LT: "Larsen & Toubro Ltd",
+  KOTAKBANK: "Kotak Mahindra Bank",
+  AXISBANK: "Axis Bank Ltd",
+  INDUSINDBK: "IndusInd Bank Ltd",
+  BANKBARODA: "Bank of Baroda",
+  PNB: "Punjab National Bank",
+  UNIONBANK: "Union Bank of India",
+  HCLTECH: "HCL Technologies",
+  TECHM: "Tech Mahindra",
+  SUNPHARMA: "Sun Pharmaceutical",
+  CIPLA: "Cipla Ltd",
+  DIVISLAB: "Divi's Laboratories",
+  NTPC: "NTPC Ltd",
+  POWERGRID: "Power Grid Corp",
+  IOC: "Indian Oil Corp",
+  TATASTEEL: "Tata Steel Ltd",
+  JSWSTEEL: "JSW Steel Ltd",
+  SAIL: "SAIL",
+  POLYCAB: "Polycab India",
+  TRENT: "Trent Ltd",
+};
+
+function humanizeTickerSymbol(symbol) {
+  const raw = String(symbol || "").trim().toUpperCase();
+  if (!raw) return "Unknown";
+  if (STOCK_NAME_OVERRIDES[raw]) return STOCK_NAME_OVERRIDES[raw];
+  if (raw.includes("&")) return raw;
+  return raw;
+}
+
+function isLikelySyntheticName(stock) {
+  const name = String(stock?.name || "").trim();
+  const symbol = String(stock?.symbol || "").trim().toUpperCase();
+  if (!name) return true;
+  if (/^\w{4,6}\d{3}$/.test(symbol)) return true;
+  if (/&\s*(Systems|Works|Holdings|Ventures|Technologies|Industries|Logistics|Digital|Infra|Finance|Global|Networks|Services|Enterprises|India|Limited)\b/i.test(name)) {
+    return true;
+  }
+  if (/^(Banking|IT|Automobiles|Capital|Oil|Power|Renewable|Metals|Cement|Realty|Telecom|Consumer|Healthcare|Pharma|Chemicals|Agriculture|Logistics|Aviation|Defence|PSU|Fintech|Media|Textiles|Water|Data)\b/i.test(name)) {
+    return true;
+  }
+  return false;
+}
+
+function displayNameForClusterStock(stock) {
+  if (!stock) return "Unknown";
+  if (!isLikelySyntheticName(stock)) return String(stock.name || stock.symbol || "Unknown");
+  return humanizeTickerSymbol(stock.symbol);
+}
+
 function renderClusterModal(cluster) {
   modalHead.textContent = cluster.headName;
   modalTitle.textContent = cluster.name;
   const nseCount = cluster.stocks.filter((stock) => stock.exchange === "NSE").length;
   const bseCount = cluster.stocks.length - nseCount;
+  const syntheticRows = cluster.stocks.filter((stock) => isLikelySyntheticName(stock)).length;
+  const likelySynthetic = syntheticRows >= Math.ceil(cluster.stocks.length * 0.6);
+  const sourceLabel = runtimeState.adapterMode === "backend" && !likelySynthetic ? "LIVE" : "SYNTHETIC";
+
+  if (modalSourceBadge) {
+    modalSourceBadge.textContent = `SOURCE ${sourceLabel}`;
+    modalSourceBadge.className = `status-pill ${sourceLabel === "LIVE" ? "status-pill-ok" : "status-pill-warn"}`;
+  }
+
   modalMeta.textContent = `${cluster.stocks.length} stocks | NSE ${nseCount} | BSE ${bseCount}`;
 
   const stocks = [...cluster.stocks].sort((a, b) => b.returns["1D"] - a.returns["1D"]);
@@ -2010,10 +2079,11 @@ function renderClusterModal(cluster) {
       const cells = WINDOWS.map(
         (w) => `<span class="cell ${colorClass(stock.returns[w])}">${percent(stock.returns[w])}</span>`,
       ).join("");
+      const displayName = displayNameForClusterStock(stock);
 
       return `
         <div class="stock-row">
-          <div class="stock-name">${stock.name}<span class="stock-symbol">${stock.exchange}:${stock.symbol}</span></div>
+          <div class="stock-name">${escapeHtml(displayName)}<span class="stock-symbol">${stock.exchange}:${stock.symbol}</span></div>
           ${cells}
         </div>
       `;

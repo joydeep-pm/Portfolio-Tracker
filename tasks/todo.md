@@ -1369,3 +1369,18 @@
 - Outcome:
   - Syntax check passed.
   - Full regression suite passed.
+
+## Cluster Modal Name Realism Patch (2026-03-06)
+- [x] Add cluster-modal source badge (`LIVE`/`SYNTHETIC`).
+- [x] Replace obviously synthetic stock labels in cluster modal with resolved company display names where possible.
+- [x] Fallback unresolved names to clean ticker display, not fabricated cluster-derived labels.
+- [x] Validate syntax and regression tests.
+
+## Cluster Modal Name Review
+- Updated files:
+  - `index.html`: added `#modalSourceBadge` row in modal header.
+  - `styles.css`: added `.modal-source-line` spacing style.
+  - `app.js`: added synthetic-name detection + display-name resolver and source badge rendering logic in `renderClusterModal()`.
+- Validation:
+  - `node --check app.js` passed
+  - `node --test tests/*.test.js` passed (`96 pass`, `0 fail`, `1 skipped`)

@@ -364,3 +364,5 @@
   - Evidence: 2026-03-06 IST - Updated naming logic in `api/_lib/mockMarket.js` from `Company N` placeholders to deterministic corporate-style suffixes.
 - [x] UXP.5 Restrict Signals Focus Selector to portfolio holdings only.
   - Evidence: 2026-03-06 IST - Updated Signals selector generation and fallback logic in `app.js` to use `portfolioState.rows` only; updated Signals copy in `index.html`.
+- [x] UXP.6 Add source transparency + name realism in cluster drill-down modal.
+  - Evidence: 2026-03-06 IST - Added modal source badge and stock-name resolver logic in frontend (`index.html`, `styles.css`, `app.js`) to avoid fabricated labels without context.

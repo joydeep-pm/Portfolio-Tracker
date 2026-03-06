@@ -2448,6 +2448,10 @@ body[data-ui-variant="classic"] .compare-chart {
   color: var(--muted);
 }
 
+.modal-source-line {
+  margin: 0.26rem 0 0;
+}
+
 .close-btn {
   border: 1px solid var(--line);
   border-radius: 8px;
