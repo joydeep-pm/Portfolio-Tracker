@@ -515,6 +515,7 @@ let alertsState = {
   requestId: 0,
   refreshTimer: null,
   testSending: false,
+  enqueueRunning: false,
   dispatchRunning: false,
   channels: [],
   channelsLoading: false,
@@ -641,6 +642,7 @@ const networkFlowCards = document.getElementById("networkFlowCards");
 const networkEndpointsMeta = document.getElementById("networkEndpointsMeta");
 const networkEndpointsTable = document.getElementById("networkEndpointsTable");
 const alertsTestBtn = document.getElementById("alertsTestBtn");
+const alertsEnqueueBtn = document.getElementById("alertsEnqueueBtn");
 const alertsDispatchBtn = document.getElementById("alertsDispatchBtn");
 const alertsMeta = document.getElementById("alertsMeta");
 const alertsEventsMeta = document.getElementById("alertsEventsMeta");
@@ -4983,6 +4985,10 @@ function renderAlertsView() {
     alertsTestBtn.disabled = alertsState.testSending;
     alertsTestBtn.textContent = alertsState.testSending ? "Sending Test..." : "Test Channels";
   }
+  if (alertsEnqueueBtn) {
+    alertsEnqueueBtn.disabled = alertsState.enqueueRunning;
+    alertsEnqueueBtn.textContent = alertsState.enqueueRunning ? "Queueing..." : "Create Pending Test Event";
+  }
   if (alertsDispatchBtn) {
     alertsDispatchBtn.disabled = alertsState.dispatchRunning;
     alertsDispatchBtn.textContent = alertsState.dispatchRunning ? "Dispatching..." : "Force Run Automation Engine";
@@ -5009,7 +5015,7 @@ function renderAlertsView() {
   }
 
   if (!alertsState.events.length) {
-    alertsEventsTable.innerHTML = `<div class="scan-empty">No alerts yet. Run "Test Channels" to create a delivery audit record.</div>`;
+    alertsEventsTable.innerHTML = `<div class="scan-empty">No alerts yet. Run "Create Pending Test Event" and then "Force Run Automation Engine" to validate pending -> dispatched flow.</div>`;
     renderAlertsChannelsStatus();
     return;
   }
@@ -5125,6 +5131,45 @@ async function handleAlertsTestChannels() {
     renderAlertsView();
   } finally {
     alertsState.testSending = false;
+    renderAlertsView();
+  }
+}
+
+async function handleAlertsEnqueuePending() {
+  if (!alertsEnqueueBtn || alertsState.enqueueRunning) return;
+  alertsState.enqueueRunning = true;
+  alertsState.error = "";
+  renderAlertsView();
+  try {
+    const response = await fetch("/api/alerts?route=enqueue", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({
+        title: "Pending Automation Validation Event",
+        body: "Queued from dashboard UI. Use Force Run Automation Engine to dispatch this pending event.",
+        channels: ["telegram"],
+        event_type: "manual_validation",
+        severity: "info",
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload?.message || payload?.error || payload?.detail || `enqueue request failed (${response.status})`);
+    }
+    if (alertsMeta) {
+      const eventId = Number(payload?.event_id || 0);
+      alertsMeta.textContent = eventId
+        ? `Pending event queued • id ${eventId} • now run dispatch`
+        : "Pending event queued • now run dispatch";
+      alertsMeta.className = "status-pill status-pill-warn";
+    }
+    await refreshAlertsView({ silent: false });
+  } catch (error) {
+    alertsState.error = error.message || "Failed to queue pending alert event";
+    renderAlertsView();
+  } finally {
+    alertsState.enqueueRunning = false;
     renderAlertsView();
   }
 }
@@ -5645,6 +5690,13 @@ function attachHandlers() {
     alertsTestBtn.addEventListener("click", () => {
       handleAlertsTestChannels().catch((error) => {
         console.error("Alerts test trigger failed", error);
+      });
+    });
+  }
+  if (alertsEnqueueBtn) {
+    alertsEnqueueBtn.addEventListener("click", () => {
+      handleAlertsEnqueuePending().catch((error) => {
+        console.error("Alerts enqueue trigger failed", error);
       });
     });
   }

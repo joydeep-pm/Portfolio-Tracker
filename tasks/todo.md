@@ -1406,3 +1406,31 @@
 - Outcome:
   - Angel session now auto-initializes on frontend bootstrap when backend mode is active, so market routes can enter live path without manual console/API calls.
   - Failures stay non-blocking and logged for diagnostics; app bootstrap behavior remains intact.
+
+## Alerts Pending Queue UX Patch Plan (2026-03-06)
+- [x] Add quant-engine enqueue endpoint to create `pending` alert events without immediate send.
+- [x] Extend Node alerts proxy with `route=enqueue` pass-through.
+- [x] Add Alerts UI button (`Create Pending Test Event`) in `index.html`.
+- [x] Wire enqueue flow in `app.js` and update Alerts empty-state guidance.
+- [x] Add rewrite for `/api/v1/alerts/enqueue` in `vercel.json`.
+- [x] Run syntax/validation checks and regression tests.
+
+## Alerts Pending Queue Verify Check-In
+- Scope: enable deterministic manual validation of `pending -> dispatch -> sent` path in Alerts view.
+- Safety: no change to existing `test` and `dispatch` semantics; enqueue is additive and explicit.
+
+## Alerts Pending Queue UX Patch Review
+- Updated files:
+  - `quant-engine/routers/alerts.py`: added `POST /api/v1/alerts/enqueue` + request/response schemas.
+  - `api/alerts.js`: added `enqueue` proxy route and supported-routes message update.
+  - `vercel.json`: added `/api/v1/alerts/enqueue` rewrite.
+  - `index.html`: added `Create Pending Test Event` button in Alerts controls.
+  - `app.js`: added enqueue state, handler, button wiring, and improved empty-state instructions.
+- Validation:
+  - `node --check app.js` (pass)
+  - `node --check api/alerts.js` (pass)
+  - `python3 -m py_compile quant-engine/routers/alerts.py` (pass)
+  - `jq . vercel.json > /dev/null` (pass)
+  - `node --test tests/*.test.js` (pass, `96 pass`, `0 fail`, `1 skipped`)
+- Outcome:
+  - You can now queue a pending event from UI, then click `Force Run Automation Engine` to verify dispatch processing with non-zero `processed_events`.

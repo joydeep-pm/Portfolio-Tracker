@@ -150,6 +150,10 @@
       "destination": "/api/alerts?route=test"
     },
     {
+      "source": "/api/v1/alerts/enqueue",
+      "destination": "/api/alerts?route=enqueue"
+    },
+    {
       "source": "/api/v1/alerts/dispatch",
       "destination": "/api/alerts?route=dispatch"
     },

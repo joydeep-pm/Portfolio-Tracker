@@ -8,6 +8,11 @@ const ROUTE_CONFIG = {
     targetMethod: "POST",
     path: "/api/v1/alerts/test",
   },
+  enqueue: {
+    methods: ["POST"],
+    targetMethod: "POST",
+    path: "/api/v1/alerts/enqueue",
+  },
   dispatch: {
     methods: ["POST", "GET"],
     targetMethod: "POST",
@@ -127,7 +132,7 @@ module.exports = async function handler(req, res) {
       withMeta(
         {
           error: "not-found",
-          message: "Supported routes: test, dispatch, events, channels",
+          message: "Supported routes: test, enqueue, dispatch, events, channels",
         },
         trace.traceId,
       ),

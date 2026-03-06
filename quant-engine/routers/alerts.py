@@ -54,6 +54,14 @@ class AlertDispatchRequest(BaseModel):
     timeout_seconds: int = Field(default=DEFAULT_NOTIFY_TIMEOUT_SECONDS, ge=3, le=120)
 
 
+class AlertEnqueueRequest(BaseModel):
+    title: str = Field(default="Pending Dispatch Probe")
+    body: str = Field(default="Queued test event for automation dispatch validation.")
+    channels: List[str] = Field(default_factory=lambda: ["telegram"])
+    event_type: str = Field(default="manual")
+    severity: str = Field(default="info")
+
+
 class AlertDispatchResponse(BaseModel):
     processed_events: int
     pending_remaining: int
@@ -87,6 +95,14 @@ class AlertChannelStatus(BaseModel):
 class AlertChannelsStatusResponse(BaseModel):
     channels: List[AlertChannelStatus]
     any_connected: bool
+
+
+class AlertEnqueueResponse(BaseModel):
+    queued: bool
+    event_id: int
+    status: str
+    created_at: str
+    channels: List[str]
 
 
 def _utc_now_iso() -> str:
@@ -364,6 +380,47 @@ def send_test_alert(payload: AlertTestRequest) -> AlertTestResponse:
         body=payload.body,
         channels=channels,
         deliveries=deliveries,
+    )
+
+
+@router.post("/enqueue", response_model=AlertEnqueueResponse)
+def enqueue_pending_alert(payload: AlertEnqueueRequest) -> AlertEnqueueResponse:
+    requested_channels = _normalize_channels(payload.channels)
+    channels = requested_channels or _all_configured_channels()
+    if not channels:
+        raise HTTPException(
+            status_code=422,
+            detail="No channels requested and no configured channels found in environment",
+        )
+
+    created_at = _utc_now_iso()
+    with _open_db() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO alert_events (
+              event_type, severity, title, body, channels_json, metadata_json, status, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
+            """,
+            (
+                payload.event_type,
+                payload.severity,
+                payload.title,
+                payload.body,
+                json.dumps(channels, ensure_ascii=True),
+                json.dumps({"source": "alerts.enqueue"}, ensure_ascii=True),
+                created_at,
+            ),
+        )
+        conn.commit()
+        event_id = int(cursor.lastrowid)
+
+    return AlertEnqueueResponse(
+        queued=True,
+        event_id=event_id,
+        status="pending",
+        created_at=created_at,
+        channels=channels,
     )
 
 
