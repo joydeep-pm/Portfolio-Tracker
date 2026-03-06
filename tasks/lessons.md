@@ -101,3 +101,5 @@
 - Preventive rule: in portfolio-driven analysis views, source selectors from broker-backed holdings first and only expose synthetic/theme entities behind explicit opt-in controls.
 - User correction: cluster drill-down must not present fabricated stock names without source clarity.
 - Preventive rule: any fallback/synthetic market list must either (a) use verifiable symbol-derived naming, or (b) label unresolved names explicitly and surface a source badge at point-of-use.
+- User correction: Angel env vars were set but live market stayed disconnected, creating confusion about readiness vs active session.
+- Preventive rule: treat broker env readiness and runtime broker session as separate states; when runtime session is required for cookies/JWT, auto-bootstrap it on frontend init instead of requiring manual API calls.

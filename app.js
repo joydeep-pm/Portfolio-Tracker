@@ -539,6 +539,9 @@ let runtimeState = {
   zerodhaReconnectInFlight: false,
   zerodhaReconnectPollTimer: null,
   zerodhaReconnectDeadlineMs: 0,
+  angelSessionHandshakeAtMs: 0,
+  angelSessionConnected: false,
+  angelSessionLastMessage: "",
   enablePortfolioView: true,
   enableComparisonClassic: true,
 };
@@ -3106,6 +3109,66 @@ async function fetchZerodhaSessionStatus() {
     throw new Error(payload?.message || payload?.error || `Session status failed (${response.status})`);
   }
   return payload;
+}
+
+async function ensureAngelMarketSession(options = {}) {
+  if (runtimeState.adapterMode !== "backend") {
+    return { attempted: false, connected: false, skipped: "non-backend-adapter" };
+  }
+
+  const force = Boolean(options.force);
+  const minIntervalMs = Number.isFinite(options.minIntervalMs) ? options.minIntervalMs : 60000;
+  const nowMs = Date.now();
+  if (!force && runtimeState.angelSessionHandshakeAtMs && nowMs - runtimeState.angelSessionHandshakeAtMs < minIntervalMs) {
+    return { attempted: false, connected: runtimeState.angelSessionConnected, skipped: "throttled" };
+  }
+
+  runtimeState.angelSessionHandshakeAtMs = nowMs;
+
+  try {
+    const response = await fetch("/api/angel/session", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+      credentials: "same-origin",
+      body: "{}",
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    const connected = Boolean(response.ok && payload?.connected);
+    runtimeState.angelSessionConnected = connected;
+    runtimeState.angelSessionLastMessage = connected
+      ? "connected"
+      : String(payload?.message || payload?.mode || `session-${response.status}`);
+
+    if (!connected) {
+      console.info("Angel session auto-handshake did not connect", {
+        status: response.status,
+        mode: payload?.mode || null,
+        message: payload?.message || null,
+      });
+    }
+
+    return {
+      attempted: true,
+      connected,
+      statusCode: response.status,
+      payload,
+    };
+  } catch (error) {
+    runtimeState.angelSessionConnected = false;
+    runtimeState.angelSessionLastMessage = error?.message || "request-failed";
+    console.warn("Angel session auto-handshake failed", error);
+    return {
+      attempted: true,
+      connected: false,
+      statusCode: 0,
+      error: error?.message || "request-failed",
+    };
+  }
 }
 
 function clearZerodhaReconnectPoll() {
@@ -5707,6 +5770,13 @@ function attachHandlers() {
     }
   });
 
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) return;
+    ensureAngelMarketSession().catch((error) => {
+      console.warn("Angel auto-session refresh on visibility change failed", error);
+    });
+  });
+
   renderCommandPaletteIdle();
 }
 
@@ -5854,6 +5924,10 @@ async function init() {
 
   if (resolved.warning) {
     setRuntimeHealth("error", resolved.warning);
+  }
+
+  if (runtimeState.adapterMode === "backend") {
+    await ensureAngelMarketSession({ minIntervalMs: 0 });
   }
 
   let bootstrap;

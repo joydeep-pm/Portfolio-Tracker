@@ -1384,3 +1384,25 @@
 - Validation:
   - `node --check app.js` passed
   - `node --test tests/*.test.js` passed (`96 pass`, `0 fail`, `1 skipped`)
+
+## Angel Auto-Session Bootstrap Patch Plan (2026-03-06)
+- [x] Add startup Angel session handshake helper in `app.js` (`POST /api/angel/session` with credentials).
+- [x] Invoke handshake during `init()` before first backend market bootstrap attempt.
+- [x] Add lightweight runtime state fields to throttle handshake retries and store last handshake status message.
+- [x] Keep failure non-blocking (do not break app bootstrap); only log diagnostics.
+- [x] Run syntax + regression checks and document outcomes.
+
+## Angel Auto-Session Verify Check-In
+- Scope: frontend startup reliability only (automatic Angel cookie/session creation for live market routes).
+- Safety: no backend API contract changes; no changes to portfolio/order logic; handshake is best-effort and non-blocking.
+
+## Angel Auto-Session Bootstrap Review
+- Updated files:
+  - `app.js`: added `ensureAngelMarketSession()` helper, startup handshake call in `init()`, runtime throttle state, and visibility-change best-effort refresh.
+  - `tasks/lessons.md`: added preventive rule about env readiness vs runtime session/cookie bootstrap.
+- Validation:
+  - `node --check app.js` (pass)
+  - `node --test tests/*.test.js` (pass, `96 pass`, `0 fail`, `1 skipped`)
+- Outcome:
+  - Angel session now auto-initializes on frontend bootstrap when backend mode is active, so market routes can enter live path without manual console/API calls.
+  - Failures stay non-blocking and logged for diagnostics; app bootstrap behavior remains intact.
