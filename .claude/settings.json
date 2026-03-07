@@ -1,0 +1,5 @@
+{
+  "project": "Portfolio Tracker",
+  "context_root": "docs",
+  "notes": "Keep CLAUDE.md short; defer deep context to docs/ and local CLAUDE.md files. Prep skill is maintained at .codex/skills/prep-for-claude/SKILL.md."
+}
