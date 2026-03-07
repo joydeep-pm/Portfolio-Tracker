@@ -50,6 +50,7 @@ node scripts/run-eod-snapshot.js --snapshot-date 2026-03-04 --exchange all
 node scripts/exchange-request-token.js --request-token <request_token>
 node scripts/live-paper-validate.js --exchange all --export ./artifacts/live-paper-snapshot.json
 node scripts/ingest-bharatfintrack.js --output ./data/thematic_index_catalog.json
+node scripts/ingest-bharatfintrack.js --target-stocks 2486 --target-clusters 175 --require-live --output ./data/thematic_index_catalog.json
 node scripts/hotspots-snapshot.js --mode summary --format table --exchange all
 node scripts/hotspots-snapshot.js --mode detailed --format json --exchange all --export ./artifacts/hotspots.json
 node scripts/agents-analyze.js --prompt "evaluate my portfolio against current PSU bank thematic momentum" --format table --exchange all
@@ -121,11 +122,14 @@ The Wave 1 ingestion job creates a normalized thematic catalog:
 
 ```bash
 node scripts/ingest-bharatfintrack.js --output ./data/thematic_index_catalog.json
+node scripts/ingest-bharatfintrack.js --target-stocks 2486 --target-clusters 175 --require-live --output ./data/thematic_index_catalog.json
 ```
 
 Behavior:
-- Attempts live extraction from Python `BharatFinTrack` package.
+- Attempts live extraction from NSE/BSE endpoints first.
+- Falls back to Python `BharatFinTrack` package when live ingestion is unavailable.
 - Falls back to `data/bharatfintrack_seed.json` when package/runtime is unavailable.
+- Use `--require-live` to hard-fail unless live NSE/BSE meets the requested targets.
 - Produces `data/thematic_index_catalog.json` used by backend holdings-to-theme mapping.
 
 Portfolio snapshots now include:

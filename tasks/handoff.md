@@ -1,116 +1,99 @@
 # Portfolio Tracker Handoff (New Thread)
 
 ## Timestamp
-- IST: 2026-03-04
+- IST: 2026-03-07
 - Repo: `/Users/joy/Portfolio Tracker`
 - Branch: `main`
-- Latest commit: `f7cd67d` (`Add network connectivity dashboard tab with live API probes`)
-- Production URL: `https://portfolio-tracker-kappa-woad.vercel.app`
+- Latest commit: `a8ffe6e` (`feat: add pending alert enqueue flow for dispatch validation`)
+- Production web URL: `https://portfolio-tracker-kappa-woad.vercel.app`
+- Quant engine URL: `https://portfolio-tracker-if7l.onrender.com`
 
-## Objective Snapshot
-Build an Indian equities command center with:
-- Zerodha as portfolio source of truth (holdings/positions)
-- Angel One as market-data engine (quotes/history) where connected
-- Macro/regulatory context agent (RBI/SEBI/news)
-- Thematic hotspot + multi-agent recommendation workflows
-- UI-first operations with headless CLI fallback
+## Current Objective State
+- Phase 4-7 stack exists (UI charting, quant worker, RAG/NLP, alerts automation).
+- Vercel frontend/backend gateway is live.
+- Quant-engine is deployed separately on Render (architecture boundary respected).
+- Alert cron auth is configured and working (`200` confirmed on dispatch route).
 
-## What Is Implemented
+## What Was Just Completed
+1. **Angel auto-session bootstrap on frontend init**
+   - Commit: `1d502e1`
+   - File: `app.js`
+   - Effect: app now attempts `POST /api/angel/session` automatically on startup, reducing manual reconnect friction.
 
-### Wave Status
-- Wave 1: complete (provider abstraction, Zerodha auth/session, CLI snapshots, EOD contract, thematic mapping)
-- Wave 2: complete (PKScreener adapter, hotspot scoring/scheduler, hotspot API+CLI)
-- Wave 3: complete (intent router, orchestrator, news RAG, weighted consensus)
-- Wave 4: complete (Streamlit dashboard + existing web UI integration)
-- Cross-wave: contracts, tracing, backfill/replay, safety guardrails all in place
+2. **Alerts pending-queue test flow**
+   - Commit: `a8ffe6e`
+   - Files:
+     - `quant-engine/routers/alerts.py` (new `POST /api/v1/alerts/enqueue`)
+     - `api/alerts.js` (new `route=enqueue`)
+     - `vercel.json` rewrite for `/api/v1/alerts/enqueue`
+     - `index.html` + `app.js` (new button: `Create Pending Test Event`)
+   - Effect: should allow deterministic `pending -> dispatch -> sent` validation from UI.
 
-### Latest Shipped (important)
-1. Themes/Comparison switched to Angel live market path with fallback diagnostics.
-2. Seeded Angel symbol-token map added to avoid serverless token-discovery throttling.
-3. Macro context 500 fixed and per-symbol specificity improved.
-4. New **Network** tab added in UI to show provider/API connectivity end-to-end.
+## Active Status
+- `enqueue -> dispatch -> events` flow is now working on live.
+- Verified on **2026-03-07**:
+  - `POST https://portfolio-tracker-if7l.onrender.com/api/v1/alerts/enqueue` returned `queued:true`.
+  - `POST https://portfolio-tracker-kappa-woad.vercel.app/api/alerts?route=enqueue` returned `queued:true`.
+  - `dispatch` processed pending events and `events` showed `status:"sent"` with delivery rows.
 
-## Current Live Data Routing (Truth Table)
-1. Portfolio holdings/positions:
-- Primary: Zerodha session (`/api/zerodha/session/status` + portfolio bootstrap)
-- If Zerodha disconnected: read-only/demo behavior
+## Required Next Action (First Thing In New Thread)
+Re-run the same production checks below after any Render/Vercel deploy touching alerts routes:
 
-2. Themes + Comparison market feed:
-- Primary: Angel live (`source: angel-live`) when Angel session is connected
-- Fallback: mock market payload when Angel session unavailable/fails
+```bash
+# direct worker check
+curl -sS -X POST "https://portfolio-tracker-if7l.onrender.com/api/v1/alerts/enqueue" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"probe","body":"probe","channels":["telegram"],"event_type":"manual_validation","severity":"info"}'
 
-3. Portfolio market overlay (LTP/returns enrichment):
-- Uses Angel session if connected (overlay active)
-- Falls back safely when Angel unavailable
+# gateway check
+curl -sS -X POST "https://portfolio-tracker-kappa-woad.vercel.app/api/alerts?route=enqueue" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"probe","body":"probe","channels":["telegram"],"event_type":"manual_validation","severity":"info"}'
+```
 
-4. Macro & Regulatory Context:
-- Uses harvested news + SQLite-backed analysis
-- Fail-open neutral payload if storage/feed unavailable
+Expected enqueue response includes:
+- `queued: true`
+- `status: "pending"`
+- `event_id` (integer)
 
-## Network Dashboard (new)
-- UI path: Top nav -> `Network`
-- Shows:
-  - Provider connection cards
-  - Data-flow source cards
-  - Endpoint diagnostics table (status, HTTP, latency, source, note)
-- Auto-refresh every 30s while view is active
-- Manual refresh button included
+Then in UI:
+1. Click `Create Pending Test Event`
+2. Click `Force Run Automation Engine`
+3. Confirm `processed_events > 0` and event status transitions out of `pending`.
 
-## Key Endpoints For First-Minute Verification
-1. `GET /api/zerodha/session/status`
-2. `GET /api/angel/health`
-3. `GET /api/angel/session/status`
-4. `GET /api/v1/market/bootstrap?exchange=all&debug=1`
-5. `GET /api/v1/portfolio/bootstrap?exchange=all`
-6. `GET /api/v1/macro/context?exchange=all&limit=16&includeProcessed=1`
+## Cron Status
+- External cron-job.org path is set to call:
+  - `GET /api/alerts?route=dispatch`
+  - Header: `Authorization: Bearer <CRON_SECRET>`
+- Manual curl returned `200`, so auth pipeline works.
+- Note: `processed_events: 0` is valid when queue is empty.
 
-## Expected Checks
-1. Themes live check:
-- `/api/v1/market/bootstrap?...` should show `source: "angel-live"` when Angel session is active.
-- If it shows `mock`, inspect `debug.liveFallbackReason`.
+## Security Note (Important)
+- `CRON_SECRET` value was exposed in a screenshot during debugging.
+- Rotate secret immediately:
+  1. Generate new: `openssl rand -hex 32`
+  2. Update Vercel `CRON_SECRET`
+  3. Update cron-job.org Authorization header
+  4. Redeploy Vercel
 
-2. Portfolio truth check:
-- `/api/v1/portfolio/bootstrap` should reflect real Zerodha-connected rows when session valid.
+## Reality of Current Data Modes
+- **Env ready != connected live feed** for Angel.
+- Live market data requires valid runtime session cookies (`pt_angel_*`).
+- App now auto-attempts session bootstrap on init, but if broker/session fails, data can still fallback.
 
-3. Macro check:
-- Macro panel should vary by selected symbol and not return identical generic output unless no events exist.
-
-## Known Operational Reality
-1. If Angel session cookies are absent/expired, Themes/Comparison can revert to fallback mode.
-2. Live mode depends on active session context (not just env vars).
-3. Zerodha and Angel are intentionally split: Zerodha=portfolio ownership, Angel=market data enrichment.
-
-## Next Thread Priority (Recommended)
-1. Enforce persistent Angel live availability:
-- Add robust server-side session refresh/warm path so Themes rarely fall back.
-
-2. Tighten fallback visibility:
-- Add stronger UI warnings when any surface is running fallback/mock.
-
-3. Expand market breadth:
-- Validate/add remaining symbol tokens for consistent cluster coverage.
-
-4. Harden ops:
-- Add cron-driven health snapshot artifact (connectivity + source mode) for audit trail.
-
-## Test/Validation Status
-- Full suite last run: `node --test tests/*.test.js` -> `87/87` passing
-- Syntax checks passed for touched API/frontend files
-- Production deployed and aliased after latest commit
-
-## Files Most Relevant For Continuation
+## Most Relevant Files for Next Thread
 - `/Users/joy/Portfolio Tracker/app.js`
 - `/Users/joy/Portfolio Tracker/index.html`
-- `/Users/joy/Portfolio Tracker/styles.css`
-- `/Users/joy/Portfolio Tracker/api/market.js`
-- `/Users/joy/Portfolio Tracker/api/comparison.js`
-- `/Users/joy/Portfolio Tracker/api/portfolio.js`
-- `/Users/joy/Portfolio Tracker/api/angel.js`
-- `/Users/joy/Portfolio Tracker/api/_lib/angelLiveMarket.js`
-- `/Users/joy/Portfolio Tracker/api/_lib/macroContextEngine.js`
-- `/Users/joy/Portfolio Tracker/tasks/roadmap.md`
+- `/Users/joy/Portfolio Tracker/api/alerts.js`
+- `/Users/joy/Portfolio Tracker/vercel.json`
+- `/Users/joy/Portfolio Tracker/quant-engine/routers/alerts.py`
 - `/Users/joy/Portfolio Tracker/tasks/todo.md`
+- `/Users/joy/Portfolio Tracker/tasks/lessons.md`
 
-## Security Note
-- Do not commit or echo secrets in logs/handoff.
-- Keep credentials only in Vercel/local env (`ANGEL_*`, `KITE_*`).
+## Git Snapshot
+- Recent commits:
+  - `a8ffe6e` feat: add pending alert enqueue flow for dispatch validation
+  - `1d502e1` fix: auto-bootstrap angel session on frontend init
+  - `4d9cbe8` fix: improve cluster modal name realism and source transparency
+  - `03dff8b` fix: make signals focus selector portfolio-holdings only
+  - `3377ab0` chore: remove vercel cron for hobby-plan compatible deployments

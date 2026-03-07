@@ -2819,6 +2819,46 @@ function pickDefaultPeerAnchor() {
   return ranked[0]?.leader || null;
 }
 
+function pickFallbackPeerAnchor(triedKeys) {
+  const selected = new Set(compareState.selectedClusterIds);
+  const candidates = state.stocks.filter((stock) => (selected.size ? selected.has(stock.clusterId) : true));
+  for (const stock of candidates) {
+    const exchange = String(stock.exchange || "NSE").toUpperCase();
+    const symbol = String(stock.symbol || "").toUpperCase();
+    const key = `${exchange}:${symbol}`;
+    if (!symbol || triedKeys.has(key)) continue;
+    return { symbol, exchange };
+  }
+  return null;
+}
+
+async function requestPeerRelativeStrengthPayload(anchor) {
+  if (!anchor || !anchor.symbol) return null;
+  if (runtimeState.adapter?.fetchPeerRelativeStrength) {
+    return runtimeState.adapter.fetchPeerRelativeStrength({
+      symbol: anchor.symbol,
+      exchange: compareState.exchange,
+      window: compareState.window,
+      points: COMPARE_WINDOWS[compareState.window].points,
+    });
+  }
+
+  const response = await fetch(
+    `/api/v1/peers/relative-strength?symbol=${encodeURIComponent(anchor.symbol)}&exchange=${encodeURIComponent(
+      compareState.exchange,
+    )}&window=${encodeURIComponent(compareState.window)}&points=${COMPARE_WINDOWS[compareState.window].points}`,
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    },
+  );
+  if (!response.ok) {
+    throw new Error(`peer-fetch-${response.status}`);
+  }
+  const raw = await response.json();
+  return AdapterCore.normalizePeerRelativeStrengthPayload(raw);
+}
+
 function disposePeerChart() {
   if (peerChartState.resizeObserver) {
     peerChartState.resizeObserver.disconnect();
@@ -2970,40 +3010,55 @@ function renderPeerPanel() {
 async function fetchPeerRelativeStrength() {
   const requestId = compareState.peerRequestId + 1;
   compareState.peerRequestId = requestId;
-  const anchor = compareState.peerAnchor || pickDefaultPeerAnchor();
+  let anchor = compareState.peerAnchor || pickDefaultPeerAnchor();
   if (!anchor || !anchor.symbol) {
     compareState.peerPayload = null;
     renderPeerPanel();
     return;
   }
-  compareState.peerAnchor = anchor;
+  const triedKeys = new Set();
+  let payload = null;
+  let lastError = null;
 
-  let payload;
-  if (runtimeState.adapter?.fetchPeerRelativeStrength) {
-    payload = await runtimeState.adapter.fetchPeerRelativeStrength({
-      symbol: anchor.symbol,
-      exchange: compareState.exchange,
-      window: compareState.window,
-      points: COMPARE_WINDOWS[compareState.window].points,
-    });
-  } else {
-    const response = await fetch(
-      `/api/v1/peers/relative-strength?symbol=${encodeURIComponent(anchor.symbol)}&exchange=${encodeURIComponent(
-        compareState.exchange,
-      )}&window=${encodeURIComponent(compareState.window)}&points=${COMPARE_WINDOWS[compareState.window].points}`,
-      {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      },
-    );
-    if (!response.ok) {
-      throw new Error(`peer-fetch-${response.status}`);
+  while (anchor && anchor.symbol) {
+    const normalizedAnchor = {
+      symbol: String(anchor.symbol || "").toUpperCase(),
+      exchange: String(anchor.exchange || "NSE").toUpperCase(),
+    };
+    const key = `${normalizedAnchor.exchange}:${normalizedAnchor.symbol}`;
+    if (!normalizedAnchor.symbol || triedKeys.has(key)) break;
+    triedKeys.add(key);
+
+    try {
+      payload = await requestPeerRelativeStrengthPayload(normalizedAnchor);
+      anchor = normalizedAnchor;
+      break;
+    } catch (error) {
+      lastError = error;
+      const isMissingAnchor =
+        Number(error?.statusCode) === 404 || String(error?.message || "").toLowerCase().includes("peer-fetch-404");
+      if (!isMissingAnchor) throw error;
+      anchor = pickFallbackPeerAnchor(triedKeys);
     }
-    const raw = await response.json();
-    payload = AdapterCore.normalizePeerRelativeStrengthPayload(raw);
+  }
+
+  if (!payload) {
+    const isMissingAnchor =
+      Number(lastError?.statusCode) === 404 ||
+      String(lastError?.message || "").toLowerCase().includes("peer-fetch-404");
+    if (isMissingAnchor) {
+      compareState.peerPayload = null;
+      renderPeerPanel();
+      return;
+    }
+    throw lastError || new Error("peer-fetch-failed");
   }
 
   if (requestId !== compareState.peerRequestId) return;
+  compareState.peerAnchor = anchor;
+  if (peerStockInput && anchor?.symbol) {
+    peerStockInput.value = `${anchor.exchange}:${anchor.symbol}`;
+  }
   compareState.peerPayload = payload;
   renderPeerPanel();
 }

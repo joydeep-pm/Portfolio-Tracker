@@ -2,17 +2,35 @@
 node_modules
 .git
 .DS_Store
+.cache
+tmp
+temp
+dist
+build
 
 # Local agent/tooling
 .claude
+.codex
+
+# Root Python env/caches
+.venv
+__pycache__
+.pytest_cache
+.mypy_cache
+.ruff_cache
+**/*.pyc
 
 # Python worker local env/caches (not needed for Vercel deploy)
+quant-engine
 quant-engine/.venv
+quant-engine/.venv_check
 quant-engine/__pycache__
 quant-engine/.pytest_cache
 quant-engine/.mypy_cache
 quant-engine/.ruff_cache
 quant-engine/**/*.pyc
+quant-engine/.data
+quant-engine/data
 
 # Misc local outputs
 artifacts

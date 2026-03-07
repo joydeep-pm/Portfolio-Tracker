@@ -1434,3 +1434,42 @@
   - `node --test tests/*.test.js` (pass, `96 pass`, `0 fail`, `1 skipped`)
 - Outcome:
   - You can now queue a pending event from UI, then click `Force Run Automation Engine` to verify dispatch processing with non-zero `processed_events`.
+
+## Handoff Refresh Plan (2026-03-07)
+- [x] Collect current git/deploy/runtime state for next-thread continuity.
+- [x] Rewrite `tasks/handoff.md` with current architecture, latest commits, blockers, and next-step runbook.
+- [x] Include exact verification commands for alerts enqueue/dispatch and cron auth.
+
+## Handoff Refresh Review
+- Updated files:
+  - `tasks/handoff.md`: fully refreshed for new thread continuity as of 2026-03-07 IST.
+- Validation:
+  - `git log --oneline -12` reviewed for latest commit chain.
+  - live endpoint sanity checked earlier in session (`enqueue` currently 404 on deployed quant-engine, confirming stale Render deploy).
+- Outcome:
+  - New thread can start from accurate state without replaying prior troubleshooting context.
+
+## Live Ingest Hard-Guard + Flow Re-Verification Plan (2026-03-07)
+- [x] Re-verify production alerts enqueue/dispatch/events flow on Render direct endpoint and Vercel proxy endpoint.
+- [x] Add explicit ingest CLI guard to require live NSE/BSE mode (`--require-live`) for strict non-synthetic runs.
+- [x] Add deterministic CLI tests for new live-guard contract and target-flag acceptance.
+- [x] Update README ingest docs for strict live-run command and fallback semantics.
+- [x] Run targeted + full regression tests and execute live-only ingest for 175 clusters / 2486 stocks.
+
+## Live Ingest Hard-Guard + Flow Re-Verification Review
+- Production endpoint verification (2026-03-07):
+  - `POST /api/v1/alerts/enqueue` (Render) returned `queued:true`.
+  - `POST /api/alerts?route=enqueue` (Vercel proxy) returned `queued:true`.
+  - `dispatch` processed pending events and `events` reflected `status:"sent"` with delivery rows.
+- Ingest CLI updates:
+  - Added `--require-live` option in `scripts/ingest-bharatfintrack.js`.
+  - Added explicit conflict check for `--require-live` + `--force-seed`.
+  - Added hard fail when resolved mode is not `nse-bse-live` and live is required.
+- Documentation updates:
+  - Updated `README.md` with strict live command:
+    - `node scripts/ingest-bharatfintrack.js --target-stocks 2486 --target-clusters 175 --require-live --output ./data/thematic_index_catalog.json`
+- Validation evidence:
+  - `node --check scripts/ingest-bharatfintrack.js` (pass)
+  - `node --test tests/bharatfintrackIngest.test.js` (pass)
+  - `node scripts/ingest-bharatfintrack.js --target-stocks 2486 --target-clusters 175 --require-live --output ./data/thematic_index_catalog.json` -> `mode:nse-bse-live`, `indices:175`, `stocks:2486`
+  - `node --test tests/*.test.js` (pass: `99 tests`, `98 pass`, `1 skipped`, `0 fail`)

@@ -103,3 +103,5 @@
 - Preventive rule: any fallback/synthetic market list must either (a) use verifiable symbol-derived naming, or (b) label unresolved names explicitly and surface a source badge at point-of-use.
 - User correction: Angel env vars were set but live market stayed disconnected, creating confusion about readiness vs active session.
 - Preventive rule: treat broker env readiness and runtime broker session as separate states; when runtime session is required for cookies/JWT, auto-bootstrap it on frontend init instead of requiring manual API calls.
+- User correction: `vercel dev` still failed with `EMFILE` because watcher-heavy local dirs remained (`quant-engine/.venv_check`) even after initial ignore tuning.
+- Preventive rule: when fixing watcher-limit issues, always parse the exact failing path from logs and add path-specific ignore entries (for example both `.venv` and `.venv_check`) in the same patch.
