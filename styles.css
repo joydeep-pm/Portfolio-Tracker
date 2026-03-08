@@ -562,7 +562,7 @@ body[data-ui-variant="classic"] .legend {
 }
 
 .legend > span {
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   letter-spacing: 0.04rem;
   color: var(--muted);
   font-weight: 700;
@@ -574,7 +574,7 @@ body[data-ui-variant="classic"] .legend {
 }
 
 .legend-scale span {
-  font-size: 0.55rem;
+  font-size: 0.75rem;
   border-radius: 6px;
   padding: 0.18rem 0.42rem;
   min-width: 2.4rem;
@@ -660,7 +660,7 @@ body[data-ui-variant="classic"] .legend {
 
 .table-head {
   color: var(--muted);
-  font-size: 0.56rem;
+  font-size: 0.8125rem;
   letter-spacing: 0.04rem;
   margin-bottom: 0.2rem;
   font-weight: 700;
@@ -696,7 +696,7 @@ body[data-ui-variant="classic"] .legend {
 .cluster-name {
   display: block;
   justify-self: start;
-  font-size: clamp(0.54rem, 0.6vw, 0.66rem);
+  font-size: clamp(0.6875rem, 0.7vw, 0.8125rem);
   font-weight: 600;
   text-transform: none;
   white-space: nowrap;
@@ -706,7 +706,7 @@ body[data-ui-variant="classic"] .legend {
 }
 
 .cluster-count {
-  font-size: 0.58rem;
+  font-size: 0.75rem;
   color: var(--muted);
   text-align: right;
 }
@@ -714,7 +714,7 @@ body[data-ui-variant="classic"] .legend {
 .cell {
   border: 1px solid rgba(230, 238, 248, 0.1);
   border-radius: 6px;
-  font-size: 0.52rem;
+  font-size: 0.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -799,7 +799,7 @@ body[data-ui-variant="classic"] .scan-empty {
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--panel-2);
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   letter-spacing: 0.03rem;
   padding: 0.3rem 0.5rem;
 }
@@ -864,7 +864,7 @@ body[data-ui-variant="classic"] .scan-empty {
 
 .compare-search-item span {
   display: block;
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   color: var(--muted);
   margin-top: 0.12rem;
 }
@@ -889,7 +889,7 @@ body[data-ui-variant="classic"] .scan-empty {
   border: 1px solid transparent;
   background: transparent;
   border-radius: 6px;
-  font-size: 0.61rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: var(--muted);
   cursor: pointer;
@@ -971,7 +971,7 @@ body[data-ui-variant="classic"] .compare-chart {
   border-radius: 999px;
   background: var(--panel-2);
   padding: 0.22rem 0.4rem;
-  font-size: 0.57rem;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
@@ -988,7 +988,7 @@ body[data-ui-variant="classic"] .compare-chart {
   border: 1px solid transparent;
   border-radius: 999px;
   padding: 0.16rem 0.34rem;
-  font-size: 0.53rem;
+  font-size: 0.75rem;
   letter-spacing: 0.03rem;
   font-weight: 700;
 }
@@ -1020,7 +1020,7 @@ body[data-ui-variant="classic"] .compare-chart {
 .compare-foot {
   border-top: 1px solid var(--line);
   padding: 0.56rem 0.84rem 0.68rem;
-  font-size: 0.58rem;
+  font-size: 0.75rem;
   letter-spacing: 0.04rem;
   color: var(--muted);
 }
@@ -1067,7 +1067,7 @@ body[data-ui-variant="classic"] .compare-chart {
 
 .quant-metric-item p {
   margin: 0;
-  font-size: 0.54rem;
+  font-size: 0.75rem;
   color: var(--muted);
   letter-spacing: 0.03rem;
 }
@@ -1080,7 +1080,7 @@ body[data-ui-variant="classic"] .compare-chart {
 
 .quant-result-meta {
   margin-top: 0.35rem;
-  font-size: 0.56rem;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
@@ -1138,7 +1138,7 @@ body[data-ui-variant="classic"] .compare-chart {
 }
 
 .peer-item-name {
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.02rem;
 }
@@ -1146,13 +1146,13 @@ body[data-ui-variant="classic"] .compare-chart {
 .peer-item-meta {
   display: block;
   margin-top: 0.05rem;
-  font-size: 0.56rem;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
 .peer-item-score {
   text-align: right;
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   color: var(--text);
   font-weight: 700;
 }
@@ -1183,7 +1183,7 @@ body[data-ui-variant="classic"] .compare-chart {
 
 .scan-sub {
   display: block;
-  font-size: 0.57rem;
+  font-size: 0.75rem;
   color: var(--muted);
   margin-top: 0.04rem;
 }
@@ -1210,7 +1210,7 @@ body[data-ui-variant="classic"] .compare-chart {
 
 .portfolio-reconnect-btn {
   padding: 0.34rem 0.68rem;
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   line-height: 1;
 }
 
@@ -1239,12 +1239,12 @@ body[data-ui-variant="classic"] .compare-chart {
   border-bottom: 1px solid var(--line);
   padding: 0.34rem 0.24rem;
   text-align: left;
-  font-size: 0.62rem;
+  font-size: 0.75rem;
 }
 
 .quant-allocation-table th {
   color: var(--muted);
-  font-size: 0.56rem;
+  font-size: 0.8125rem;
   letter-spacing: 0.04rem;
   text-transform: uppercase;
 }
@@ -1277,7 +1277,7 @@ body[data-ui-variant="classic"] .compare-chart {
 
 .portfolio-table-head {
   color: var(--muted);
-  font-size: 0.54rem;
+  font-size: 0.8125rem;
   letter-spacing: 0.04rem;
   margin-bottom: 0.2rem;
   font-weight: 700;
@@ -1314,14 +1314,14 @@ body[data-ui-variant="classic"] .compare-chart {
 
 .portfolio-exchange {
   display: block;
-  font-size: 0.57rem;
+  font-size: 0.75rem;
   color: var(--muted);
   font-weight: 500;
   margin-top: 0.05rem;
 }
 
 .portfolio-mini {
-  font-size: 0.61rem;
+  font-size: 0.75rem;
   color: var(--text);
   font-weight: 600;
 }
@@ -1333,7 +1333,7 @@ body[data-ui-variant="classic"] .compare-chart {
   border: 1px solid transparent;
   border-radius: 999px;
   padding: 0.24rem 0.42rem;
-  font-size: 0.55rem;
+  font-size: 0.75rem;
   letter-spacing: 0.03rem;
   font-weight: 700;
 }
@@ -1363,7 +1363,7 @@ body[data-ui-variant="classic"] .compare-chart {
   border-radius: 8px;
   background: rgba(23, 35, 52, 0.9);
   cursor: pointer;
-  font-size: 0.57rem;
+  font-size: 0.75rem;
   padding: 0.28rem 0.42rem;
   color: var(--text);
   transition: all 130ms ease;
@@ -1390,7 +1390,7 @@ body[data-ui-variant="classic"] .compare-chart {
   border-radius: 9px;
   background: rgba(16, 24, 38, 0.88);
   color: var(--muted);
-  font-size: 0.58rem;
+  font-size: 0.75rem;
   letter-spacing: 0.03rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -1447,7 +1447,7 @@ body[data-ui-variant="classic"] .compare-chart {
   border: 1px solid transparent;
   border-radius: 999px;
   padding: 0.22rem 0.48rem;
-  font-size: 0.57rem;
+  font-size: 0.75rem;
   letter-spacing: 0.03rem;
   font-weight: 700;
 }
@@ -1485,14 +1485,14 @@ body[data-ui-variant="classic"] .compare-chart {
 
 .macro-cluster-name {
   display: block;
-  font-size: 0.61rem;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 
 .macro-cluster-meta {
   display: block;
   margin-top: 0.08rem;
-  font-size: 0.56rem;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
@@ -1527,7 +1527,7 @@ body[data-ui-variant="classic"] .compare-chart {
 }
 
 .copilot-message-role {
-  font-size: 0.56rem;
+  font-size: 0.75rem;
   letter-spacing: 0.03rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -1550,7 +1550,7 @@ body[data-ui-variant="classic"] .compare-chart {
 }
 
 .copilot-citation-list li {
-  font-size: 0.58rem;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
@@ -1631,14 +1631,14 @@ body[data-ui-variant="classic"] .compare-chart {
 
 .network-card-source {
   margin: 0.26rem 0 0;
-  font-size: 0.61rem;
+  font-size: 0.75rem;
   color: var(--text);
   font-weight: 600;
 }
 
 .network-card-detail {
   margin: 0.2rem 0 0;
-  font-size: 0.61rem;
+  font-size: 0.75rem;
   color: var(--muted);
   line-height: 1.35;
 }
@@ -1654,7 +1654,7 @@ body[data-ui-variant="classic"] .compare-chart {
   border: 1px solid rgba(230, 238, 248, 0.16);
   border-radius: 6px;
   padding: 0.14rem 0.3rem;
-  font-size: 0.58rem;
+  font-size: 0.75rem;
   color: #c8ddf7;
   background: rgba(27, 44, 67, 0.64);
 }
@@ -1679,13 +1679,13 @@ body[data-ui-variant="classic"] .compare-chart {
   border-bottom: 1px solid var(--line);
   padding: 0.38rem 0.32rem;
   text-align: left;
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   vertical-align: top;
 }
 
 .network-endpoints-table th {
   color: var(--muted);
-  font-size: 0.56rem;
+  font-size: 0.8125rem;
   letter-spacing: 0.04rem;
   text-transform: uppercase;
 }
@@ -1698,7 +1698,7 @@ body[data-ui-variant="classic"] .compare-chart {
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 0.16rem 0.36rem;
-  font-size: 0.53rem;
+  font-size: 0.6875rem;
   letter-spacing: 0.03rem;
   background: rgba(16, 24, 38, 0.88);
 }
@@ -2102,13 +2102,13 @@ body[data-ui-variant="classic"] .compare-chart {
   border-bottom: 1px solid var(--line);
   padding: 0.38rem 0.32rem;
   text-align: left;
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   vertical-align: top;
 }
 
 .alerts-events-table th {
   color: var(--muted);
-  font-size: 0.56rem;
+  font-size: 0.8125rem;
   letter-spacing: 0.04rem;
   text-transform: uppercase;
 }
@@ -2154,7 +2154,7 @@ body[data-ui-variant="classic"] .compare-chart {
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 0.12rem 0.36rem;
-  font-size: 0.55rem;
+  font-size: 0.75rem;
   display: inline-flex;
   align-items: center;
   gap: 0.24rem;
@@ -2488,6 +2488,16 @@ body[data-ui-variant="classic"] .compare-chart {
   color: var(--muted);
   font-weight: 500;
   letter-spacing: 0.02rem;
+}
+
+/* Disabled button visual feedback (P1-76) */
+button:disabled,
+.btn:disabled,
+input[type="button"]:disabled,
+input[type="submit"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.3);
 }
 
 @media (max-width: 1160px) {

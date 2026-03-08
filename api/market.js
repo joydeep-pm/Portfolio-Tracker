@@ -79,6 +79,7 @@ module.exports = async function handler(req, res) {
             debug
               ? {
                   ...livePayload,
+                  source: livePayload.source || "angel-live",
                   debug: {
                     liveAttempted: true,
                     liveFallbackReason: "",
@@ -86,7 +87,7 @@ module.exports = async function handler(req, res) {
                     liveDiagnostics: liveDiagnostics || null,
                   },
                 }
-              : livePayload,
+              : { ...livePayload, source: livePayload.source || "angel-live" },
           );
         }
         liveFallbackReason = "live-empty-payload";
@@ -114,13 +115,14 @@ module.exports = async function handler(req, res) {
       debug
         ? {
             ...payload,
+            source: "mock-fallback",
             debug: {
               liveAttempted,
               liveFallbackReason,
               angelSessionConnected: angelSession.connected,
             },
           }
-        : payload,
+        : { ...payload, source: "mock-fallback" },
     );
   }
 
@@ -170,6 +172,7 @@ module.exports = async function handler(req, res) {
     return respond(200, {
       asOf: view.asOf,
       cursor: view.cursor,
+      source: "mock-fallback",
       updates: {
         stocks: view.stocks,
         clusters: view.clusters,

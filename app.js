@@ -524,6 +524,7 @@ let alertsState = {
 let runtimeState = {
   adapter: null,
   adapterMode: "synthetic",
+  marketSource: null,
   pollTimer: null,
   pollInFlight: false,
   consecutiveFailures: 0,
@@ -4119,6 +4120,13 @@ function renderPortfolioRows() {
   const modeLabel = portfolioState.connected ? "Connected" : "Disconnected";
   portfolioMeta.textContent = `${rows.length}/${portfolioState.rows.length} symbols • ${modeLabel} • as of ${asOfLabel}`;
 
+  // P0-16 Fix: Don't show demo/synthetic rows when disconnected
+  const isDemoMode = String(portfolioState.providerMode || "").toLowerCase() === "demo";
+  if (!portfolioState.connected && isDemoMode && rows.length > 0) {
+    portfolioRowsEl.innerHTML = `<div class="scan-empty">No live holdings available. Connect Zerodha session to load portfolio data.</div>`;
+    return;
+  }
+
   if (!rows.length) {
     if (!portfolioState.connected) {
       portfolioRowsEl.innerHTML = `<div class="scan-empty">No live holdings available. Connect Zerodha session to load portfolio data.</div>`;
@@ -5273,7 +5281,18 @@ function freshnessLabel(nowMs) {
 }
 
 function renderDataStatus() {
-  const sourceLabel = runtimeState.adapterMode === "backend" ? "LIVE DATA (BACKEND)" : "LIVE DATA (SYNTHETIC)";
+  // P0-17 Fix: Show data source indicator
+  let sourceLabel = "LIVE DATA (SYNTHETIC)";
+  if (runtimeState.adapterMode === "backend") {
+    const source = runtimeState.marketSource || "unknown";
+    if (source === "angel-live") {
+      sourceLabel = "LIVE DATA";
+    } else if (source === "mock-fallback" || source === "mock") {
+      sourceLabel = "FALLBACK MODE";
+    } else {
+      sourceLabel = "LIVE DATA (BACKEND)";
+    }
+  }
   liveSourceText.textContent = sourceLabel;
 
   const nowMs = Date.now();
@@ -6066,6 +6085,10 @@ async function init() {
   state.liveTick = 1;
   runtimeState.lastSuccessAtMs = Date.now();
   runtimeState.lastAsOfLabel = bootstrap.asOf;
+  // P0-17 Fix: Track market data source
+  if (bootstrap.source) {
+    runtimeState.marketSource = bootstrap.source;
+  }
 
   attachHandlers();
   renderPlanTraceGrid();
