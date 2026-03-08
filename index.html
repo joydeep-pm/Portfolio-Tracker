@@ -153,22 +153,23 @@
                   type="text"
                   placeholder="Compare micro-cluster..."
                   autocomplete="off"
+                  title="Type to search and add clusters for comparison"
                 />
                 <div id="compareSearchResults" class="compare-search-results"></div>
               </div>
             </div>
             <div class="compare-right-tools">
               <div id="compareWindowGroup" class="compare-pill-group" role="group" aria-label="Timeframe">
-                <button class="compare-pill" data-compare-window="1D">1D</button>
-                <button class="compare-pill" data-compare-window="5D">5D</button>
-                <button class="compare-pill active" data-compare-window="1M">1M</button>
-                <button class="compare-pill" data-compare-window="6M">6M</button>
-                <button class="compare-pill" data-compare-window="YTD">YTD</button>
+                <button class="compare-pill" data-compare-window="1D" title="1-day comparison window">1D</button>
+                <button class="compare-pill" data-compare-window="5D" title="5-day comparison window">5D</button>
+                <button class="compare-pill active" data-compare-window="1M" title="1-month comparison window">1M</button>
+                <button class="compare-pill" data-compare-window="6M" title="6-month comparison window">6M</button>
+                <button class="compare-pill" data-compare-window="YTD" title="Year-to-date comparison window">YTD</button>
               </div>
               <div id="compareExchangeGroup" class="compare-pill-group" role="group" aria-label="Exchange">
-                <button class="compare-pill active" data-compare-exchange="all">All</button>
-                <button class="compare-pill" data-compare-exchange="nse">NSE</button>
-                <button class="compare-pill" data-compare-exchange="bse">BSE</button>
+                <button class="compare-pill active" data-compare-exchange="all" title="Show all exchanges (NSE + BSE)">All</button>
+                <button class="compare-pill" data-compare-exchange="nse" title="Filter to NSE exchange only">NSE</button>
+                <button class="compare-pill" data-compare-exchange="bse" title="Filter to BSE exchange only">BSE</button>
               </div>
             </div>
           </div>
@@ -194,7 +195,7 @@
             </header>
             <div id="momentumScanList" class="scan-list"></div>
             <div class="quant-action-zone">
-              <button id="runBacktestBtn" class="portfolio-inline-btn quant-action-btn">Run 5-Year Backtest</button>
+              <button id="runBacktestBtn" class="portfolio-inline-btn quant-action-btn" title="Backtest top momentum cluster over 5 years">Run 5-Year Backtest</button>
               <div id="backtestSummaryBox" class="quant-result-box">
                 <div class="scan-empty">Run backtest to view Win Rate, Max Drawdown, and CAGR.</div>
               </div>
@@ -236,27 +237,27 @@
           <div class="portfolio-status-chips">
             <span id="portfolioSourceChip" class="status-pill status-pill-muted">Source: --</span>
             <span id="portfolioConnectionChip" class="status-pill status-pill-muted">Disconnected</span>
-            <button id="zerodhaReconnectBtn" class="mode-btn portfolio-reconnect-btn hidden" type="button">Reconnect Zerodha</button>
+            <button id="zerodhaReconnectBtn" class="mode-btn portfolio-reconnect-btn hidden" type="button" title="Open Zerodha login to reconnect your portfolio">Reconnect Zerodha</button>
           </div>
         </section>
 
         <section class="portfolio-command-bar">
           <div class="portfolio-toolbar">
             <div id="portfolioActionFilters" class="compare-pill-group" role="group" aria-label="Action filter">
-              <button class="compare-pill active" data-portfolio-action="all">All</button>
-              <button class="compare-pill" data-portfolio-action="buy">Buy</button>
-              <button class="compare-pill" data-portfolio-action="accumulate">Accumulate</button>
-              <button class="compare-pill" data-portfolio-action="hold">Hold</button>
-              <button class="compare-pill" data-portfolio-action="reduce">Reduce</button>
-              <button class="compare-pill" data-portfolio-action="sell">Sell</button>
+              <button class="compare-pill active" data-portfolio-action="all" title="Show all holdings regardless of decision">All</button>
+              <button class="compare-pill" data-portfolio-action="buy" title="Show only BUY recommendations">Buy</button>
+              <button class="compare-pill" data-portfolio-action="accumulate" title="Show only ACCUMULATE recommendations">Accumulate</button>
+              <button class="compare-pill" data-portfolio-action="hold" title="Show only HOLD recommendations">Hold</button>
+              <button class="compare-pill" data-portfolio-action="reduce" title="Show only REDUCE recommendations">Reduce</button>
+              <button class="compare-pill" data-portfolio-action="sell" title="Show only SELL recommendations">Sell</button>
             </div>
             <div id="portfolioExchangeGroup" class="compare-pill-group" role="group" aria-label="Portfolio exchange">
               <button class="compare-pill active" data-portfolio-exchange="all">All</button>
               <button class="compare-pill" data-portfolio-exchange="nse">NSE</button>
               <button class="compare-pill" data-portfolio-exchange="bse">BSE</button>
             </div>
-            <input id="portfolioSearchInput" type="text" placeholder="Search symbol..." />
-            <input id="portfolioConfidenceInput" type="number" min="0" max="100" step="1" value="0" />
+            <input id="portfolioSearchInput" type="text" placeholder="Search symbol..." title="Filter portfolio by symbol name" />
+            <input id="portfolioConfidenceInput" type="number" min="0" max="100" step="1" value="0" title="Minimum confidence threshold (0-100) for decisions" />
           </div>
         </section>
 
@@ -433,8 +434,9 @@
                   type="text"
                   placeholder="Rotate 10% of IT cluster into PSU Banks"
                   autocomplete="off"
+                  title="Enter natural-language basket order command"
                 />
-                <button id="signalsCommandRun" class="mode-btn">Run</button>
+                <button id="signalsCommandRun" class="mode-btn" title="Execute basket order command">Run</button>
               </div>
               <div id="signalsCommandResults" class="command-results">
                 <div class="scan-empty">Command output appears here.</div>
@@ -448,7 +450,7 @@
               <p id="allocationMeta">Awaiting buy-signal selection</p>
             </header>
             <div class="signals-sizing-controls">
-              <button id="calculateSizingBtnSignals" class="mode-btn quant-action-btn">Calculate Optimal Sizing</button>
+              <button id="calculateSizingBtnSignals" class="mode-btn quant-action-btn" title="Run max-Sharpe portfolio optimization for selected buy signals">Calculate Optimal Sizing</button>
               <p class="signals-sizing-note">Uses PyPortfolioOpt max-Sharpe allocation and discrete share sizing.</p>
             </div>
             <div id="allocationTableWrap" class="quant-allocation-wrap">
@@ -525,9 +527,9 @@
             </p>
           </div>
           <div class="alerts-hero-controls">
-            <button id="alertsTestBtn" class="mode-btn">Test Channels</button>
-            <button id="alertsEnqueueBtn" class="mode-btn" type="button">Create Pending Test Event</button>
-            <button id="alertsDispatchBtn" class="mode-btn" type="button">Force Run Automation Engine</button>
+            <button id="alertsTestBtn" class="mode-btn" title="Test Telegram and Notion channel connectivity">Test Channels</button>
+            <button id="alertsEnqueueBtn" class="mode-btn" type="button" title="Create a pending alert event for dispatch testing">Create Pending Test Event</button>
+            <button id="alertsDispatchBtn" class="mode-btn" type="button" title="Manually trigger the alert automation engine">Force Run Automation Engine</button>
             <span id="alertsMeta" class="status-pill status-pill-muted">Waiting for alert events…</span>
           </div>
         </section>

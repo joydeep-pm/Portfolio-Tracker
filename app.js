@@ -3772,7 +3772,7 @@ async function handleForceMacroHarvest() {
     setSignalsControlsStatus(`Macro harvest complete • fetched ${fetched}, inserted ${inserted}, duplicates ${duplicates}`);
     await refreshSignalsMacro();
   } catch (error) {
-    setSignalsControlsStatus(error.message || "Macro harvest failed", "error");
+    setSignalsControlsStatus((error.message || "Macro harvest failed") + " — Click button to retry", "error");
   } finally {
     signalsState.controlsBusy = false;
     signalsForceMacroHarvestBtn.disabled = false;
@@ -3808,7 +3808,7 @@ async function handleViewMarketHotspots() {
     const rows = normalizeHotspotRows(payload);
     setSignalsControlsStatus(`Hotspot snapshot loaded • ${rows.length} themes ranked`);
   } catch (error) {
-    signalsState.hotspotsError = error.message || "Hotspot snapshot failed";
+    signalsState.hotspotsError = (error.message || "Hotspot snapshot failed") + " — Click button to retry";
     signalsState.hotspotsPayload = null;
     setSignalsControlsStatus(signalsState.hotspotsError, "error");
   } finally {
@@ -4123,15 +4123,15 @@ function renderPortfolioRows() {
   // P0-16 Fix: Don't show demo/synthetic rows when disconnected
   const isDemoMode = String(portfolioState.providerMode || "").toLowerCase() === "demo";
   if (!portfolioState.connected && isDemoMode && rows.length > 0) {
-    portfolioRowsEl.innerHTML = `<div class="scan-empty">No live holdings available. Connect Zerodha session to load portfolio data.</div>`;
+    portfolioRowsEl.innerHTML = `<div class="scan-empty">No live holdings available. Click "Reconnect Zerodha" above to load your portfolio data.</div>`;
     return;
   }
 
   if (!rows.length) {
     if (!portfolioState.connected) {
-      portfolioRowsEl.innerHTML = `<div class="scan-empty">No live holdings available. Connect Zerodha session to load portfolio data.</div>`;
+      portfolioRowsEl.innerHTML = `<div class="scan-empty">No live holdings available. Click "Reconnect Zerodha" above to load your portfolio data.</div>`;
     } else {
-      portfolioRowsEl.innerHTML = `<div class="scan-empty">No holdings match the current filters.</div>`;
+      portfolioRowsEl.innerHTML = `<div class="scan-empty">No holdings match the current filters. Try adjusting the action filter or search term.</div>`;
     }
     return;
   }
@@ -5804,7 +5804,7 @@ function attachHandlers() {
     signalsForceMacroHarvestBtn.addEventListener("click", () => {
       handleForceMacroHarvest().catch((error) => {
         console.error("Force macro harvest failed", error);
-        setSignalsControlsStatus(error.message || "Macro harvest failed", "error");
+        setSignalsControlsStatus((error.message || "Macro harvest failed") + " — Click button to retry", "error");
       });
     });
   }
