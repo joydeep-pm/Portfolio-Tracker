@@ -5,6 +5,7 @@ const { saveEodSnapshot } = require("./_lib/snapshots");
 const { initTrace, traceLog } = require("./_lib/trace");
 const { exchangeKey, json, parseJsonBody, parseCookies } = require("./_lib/http");
 const { isSessionExpired } = require("./_lib/zerodhaSession");
+const { enqueuePortfolioDecisionAlert } = require("./_lib/alertEnqueue");
 
 function sessionFromRequest(req) {
   const cookies = parseCookies(req);
@@ -134,6 +135,30 @@ module.exports = async function handler(req, res) {
       traceLog(trace, "info", "portfolio.decisions.success", {
         decisions: decisions.length,
       });
+
+      // Background: Enqueue alerts for high-conviction decisions (non-blocking)
+      setImmediate(() => {
+        decisions
+          .filter((d) => d.action !== "HOLD" && d.confidence >= 70)
+          .forEach((decision) => {
+            enqueuePortfolioDecisionAlert({
+              symbol: decision.symbol,
+              exchange: decision.exchange,
+              action: decision.action,
+              confidence: decision.confidence,
+              rationale: decision.rationale || [],
+              current: {
+                pnl: decision.pnl || 0,
+                value: decision.value || 0,
+                qty: decision.qty || 0,
+              },
+            }).catch((err) => {
+              // Silent fail - don't block response on alert enqueue errors
+              console.error(`[portfolio.decisions] Alert enqueue failed for ${decision.symbol}:`, err.message);
+            });
+          });
+      });
+
       return respond(200, {
         ...payload,
         decisions,
