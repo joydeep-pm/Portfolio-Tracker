@@ -4,10 +4,14 @@ import math
 from typing import List
 
 import pandas as pd
-import vectorbt as vbt
 import yfinance as yf
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+
+try:
+    import vectorbt as vbt
+except ImportError:
+    vbt = None  # type: ignore[assignment]
 
 router = APIRouter(tags=["backtest"])
 
@@ -119,6 +123,9 @@ def run_thematic_rotation_backtest(payload: BacktestRequest) -> BacktestResponse
     tickers = _normalize_tickers(payload.tickers)
     if len(tickers) < 1:
         raise HTTPException(status_code=422, detail="Please provide at least one valid ticker")
+
+    if vbt is None:
+        raise HTTPException(status_code=503, detail="vectorbt not installed — backtest unavailable on this deploy")
 
     try:
         raw_prices = yf.download(

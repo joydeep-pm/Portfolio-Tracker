@@ -1,0 +1,17 @@
+# Heavy optional dependencies for full quant engine capability.
+# Install after core: pip install -r requirements-heavy.txt
+# These require significant memory/disk and may not work on free-tier hosts.
+
+-r requirements.txt
+
+vectorbt>=0.26.0
+numba>=0.59.0
+PKScreener>=0.46
+PKDevTools>=0.13
+advanced-ta>=0.1.7
+scikit-learn>=1.4.0
+ta>=0.11.0
+sentence-transformers>=3.0.1
+faiss-cpu>=1.8.0
+mftool>=2.8.4
+NorenRestApiPy>=0.0.22

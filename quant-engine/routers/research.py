@@ -9,13 +9,21 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, List
 
-import faiss
 import httpx
 import numpy as np
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
 from pypdf import PdfReader
-from sentence_transformers import SentenceTransformer
+
+try:
+    import faiss
+except ImportError:
+    faiss = None  # type: ignore[assignment]
+
+try:
+    from sentence_transformers import SentenceTransformer
+except ImportError:
+    SentenceTransformer = None  # type: ignore[assignment,misc]
 
 router = APIRouter(tags=["research"])
 
@@ -85,7 +93,9 @@ def _symbol_paths(symbol: str) -> tuple[Path, Path]:
     return folder / "earnings.index", folder / "earnings.meta.json"
 
 
-def _get_embedding_model() -> SentenceTransformer:
+def _get_embedding_model():
+    if SentenceTransformer is None:
+        raise HTTPException(status_code=503, detail="sentence-transformers not installed — research unavailable on this deploy")
     global _embedding_model
     if _embedding_model is not None:
         return _embedding_model
@@ -149,6 +159,8 @@ def _encode_texts(texts: List[str]) -> np.ndarray:
 
 
 def _save_faiss_index(symbol: str, chunks: List[str], embeddings: np.ndarray, source: str) -> tuple[Path, Path]:
+    if faiss is None:
+        raise HTTPException(status_code=503, detail="faiss not installed — research unavailable on this deploy")
     if embeddings.shape[0] != len(chunks):
         raise HTTPException(status_code=500, detail="Embedding count mismatch")
 
@@ -175,6 +187,8 @@ def _save_faiss_index(symbol: str, chunks: List[str], embeddings: np.ndarray, so
 
 
 def _load_symbol_index(symbol: str) -> tuple[Any, dict]:
+    if faiss is None:
+        raise HTTPException(status_code=503, detail="faiss not installed — research unavailable on this deploy")
     index_path, meta_path = _symbol_paths(symbol)
     if not index_path.exists() or not meta_path.exists():
         raise HTTPException(status_code=404, detail=f"No earnings index found for symbol {symbol}")
