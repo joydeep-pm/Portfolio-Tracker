@@ -2727,6 +2727,13 @@ function openCompanyInsights(symbol, exchange, clusterId = "") {
   setActiveView("fundamentals");
 }
 
+function openCompareForClusters(clusterIds = []) {
+  const normalized = [...new Set(clusterIds.filter(Boolean))].slice(0, 4);
+  if (!normalized.length) return;
+  compareState.selectedClusterIds = normalized;
+  setActiveView("compare");
+}
+
 function renderTrackerWorkspace() {
   if (!trackerSpotlightMeta || !trackerSpotlightBody || !trackerPortfolioRail) return;
   const models = buildGrowthTriggerModels();
@@ -2761,7 +2768,8 @@ function renderTrackerWorkspace() {
             .join("")}
         </div>
         <div class="tracker-guide-actions">
-          <button class="portfolio-inline-btn" data-quick-view-target="compare" type="button">Open Compare</button>
+          <button class="portfolio-inline-btn" data-explorer-compare-cluster="${featured.cluster.id}" type="button">Compare This Industry</button>
+          <button class="portfolio-inline-btn" data-company-insight="${featured.leader?.exchange || "NSE"}|${featured.leader?.symbol || ""}|${featured.cluster.id}" type="button">Open Company Insights</button>
           <button class="portfolio-inline-btn" data-quick-view-target="universe" type="button">Open Explorer</button>
         </div>
       </article>
@@ -2827,6 +2835,10 @@ function explorerSummaryCards() {
   ];
 }
 
+function triggerModelForCluster(clusterId) {
+  return buildGrowthTriggerModels().find((model) => model.cluster.id === clusterId) || null;
+}
+
 function renderExplorerPrimary() {
   if (!explorerPrimary || !explorerSecondary || !explorerSummary || !explorerBreadcrumb || !explorerHeading || !explorerModeBadge || !explorerTitle) return;
 
@@ -2866,6 +2878,11 @@ function renderExplorerPrimary() {
       .map((head) => {
         const clusters = state.clusters.filter((cluster) => cluster.headName === head.name);
         const leader = clusters.slice().sort((a, b) => b.momentum["1M"] - a.momentum["1M"])[0];
+        const portfolioOverlap = clusters.reduce((sum, cluster) => sum + explorerPortfolioMatches(cluster.id).length, 0);
+        const triggerLeader = clusters
+          .map((cluster) => triggerModelForCluster(cluster.id))
+          .filter(Boolean)
+          .sort((a, b) => b.score - a.score)[0];
         return `
           <article class="explorer-sector-card">
             <p class="kicker">${escapeHtml(modeLabel)}</p>
@@ -2877,10 +2894,12 @@ function renderExplorerPrimary() {
               <span class="explorer-meta-chip">1D ${percent(head.momentum["1D"])}</span>
               <span class="explorer-meta-chip">1M ${percent(head.momentum["1M"])}</span>
               <span class="explorer-meta-chip">6M ${percent(head.momentum["6M"])}</span>
+              <span class="explorer-meta-chip">${portfolioOverlap} portfolio-linked</span>
+              <span class="explorer-meta-chip">${escapeHtml(triggerLeader?.catalystLabel || "No active catalyst")}</span>
             </div>
             <div class="explorer-actions">
               <button class="portfolio-inline-btn" data-explorer-head="${escapeHtml(head.name)}" type="button">Open Sector</button>
-              <button class="portfolio-inline-btn" data-quick-view-target="compare" type="button">Compare</button>
+              <button class="portfolio-inline-btn" data-explorer-compare-head="${escapeHtml(head.name)}" type="button">Compare Sector</button>
             </div>
           </article>
         `;
@@ -2891,8 +2910,11 @@ function renderExplorerPrimary() {
       .filter((cluster) => cluster.headName === explorerState.selectedHeadName)
       .sort((a, b) => b.momentum["1M"] - a.momentum["1M"]);
     explorerPrimary.innerHTML = clusters
-      .map(
-        (cluster) => `
+      .map((cluster) => {
+        const trigger = triggerModelForCluster(cluster.id);
+        const overlap = explorerPortfolioMatches(cluster.id);
+        const leaderStock = topStocksForCluster(cluster, 1)[0] || null;
+        return `
           <article class="explorer-cluster-card">
             <p class="kicker">${escapeHtml(cluster.headName)}</p>
             <h4>${escapeHtml(displayClusterLabel(cluster) || cluster.name)}</h4>
@@ -2901,14 +2923,22 @@ function renderExplorerPrimary() {
               <span class="explorer-meta-chip">1D ${percent(cluster.momentum["1D"])}</span>
               <span class="explorer-meta-chip">1M ${percent(cluster.momentum["1M"])}</span>
               <span class="explorer-meta-chip">6M ${percent(cluster.momentum["6M"])}</span>
+              <span class="explorer-meta-chip">${overlap.length} in portfolio</span>
+              <span class="explorer-meta-chip">${escapeHtml(trigger?.catalystLabel || "No catalyst")}</span>
             </div>
             <div class="explorer-actions">
               <button class="portfolio-inline-btn" data-explorer-cluster="${cluster.id}" type="button">Open Industry</button>
+              <button class="portfolio-inline-btn" data-explorer-compare-cluster="${cluster.id}" type="button">Compare Industry</button>
+              ${
+                leaderStock
+                  ? `<button class="portfolio-inline-btn" data-company-insight="${leaderStock.exchange}|${leaderStock.symbol}|${cluster.id}" type="button">Top Company</button>`
+                  : ""
+              }
               <button class="portfolio-inline-btn" data-cluster-modal="${cluster.id}" type="button">Composition</button>
             </div>
           </article>
-        `,
-      )
+        `;
+      })
       .join("");
   } else {
     const cluster = activeCluster;
@@ -2918,20 +2948,34 @@ function renderExplorerPrimary() {
         <p class="kicker">${escapeHtml(cluster.headName)}</p>
         <h4>${escapeHtml(displayClusterLabel(cluster) || cluster.name)}</h4>
         <p>Select a company to open Fundamentals with macro, transcript, and AI decision context.</p>
+        <div class="explorer-meta-row">
+          <span class="explorer-meta-chip">${cluster.stocks.length} mapped companies</span>
+          <span class="explorer-meta-chip">${explorerPortfolioMatches(cluster.id).length} in portfolio</span>
+          <span class="explorer-meta-chip">${escapeHtml(triggerModelForCluster(cluster.id)?.catalystLabel || "No catalyst")}</span>
+        </div>
         <div class="explorer-stock-list">
           ${stocks
             .map(
-              (stock) => `
+              (stock) => {
+                const row = portfolioState.rows.find((item) => item.key === stockKey(stock.symbol, stock.exchange));
+                return `
                 <div class="explorer-stock-item">
                   <div>
                     <strong>${escapeHtml(`${stock.exchange}:${stock.symbol}`)}</strong>
-                    <span>${escapeHtml(humanizeTickerSymbol(stock.symbol))} • 1M ${percent(stock.returns["1M"])}</span>
+                    <span>${escapeHtml(humanizeTickerSymbol(stock.symbol))} • 1M ${percent(stock.returns["1M"])}${row ? ` • ${row.decision.action}` : ""}</span>
                   </div>
-                  <button class="portfolio-inline-btn" data-company-insight="${stock.exchange}|${stock.symbol}|${cluster.id}" type="button">Company Insights</button>
+                  <div class="explorer-actions">
+                    ${row ? `<span class="explorer-meta-chip">Portfolio</span>` : ""}
+                    <button class="portfolio-inline-btn" data-company-insight="${stock.exchange}|${stock.symbol}|${cluster.id}" type="button">Company Insights</button>
+                  </div>
                 </div>
-              `,
+              `;
+              },
             )
             .join("")}
+        </div>
+        <div class="explorer-actions">
+          <button class="portfolio-inline-btn" data-explorer-compare-cluster="${cluster.id}" type="button">Compare Industry</button>
         </div>
       </article>
     `;
@@ -2956,7 +3000,7 @@ function renderExplorerPrimary() {
               <div class="tracker-list-item">
                 <div>
                   <strong>${escapeHtml(displayClusterLabel(model.cluster) || model.cluster.name)}</strong>
-                  <span>${escapeHtml(model.catalystLabel)}</span>
+                  <span>${escapeHtml(model.catalystLabel)} • ${model.portfolioMatches.length} holdings linked</span>
                 </div>
                 <span class="tracker-inline-score">${model.score}</span>
               </div>
@@ -6399,6 +6443,24 @@ function attachHandlers() {
       explorerState.selectedClusterId = clusterButton.dataset.explorerCluster || "";
       syncUrlState();
       renderExplorerPrimary();
+      return;
+    }
+
+    const compareHeadButton = event.target.closest("[data-explorer-compare-head]");
+    if (compareHeadButton) {
+      const headName = compareHeadButton.dataset.explorerCompareHead || "";
+      const clusterIds = state.clusters
+        .filter((cluster) => cluster.headName === headName)
+        .sort((a, b) => b.momentum["1M"] - a.momentum["1M"])
+        .slice(0, 4)
+        .map((cluster) => cluster.id);
+      openCompareForClusters(clusterIds);
+      return;
+    }
+
+    const compareClusterButton = event.target.closest("[data-explorer-compare-cluster]");
+    if (compareClusterButton) {
+      openCompareForClusters([compareClusterButton.dataset.explorerCompareCluster || ""]);
       return;
     }
 

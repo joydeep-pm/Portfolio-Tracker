@@ -1,3 +1,27 @@
+# Explorer Mapping Refinement (2026-03-10)
+
+## Plan
+- [x] Tighten the `Universe` / `Domain` explorer to show explicit sector -> microcluster -> company structure from current live state.
+- [x] Add visible microcluster mapping cards with portfolio-overlap and trigger context, rather than only high-level explorer summaries.
+- [x] Add stronger handoff actions from explorer/company context into `Compare` and `Fundamentals`.
+- [x] Verify syntax and record what is now directly powered by existing repo/data.
+
+## Verify Plan Check-In
+- Scope: refine the new workspace shell using current frontend state only; no backend/API contract changes.
+- Safety: keep existing compare, portfolio, and signals engines intact and only improve how explorer/tracker surfaces route into them.
+
+## Review
+- Explorer refinement now uses current frontend state directly for:
+  - sector -> microcluster -> company drill-down
+  - per-sector portfolio overlap totals
+  - per-industry trigger label + portfolio overlap
+  - company lists inside each selected microcluster
+  - direct handoff into `Compare` with selected sector/industry context
+  - direct handoff into `Fundamentals` at selected company context
+- Validation:
+  - `node --check app.js`
+  - `node -e "...checks..."` confirmed the new compare handoff and mapping strings are present in `app.js`
+
 # Reference-Driven Tracker Rebuild Plan (2026-03-10)
 
 ## Plan
