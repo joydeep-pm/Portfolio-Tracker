@@ -1,3 +1,34 @@
+# Reference-Driven Tracker Rebuild Plan (2026-03-10)
+
+## Plan
+- [x] Replace top-level navigation with reference-style workspaces (`Tracker`, `Universe`, `Domain`, `Compare`, `Mapper`, `Market Map`, `Fundamentals`) and demote utilities to secondary actions.
+- [x] Rebuild the `Tracker` shell around the existing theme grid with guided workflow, trigger spotlight, and contextual portfolio/action access.
+- [x] Add a shared `Universe` / `Domain` explorer with sector -> industry -> company drill-down and direct handoff into company insights.
+- [x] Reframe `Compare`, `Market Map`, and `Fundamentals` around the existing comparison, portfolio, and signals engines without breaking data flows.
+- [x] Add a `Mapper` workspace for symbol-to-theme discovery while preserving release traceability/help content as a secondary section.
+- [x] Update typography, sticky shell, spacing, and utility styling to match the reference feel while meeting readability floors.
+- [x] Verify syntax/runtime behavior and document review evidence.
+
+## Verify Plan Check-In
+- Scope: frontend IA/shell/workflow rebuild only; backend APIs and adapter contracts remain intact unless blocked by an existing UI assumption.
+- Safety: preserve existing render engines for matrix, comparison, portfolio, signals, network, and alerts; layer new router/view-model behavior over them.
+- Compatibility: legacy quick-view targets from feeds/buttons should continue to work through view-target normalization.
+
+## Review
+- Updated primary shell in `index.html`/`styles.css` to use a reference-style workspace router with secondary utilities for `Network` and `Alerts`.
+- Added new frontend adapter behavior in `app.js`:
+  - view-target normalization for legacy actions
+  - tracker spotlight + execution rail
+  - shared `Universe` / `Domain` explorer with sector -> industry -> company flow
+  - mapper search workspace
+  - company-insight handoff into `Fundamentals`
+  - URL-state sync for workspace, explorer path, compare timeframe/exchange, and selected symbol
+- Validation:
+  - `node --check app.js`
+  - `node --check adapterCore.js`
+  - local static-server smoke via `curl http://127.0.0.1:4174/index.html` confirmed new workspace router and new shell IDs are present
+  - browser automation smoke remains blocked in this environment by Playwright/Chrome persistent-session launch failure (`Opening in existing browser session`)
+
 # Thematic Engine Build Plan
 
 ## Plan

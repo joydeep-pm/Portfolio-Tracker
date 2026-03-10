@@ -188,6 +188,13 @@ const COMPARE_COLOR_PALETTE = [
 // Keep this feed updated whenever new user-facing capabilities ship.
 const WHATS_NEW_FEED = [
   {
+    date: "2026-03-10",
+    title: "Reference-Driven Tracker Shell",
+    detail:
+      "Rebuilt the product around a reference-style tracker router with integrated workspaces for Tracker, Universe, Domain, Compare, Mapper, Market Map, and Fundamentals.",
+    targetView: "tracker",
+  },
+  {
     date: "2026-03-05",
     title: "Alerts & Automation Console",
     detail:
@@ -381,7 +388,7 @@ let state = {
   isLive: true,
   activeClusterId: null,
   liveTick: 0,
-  activeView: "themes",
+  activeView: "tracker",
   cursor: "",
   asOf: "",
   uiVariant: "data-command",
@@ -431,6 +438,15 @@ let growthTriggersState = {
   search: "",
   focus: "all",
   catalyst: "all",
+};
+
+let explorerState = {
+  selectedHeadName: "",
+  selectedClusterId: "",
+};
+
+let mapperState = {
+  search: "",
 };
 
 let portfolioState = {
@@ -565,14 +581,28 @@ const alertsViewEl = document.getElementById("alertsView");
 const viewLinks = [...document.querySelectorAll("[data-app-view-target]")];
 const whatsNewLogEl = document.getElementById("whatsNewLog");
 const planTraceGridEl = document.getElementById("planTraceGrid");
+const trackerSpotlightMeta = document.getElementById("trackerSpotlightMeta");
+const trackerSpotlightBody = document.getElementById("trackerSpotlightBody");
+const trackerPortfolioRail = document.getElementById("trackerPortfolioRail");
 const growthTriggersMeta = document.getElementById("growthTriggersMeta");
 const growthTriggerSummary = document.getElementById("growthTriggerSummary");
 const growthTriggerSearchInput = document.getElementById("growthTriggerSearchInput");
 const growthFeaturedTrigger = document.getElementById("growthFeaturedTrigger");
 const growthTriggerFeed = document.getElementById("growthTriggerFeed");
 const growthCoverageCloud = document.getElementById("growthCoverageCloud");
+const explorerModeBadge = document.getElementById("explorerModeBadge");
+const explorerTitle = document.getElementById("explorerTitle");
+const explorerHeading = document.getElementById("explorerHeading");
+const explorerBreadcrumb = document.getElementById("explorerBreadcrumb");
+const explorerSummary = document.getElementById("explorerSummary");
+const explorerPrimary = document.getElementById("explorerPrimary");
+const explorerSecondary = document.getElementById("explorerSecondary");
+const explorerBackBtn = document.getElementById("explorerBackBtn");
 const growthFocusButtons = [...document.querySelectorAll("[data-growth-focus]")];
 const growthCatalystButtons = [...document.querySelectorAll("[data-growth-catalyst]")];
+const mapperSearchInput = document.getElementById("mapperSearchInput");
+const mapperMeta = document.getElementById("mapperMeta");
+const mapperResults = document.getElementById("mapperResults");
 
 const matrixEl = document.getElementById("matrix");
 const statsEl = document.getElementById("statsRow");
@@ -717,6 +747,78 @@ function prettyJson(value) {
   } catch (_error) {
     return "{}";
   }
+}
+
+function normalizeViewTarget(target) {
+  const key = String(target || "").toLowerCase();
+  const aliases = {
+    themes: "tracker",
+    tracker: "tracker",
+    growth: "universe",
+    universe: "universe",
+    domain: "domain",
+    comparison: "compare",
+    compare: "compare",
+    portfolio: "marketmap",
+    marketmap: "marketmap",
+    signals: "fundamentals",
+    fundamentals: "fundamentals",
+    whatsnew: "mapper",
+    mapper: "mapper",
+    network: "network",
+    alerts: "alerts",
+  };
+  return aliases[key] || "tracker";
+}
+
+function isExplorerView(view) {
+  return view === "universe" || view === "domain";
+}
+
+function hydrateViewStateFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  state.activeView = normalizeViewTarget(params.get("view") || state.activeView);
+  explorerState.selectedHeadName = params.get("sector") || "";
+  explorerState.selectedClusterId = params.get("industry") || "";
+  const compareWindow = params.get("compareWindow");
+  if (COMPARE_WINDOWS[compareWindow]) compareState.window = compareWindow;
+  const compareExchange = params.get("compareExchange");
+  if (["all", "nse", "bse"].includes(compareExchange)) compareState.exchange = compareExchange;
+  const symbol = params.get("symbol");
+  if (symbol) {
+    const [exchange, ticker] = symbol.includes(":") ? symbol.split(":") : ["NSE", symbol];
+    signalsState.selectedType = "stock";
+    signalsState.selectedStockKey = stockKey(ticker, exchange);
+  }
+}
+
+function syncUrlState() {
+  const params = new URLSearchParams(window.location.search);
+  params.set("view", state.activeView);
+  if (isExplorerView(state.activeView) && explorerState.selectedHeadName) {
+    params.set("sector", explorerState.selectedHeadName);
+  } else {
+    params.delete("sector");
+  }
+  if (isExplorerView(state.activeView) && explorerState.selectedClusterId) {
+    params.set("industry", explorerState.selectedClusterId);
+  } else {
+    params.delete("industry");
+  }
+  if (state.activeView === "compare") {
+    params.set("compareWindow", compareState.window);
+    params.set("compareExchange", compareState.exchange);
+  } else {
+    params.delete("compareWindow");
+    params.delete("compareExchange");
+  }
+  if (state.activeView === "fundamentals" && signalsState.selectedStockKey) {
+    params.set("symbol", signalsState.selectedStockKey);
+  } else {
+    params.delete("symbol");
+  }
+  const next = `${window.location.pathname}?${params.toString()}`;
+  window.history.replaceState({}, "", next);
 }
 
 function selectedPortfolioRow() {
@@ -2518,8 +2620,8 @@ function growthFeaturedHtml(model) {
         ${model.tags.map((tag) => `<span class="growth-trigger-tag">${escapeHtml(tag)}</span>`).join("")}
       </div>
       <div class="growth-trigger-actions">
-        <button class="portfolio-inline-btn" data-quick-view-target="comparison" type="button">Open Comparison</button>
-        <button class="portfolio-inline-btn" data-quick-view-target="themes" type="button">Back To Theme Grid</button>
+        <button class="portfolio-inline-btn" data-quick-view-target="compare" type="button">Open Compare</button>
+        <button class="portfolio-inline-btn" data-quick-view-target="tracker" type="button">Open Tracker</button>
       </div>
     </div>
   `;
@@ -2595,6 +2697,328 @@ function renderGrowthTriggers() {
     : `<div class="scan-empty">No featured trigger found. Broaden the filters or clear the search.</div>`;
   growthTriggerFeed.innerHTML = growthFeedHtml(filtered.slice(featured ? 1 : 0));
   growthCoverageCloud.innerHTML = growthCoverageHtml(filtered.length ? filtered : models);
+}
+
+function stockForKey(key) {
+  return state.stocks.find((item) => stockKey(item.symbol, item.exchange) === key) || null;
+}
+
+function clusterForId(clusterId) {
+  return state.clusters.find((item) => item.id === clusterId) || null;
+}
+
+function explorerPortfolioMatches(clusterId) {
+  const cluster = clusterForId(clusterId);
+  if (!cluster) return [];
+  const stockKeys = new Set(cluster.stocks.map((stock) => stockKey(stock.symbol, stock.exchange)));
+  return portfolioState.rows.filter((row) => stockKeys.has(row.key));
+}
+
+function topStocksForCluster(cluster, limit = 8) {
+  return [...(cluster?.stocks || [])]
+    .sort((a, b) => b.returns["1M"] - a.returns["1M"])
+    .slice(0, limit);
+}
+
+function openCompanyInsights(symbol, exchange, clusterId = "") {
+  signalsState.selectedType = "stock";
+  signalsState.selectedStockKey = stockKey(symbol, exchange);
+  signalsState.selectedClusterId = clusterId ? String(clusterId) : "";
+  setActiveView("fundamentals");
+}
+
+function renderTrackerWorkspace() {
+  if (!trackerSpotlightMeta || !trackerSpotlightBody || !trackerPortfolioRail) return;
+  const models = buildGrowthTriggerModels();
+  const featured = models[0] || null;
+  trackerSpotlightMeta.textContent = `${models.length} live catalysts • ${state.asOf ? asOfClockLabel(state.asOf) : "--"}`;
+
+  trackerSpotlightBody.innerHTML = featured
+    ? `
+      <article class="tracker-spotlight-shell">
+        <p class="kicker">${escapeHtml(featured.catalystLabel)}</p>
+        <h4>${escapeHtml(featured.headline)}</h4>
+        <p>${escapeHtml(featured.detail)}</p>
+        <div class="tracker-meta-row">
+          <span class="tracker-meta-chip">Industry ${escapeHtml(featured.cluster.headName)}</span>
+          <span class="tracker-meta-chip">1M ${percent(featured.cluster.momentum["1M"])}</span>
+          <span class="tracker-meta-chip">Breadth ${Math.round(featured.breadth * 100)}%</span>
+        </div>
+        <div class="tracker-list">
+          ${models
+            .slice(1, 5)
+            .map(
+              (model) => `
+                <div class="tracker-list-item">
+                  <div>
+                    <strong>${escapeHtml(displayClusterLabel(model.cluster) || model.cluster.name)}</strong>
+                    <span>${escapeHtml(model.catalystLabel)} • ${escapeHtml(model.cluster.headName)}</span>
+                  </div>
+                  <span class="tracker-inline-score">${percent(model.cluster.momentum["1M"])}</span>
+                </div>
+              `,
+            )
+            .join("")}
+        </div>
+        <div class="tracker-guide-actions">
+          <button class="portfolio-inline-btn" data-quick-view-target="compare" type="button">Open Compare</button>
+          <button class="portfolio-inline-btn" data-quick-view-target="universe" type="button">Open Explorer</button>
+        </div>
+      </article>
+    `
+    : `<div class="scan-empty">Live tracker spotlight will appear once market breadth loads.</div>`;
+
+  const topPortfolioRows = filteredPortfolioRows().slice(0, 4);
+  trackerPortfolioRail.innerHTML = `
+    <article class="tracker-portfolio-card">
+      <p class="kicker">Portfolio Context</p>
+      <h4>${portfolioState.connected ? "Live portfolio attached" : "Portfolio awaiting broker session"}</h4>
+      <p>${
+        portfolioState.summary
+          ? `${money(portfolioState.summary.totalValue)} across ${portfolioState.rows.length} holdings with ${portfolioState.decisions?.length || 0} decision rows.`
+          : "Reconnect Zerodha to bring holdings, exposure, and decision context into the tracker."
+      }</p>
+      <div class="tracker-list">
+        ${
+          topPortfolioRows.length
+            ? topPortfolioRows
+                .map(
+                  (row) => `
+                    <div class="tracker-list-item">
+                      <div>
+                        <strong>${escapeHtml(`${row.exchange}:${row.symbol}`)}</strong>
+                        <span>${escapeHtml(row.decision.action)} • ${money(row.currentValue)}</span>
+                      </div>
+                      <span class="tracker-inline-score">${percent(row.returns["1M"])}</span>
+                    </div>
+                  `,
+                )
+                .join("")
+            : `<div class="scan-empty">No active holdings in the current portfolio context.</div>`
+        }
+      </div>
+      <div class="tracker-guide-actions">
+        <button class="portfolio-inline-btn" data-quick-view-target="marketmap" type="button">Open Market Map</button>
+        <button class="portfolio-inline-btn" data-quick-view-target="alerts" type="button">Open Alerts</button>
+        <button class="portfolio-inline-btn" data-quick-view-target="network" type="button">Open Network</button>
+      </div>
+    </article>
+  `;
+}
+
+function explorerSummaryCards() {
+  const activeHead = explorerState.selectedHeadName;
+  const activeCluster = clusterForId(explorerState.selectedClusterId);
+  const scopedClusters = activeHead ? state.clusters.filter((cluster) => cluster.headName === activeHead) : state.clusters;
+  const scopedStocks = activeCluster ? activeCluster.stocks : activeHead ? scopedClusters.flatMap((cluster) => cluster.stocks) : state.stocks;
+  const leaders = scopedClusters
+    .slice()
+    .sort((a, b) => b.momentum["1M"] - a.momentum["1M"])
+    .slice(0, 1);
+
+  return [
+    { label: "Sectors", value: `${activeHead ? 1 : state.heads.length}`, detail: activeHead || "Entire live universe" },
+    { label: activeCluster ? "Companies" : "Industries", value: `${activeCluster ? scopedStocks.length : scopedClusters.length}`, detail: activeCluster ? "Within selected industry" : "Available to drill into" },
+    {
+      label: "Leader",
+      value: leaders[0] ? displayClusterLabel(leaders[0]) || leaders[0].name : "--",
+      detail: leaders[0] ? `${percent(leaders[0].momentum["1M"])} over 1M` : "No active leader",
+    },
+  ];
+}
+
+function renderExplorerPrimary() {
+  if (!explorerPrimary || !explorerSecondary || !explorerSummary || !explorerBreadcrumb || !explorerHeading || !explorerModeBadge || !explorerTitle) return;
+
+  const modeLabel = state.activeView === "domain" ? "Domain" : "Universe";
+  explorerModeBadge.textContent = `${modeLabel} Explorer`;
+  explorerTitle.innerHTML = `${modeLabel} <span>Explorer</span>`;
+  explorerHeading.textContent = explorerState.selectedClusterId
+    ? "Company Selection"
+    : explorerState.selectedHeadName
+      ? "Industry Selection"
+      : `${modeLabel} View`;
+
+  const activeCluster = clusterForId(explorerState.selectedClusterId);
+  explorerBreadcrumb.textContent = activeCluster
+    ? `${modeLabel} / ${activeCluster.headName} / ${displayClusterLabel(activeCluster) || activeCluster.name}`
+    : explorerState.selectedHeadName
+      ? `${modeLabel} / ${explorerState.selectedHeadName}`
+      : `All ${modeLabel === "Domain" ? "domains" : "sectors"}`;
+
+  explorerBackBtn?.classList.toggle("hidden", !explorerState.selectedHeadName && !explorerState.selectedClusterId);
+  explorerSummary.innerHTML = explorerSummaryCards()
+    .map(
+      (card) => `
+        <article class="growth-summary-stat">
+          <p>${escapeHtml(card.label)}</p>
+          <h4>${escapeHtml(card.value)}</h4>
+          <span>${escapeHtml(card.detail)}</span>
+        </article>
+      `,
+    )
+    .join("");
+
+  if (!explorerState.selectedHeadName) {
+    const heads = state.heads
+      .slice()
+      .sort((a, b) => b.momentum["1M"] - a.momentum["1M"])
+      .map((head) => {
+        const clusters = state.clusters.filter((cluster) => cluster.headName === head.name);
+        const leader = clusters.slice().sort((a, b) => b.momentum["1M"] - a.momentum["1M"])[0];
+        return `
+          <article class="explorer-sector-card">
+            <p class="kicker">${escapeHtml(modeLabel)}</p>
+            <h4>${escapeHtml(head.name)}</h4>
+            <p>${clusters.length} industries • ${clusters.reduce((sum, item) => sum + item.stocks.length, 0)} stocks • leader ${escapeHtml(
+              leader ? displayClusterLabel(leader) || leader.name : "--",
+            )}</p>
+            <div class="explorer-meta-row">
+              <span class="explorer-meta-chip">1D ${percent(head.momentum["1D"])}</span>
+              <span class="explorer-meta-chip">1M ${percent(head.momentum["1M"])}</span>
+              <span class="explorer-meta-chip">6M ${percent(head.momentum["6M"])}</span>
+            </div>
+            <div class="explorer-actions">
+              <button class="portfolio-inline-btn" data-explorer-head="${escapeHtml(head.name)}" type="button">Open Sector</button>
+              <button class="portfolio-inline-btn" data-quick-view-target="compare" type="button">Compare</button>
+            </div>
+          </article>
+        `;
+      });
+    explorerPrimary.innerHTML = heads.join("") || `<div class="scan-empty">No sector data available.</div>`;
+  } else if (!explorerState.selectedClusterId) {
+    const clusters = state.clusters
+      .filter((cluster) => cluster.headName === explorerState.selectedHeadName)
+      .sort((a, b) => b.momentum["1M"] - a.momentum["1M"]);
+    explorerPrimary.innerHTML = clusters
+      .map(
+        (cluster) => `
+          <article class="explorer-cluster-card">
+            <p class="kicker">${escapeHtml(cluster.headName)}</p>
+            <h4>${escapeHtml(displayClusterLabel(cluster) || cluster.name)}</h4>
+            <p>${cluster.stocks.length} stocks • breadth leader ${escapeHtml(topStocksForCluster(cluster, 1)[0]?.symbol || "--")}</p>
+            <div class="explorer-meta-row">
+              <span class="explorer-meta-chip">1D ${percent(cluster.momentum["1D"])}</span>
+              <span class="explorer-meta-chip">1M ${percent(cluster.momentum["1M"])}</span>
+              <span class="explorer-meta-chip">6M ${percent(cluster.momentum["6M"])}</span>
+            </div>
+            <div class="explorer-actions">
+              <button class="portfolio-inline-btn" data-explorer-cluster="${cluster.id}" type="button">Open Industry</button>
+              <button class="portfolio-inline-btn" data-cluster-modal="${cluster.id}" type="button">Composition</button>
+            </div>
+          </article>
+        `,
+      )
+      .join("");
+  } else {
+    const cluster = activeCluster;
+    const stocks = topStocksForCluster(cluster, 12);
+    explorerPrimary.innerHTML = `
+      <article class="explorer-company-card">
+        <p class="kicker">${escapeHtml(cluster.headName)}</p>
+        <h4>${escapeHtml(displayClusterLabel(cluster) || cluster.name)}</h4>
+        <p>Select a company to open Fundamentals with macro, transcript, and AI decision context.</p>
+        <div class="explorer-stock-list">
+          ${stocks
+            .map(
+              (stock) => `
+                <div class="explorer-stock-item">
+                  <div>
+                    <strong>${escapeHtml(`${stock.exchange}:${stock.symbol}`)}</strong>
+                    <span>${escapeHtml(humanizeTickerSymbol(stock.symbol))} • 1M ${percent(stock.returns["1M"])}</span>
+                  </div>
+                  <button class="portfolio-inline-btn" data-company-insight="${stock.exchange}|${stock.symbol}|${cluster.id}" type="button">Company Insights</button>
+                </div>
+              `,
+            )
+            .join("")}
+        </div>
+      </article>
+    `;
+  }
+
+  const secondaryModels = buildGrowthTriggerModels().filter((model) => {
+    if (explorerState.selectedClusterId) return model.cluster.id === explorerState.selectedClusterId;
+    if (explorerState.selectedHeadName) return model.cluster.headName === explorerState.selectedHeadName;
+    return true;
+  });
+  const scopedMatches = activeCluster ? explorerPortfolioMatches(activeCluster.id) : [];
+  explorerSecondary.innerHTML = `
+    <article class="tracker-portfolio-card">
+      <p class="kicker">Context Rail</p>
+      <h4>${scopedMatches.length ? `${scopedMatches.length} portfolio-linked holdings` : "No direct portfolio overlap"}</h4>
+      <p>${secondaryModels[0] ? escapeHtml(secondaryModels[0].detail) : "Select a path to load catalysts and overlap."}</p>
+      <div class="tracker-list">
+        ${secondaryModels
+          .slice(0, 4)
+          .map(
+            (model) => `
+              <div class="tracker-list-item">
+                <div>
+                  <strong>${escapeHtml(displayClusterLabel(model.cluster) || model.cluster.name)}</strong>
+                  <span>${escapeHtml(model.catalystLabel)}</span>
+                </div>
+                <span class="tracker-inline-score">${model.score}</span>
+              </div>
+            `,
+          )
+          .join("") || `<div class="scan-empty">No catalyst context available for the current path.</div>`}
+      </div>
+    </article>
+  `;
+}
+
+function mapperMatches() {
+  const query = mapperState.search.trim().toLowerCase();
+  const rows = state.stocks.map((stock) => {
+    const cluster = clusterForId(stock.clusterId);
+    return {
+      stock,
+      cluster,
+      key: stockKey(stock.symbol, stock.exchange),
+    };
+  });
+
+  const filtered = query
+    ? rows.filter(({ stock, cluster }) =>
+        [stock.symbol, stock.exchange, stock.name, cluster?.name || "", cluster?.headName || ""].join(" ").toLowerCase().includes(query),
+      )
+    : rows.slice().sort((a, b) => b.stock.returns["1M"] - a.stock.returns["1M"]);
+
+  return filtered.slice(0, 12);
+}
+
+function renderMapperView() {
+  if (!mapperMeta || !mapperResults) return;
+  const matches = mapperMatches();
+  mapperMeta.textContent = mapperState.search.trim()
+    ? `${matches.length} symbol matches`
+    : `Top 12 market leaders • ${state.asOf ? asOfClockLabel(state.asOf) : "--"}`;
+
+  mapperResults.innerHTML = matches.length
+    ? matches
+        .map(
+          ({ stock, cluster }) => `
+            <article class="mapper-result-card">
+              <p class="kicker">${escapeHtml(cluster?.headName || "Unknown head")}</p>
+              <h4>${escapeHtml(`${stock.exchange}:${stock.symbol}`)}</h4>
+              <p>${escapeHtml(humanizeTickerSymbol(stock.symbol))} • ${escapeHtml(displayClusterLabel(cluster) || cluster?.name || "Unmapped")} • 1M ${percent(
+                stock.returns["1M"],
+              )}</p>
+              <div class="mapper-meta-row">
+                <span class="mapper-meta-chip">1D ${percent(stock.returns["1D"])}</span>
+                <span class="mapper-meta-chip">6M ${percent(stock.returns["6M"])}</span>
+                <span class="mapper-meta-chip">${escapeHtml(cluster?.headName || "Unknown")}</span>
+              </div>
+              <div class="mapper-actions">
+                <button class="portfolio-inline-btn" data-company-insight="${stock.exchange}|${stock.symbol}|${stock.clusterId}" type="button">Company Insights</button>
+                <button class="portfolio-inline-btn" data-quick-view-target="compare" type="button">Open Compare</button>
+              </div>
+            </article>
+          `,
+        )
+        .join("")
+    : `<div class="scan-empty">No mapper results match the current search.</div>`;
 }
 
 function markerClassForAction(action) {
@@ -4438,6 +4862,9 @@ function renderPortfolio() {
   renderPortfolioRows();
   renderPortfolioDecisionPanel();
   renderGrowthTriggers();
+  renderTrackerWorkspace();
+  renderExplorerPrimary();
+  renderMapperView();
 }
 
 function buildSignalsSelectorOptions() {
@@ -4457,12 +4884,27 @@ function buildSignalsSelectorOptions() {
     });
   });
 
+  if (signalsState.selectedStockKey && !seenStocks.has(signalsState.selectedStockKey)) {
+    const stock = state.stocks.find((item) => stockKey(item.symbol, item.exchange) === signalsState.selectedStockKey);
+    if (stock) {
+      seenStocks.add(signalsState.selectedStockKey);
+      options.push({
+        value: `stock|${stock.exchange}|${stock.symbol}`,
+        label: `${stock.exchange}:${stock.symbol}`,
+        sub: displayClusterLabel(state.clusters.find((cluster) => cluster.id === stock.clusterId)) || "explorer",
+        group: "Explorer Context",
+      });
+    }
+  }
+
   return options;
 }
 
 function ensureSignalsSelection() {
   if (signalsState.selectedStockKey) {
-    const exists = portfolioState.rows.some((item) => item.key === signalsState.selectedStockKey);
+    const exists =
+      portfolioState.rows.some((item) => item.key === signalsState.selectedStockKey) ||
+      state.stocks.some((item) => stockKey(item.symbol, item.exchange) === signalsState.selectedStockKey);
     if (exists) {
       signalsState.selectedType = "stock";
       signalsState.selectedClusterId = "";
@@ -5618,7 +6060,7 @@ async function refreshComparisonSeries() {
   if (requestId !== compareState.seriesRequestId) return;
   compareState.seriesByCluster = AdapterCore.mapComparisonSeries(adapterPayload);
   renderComparison();
-  if (state.activeView === "signals") {
+  if (state.activeView === "fundamentals") {
     renderSignalsSelector();
   }
   await Promise.all([
@@ -5645,7 +6087,7 @@ async function refreshPortfolioBootstrap(options = {}) {
     portfolioState.selectedKey = payload.rows[0].key;
   }
   renderPortfolio();
-  if (state.activeView === "signals") {
+  if (state.activeView === "fundamentals") {
     await refreshSignalsData({ forceSummary: Boolean(options.forceRefresh) });
   } else {
     renderSignalsSelector();
@@ -5666,10 +6108,10 @@ async function pollPortfolioAndApplyUpdates() {
     runtimeState.portfolioLastSuccessAtMs = Date.now();
     runtimeState.portfolioConsecutiveFailures = 0;
     runtimeState.portfolioBackoffFailures = 0;
-    if (state.activeView === "portfolio") {
+    if (state.activeView === "marketmap") {
       renderPortfolio();
     }
-    if (state.activeView === "signals") {
+    if (state.activeView === "fundamentals") {
       refreshSignalsData({ forceSummary: false }).catch((error) => {
         console.error("Signals auto-refresh failed", error);
       });
@@ -5708,8 +6150,8 @@ function renderWhatsNewLog() {
   if (!whatsNewLogEl) return;
 
   whatsNewLogEl.innerHTML = WHATS_NEW_FEED.map((item) => {
-    const target = String(item.targetView || "themes");
-    const targetLabel = target === "whatsnew" ? "What's New" : target;
+    const target = normalizeViewTarget(item.targetView || "tracker");
+    const targetLabel = target === "marketmap" ? "Market Map" : target.charAt(0).toUpperCase() + target.slice(1);
     return `
       <article class="whats-new-log-item">
         <p class="whats-new-date">${item.date}</p>
@@ -5725,8 +6167,8 @@ function renderPlanTraceGrid() {
   if (!planTraceGridEl) return;
 
   planTraceGridEl.innerHTML = PLAN_TRACE_ITEMS.map((item) => {
-    const target = String(item.targetView || "whatsnew");
-    const targetLabel = target === "whatsnew" ? "What's New" : target;
+    const target = normalizeViewTarget(item.targetView || "mapper");
+    const targetLabel = target === "marketmap" ? "Market Map" : target.charAt(0).toUpperCase() + target.slice(1);
     const moduleList = item.modules.map((modulePath) => `<code>${modulePath}</code>`).join("");
     return `
       <article class="plan-trace-card">
@@ -5742,32 +6184,34 @@ function renderPlanTraceGrid() {
 }
 
 function setActiveView(target) {
-  const allowedViews = new Set(["themes", "whatsnew", "growth", "comparison", "portfolio", "signals", "network", "alerts"]);
+  target = normalizeViewTarget(target);
+  const allowedViews = new Set(["tracker", "universe", "domain", "compare", "mapper", "marketmap", "fundamentals", "network", "alerts"]);
   if (!allowedViews.has(target)) {
-    target = "themes";
+    target = "tracker";
   }
-  if (target === "portfolio" && !runtimeState.enablePortfolioView) {
-    target = "themes";
+  if (target === "marketmap" && !runtimeState.enablePortfolioView) {
+    target = "tracker";
   }
   state.activeView = target;
-  themesViewEl.classList.toggle("active-view", target === "themes");
-  whatsNewViewEl.classList.toggle("active-view", target === "whatsnew");
-  growthTriggersViewEl.classList.toggle("active-view", target === "growth");
-  comparisonViewEl.classList.toggle("active-view", target === "comparison");
-  portfolioViewEl.classList.toggle("active-view", target === "portfolio");
+  syncUrlState();
+  themesViewEl.classList.toggle("active-view", target === "tracker");
+  whatsNewViewEl.classList.toggle("active-view", target === "mapper");
+  growthTriggersViewEl.classList.toggle("active-view", isExplorerView(target));
+  comparisonViewEl.classList.toggle("active-view", target === "compare");
+  portfolioViewEl.classList.toggle("active-view", target === "marketmap");
   if (signalsViewEl) {
-    signalsViewEl.classList.toggle("active-view", target === "signals");
+    signalsViewEl.classList.toggle("active-view", target === "fundamentals");
   }
   networkViewEl.classList.toggle("active-view", target === "network");
   alertsViewEl.classList.toggle("active-view", target === "alerts");
 
   viewLinks.forEach((link) => {
-    const active = link.dataset.appViewTarget === target;
+    const active = normalizeViewTarget(link.dataset.appViewTarget) === target;
     link.classList.toggle("active", active);
     link.classList.toggle("muted", !active);
   });
 
-  if (target === "comparison") {
+  if (target === "compare") {
     clearNetworkRefreshTimer();
     clearAlertsRefreshTimer();
     if (modal.open) closeClusterModal();
@@ -5779,24 +6223,29 @@ function setActiveView(target) {
         renderComparison();
       });
     });
-  } else if (target === "portfolio") {
+  } else if (target === "marketmap") {
     refreshPortfolioBootstrap({ forceRefresh: false }).catch((error) => {
       console.error("Failed to refresh portfolio on view switch", error);
       renderPortfolio();
     });
     clearNetworkRefreshTimer();
     clearAlertsRefreshTimer();
-  } else if (target === "growth") {
+  } else if (isExplorerView(target)) {
     clearNetworkRefreshTimer();
     clearAlertsRefreshTimer();
+    renderExplorerPrimary();
     renderGrowthTriggers();
-  } else if (target === "signals") {
+  } else if (target === "fundamentals") {
     clearNetworkRefreshTimer();
     clearAlertsRefreshTimer();
     renderSignalsView();
     refreshSignalsData({ forceSummary: false }).catch((error) => {
       console.error("Failed to refresh signals view", error);
     });
+  } else if (target === "mapper") {
+    clearNetworkRefreshTimer();
+    clearAlertsRefreshTimer();
+    renderMapperView();
   } else if (target === "network") {
     clearAlertsRefreshTimer();
     refreshNetworkDashboard({ silent: false }).catch((error) => {
@@ -5812,6 +6261,10 @@ function setActiveView(target) {
   } else {
     clearNetworkRefreshTimer();
     clearAlertsRefreshTimer();
+    if (target === "tracker") {
+      renderTrackerWorkspace();
+      renderMatrix();
+    }
   }
 }
 
@@ -5896,7 +6349,7 @@ function attachHandlers() {
   viewLinks.forEach((link) => {
     link.addEventListener("click", (event) => {
       event.preventDefault();
-      const target = link.dataset.appViewTarget;
+      const target = normalizeViewTarget(link.dataset.appViewTarget);
       if (!target) return;
       setActiveView(target);
     });
@@ -5906,10 +6359,63 @@ function attachHandlers() {
     const targetButton = event.target.closest("[data-quick-view-target]");
     if (!targetButton) return;
     event.preventDefault();
-    const target = targetButton.dataset.quickViewTarget;
+    const target = normalizeViewTarget(targetButton.dataset.quickViewTarget);
     if (!target) return;
     setActiveView(target);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  if (mapperSearchInput) {
+    mapperSearchInput.addEventListener("input", (event) => {
+      mapperState.search = event.target.value || "";
+      renderMapperView();
+    });
+  }
+
+  if (explorerBackBtn) {
+    explorerBackBtn.addEventListener("click", () => {
+      if (explorerState.selectedClusterId) {
+        explorerState.selectedClusterId = "";
+      } else {
+        explorerState.selectedHeadName = "";
+      }
+      syncUrlState();
+      renderExplorerPrimary();
+    });
+  }
+
+  document.addEventListener("click", (event) => {
+    const headButton = event.target.closest("[data-explorer-head]");
+    if (headButton) {
+      explorerState.selectedHeadName = headButton.dataset.explorerHead || "";
+      explorerState.selectedClusterId = "";
+      syncUrlState();
+      renderExplorerPrimary();
+      return;
+    }
+
+    const clusterButton = event.target.closest("[data-explorer-cluster]");
+    if (clusterButton) {
+      explorerState.selectedClusterId = clusterButton.dataset.explorerCluster || "";
+      syncUrlState();
+      renderExplorerPrimary();
+      return;
+    }
+
+    const modalButton = event.target.closest("[data-cluster-modal]");
+    if (modalButton) {
+      const cluster = clusterForId(modalButton.dataset.clusterModal);
+      if (cluster) openClusterModal(cluster);
+      return;
+    }
+
+    const companyButton = event.target.closest("[data-company-insight]");
+    if (companyButton) {
+      const [exchange, symbol, clusterId] = String(companyButton.dataset.companyInsight || "").split("|");
+      if (exchange && symbol) {
+        openCompanyInsights(symbol, exchange, clusterId);
+      }
+    }
   });
 
   document.addEventListener("keydown", (event) => {
@@ -5977,6 +6483,7 @@ function attachHandlers() {
     button.addEventListener("click", () => {
       compareState.window = button.dataset.compareWindow;
       applyCompareButtonStates();
+      syncUrlState();
       refreshComparisonSeries().catch((error) => {
         console.error("Window switch series refresh failed", error);
         setRuntimeHealth("stale", "Comparison data delayed");
@@ -5988,6 +6495,7 @@ function attachHandlers() {
     button.addEventListener("click", () => {
       compareState.exchange = button.dataset.compareExchange;
       applyCompareButtonStates();
+      syncUrlState();
       refreshComparisonSeries().catch((error) => {
         console.error("Exchange switch series refresh failed", error);
         setRuntimeHealth("stale", "Comparison data delayed");
@@ -6078,6 +6586,7 @@ function attachHandlers() {
       signalsState.selectedType = next.type;
       signalsState.selectedStockKey = next.stockKey;
       signalsState.selectedClusterId = next.clusterId;
+      syncUrlState();
       refreshSignalsData({ forceSummary: true }).catch((error) => {
         console.error("Signals selection refresh failed", error);
       });
@@ -6180,7 +6689,7 @@ function attachHandlers() {
   });
 
   window.addEventListener("resize", () => {
-    if (state.activeView === "comparison") {
+    if (state.activeView === "compare") {
       renderCompareSeriesToChart();
       renderPeerChart();
     }
@@ -6296,10 +6805,14 @@ async function pollAndApplyUpdates() {
     });
     state.liveTick += 1;
 
-    if (state.activeView === "themes") {
+    if (state.activeView === "tracker") {
+      renderTrackerWorkspace();
       renderMatrix();
-    } else if (state.activeView === "growth") {
+    } else if (isExplorerView(state.activeView)) {
+      renderExplorerPrimary();
       renderGrowthTriggers();
+    } else if (state.activeView === "mapper") {
+      renderMapperView();
     }
 
     if (state.activeClusterId && modal.open) {
@@ -6326,6 +6839,7 @@ async function pollAndApplyUpdates() {
 }
 
 async function init() {
+  hydrateViewStateFromUrl();
   const resolved = resolveAdapter();
   applyUiVariantConfig(resolved.config || {});
   runtimeState.adapter = resolved.adapter;
@@ -6336,7 +6850,7 @@ async function init() {
   if (!runtimeState.enablePortfolioView) {
     portfolioViewEl.classList.remove("active-view");
     portfolioViewEl.classList.add("hidden");
-    const portfolioNav = viewLinks.find((link) => link.dataset.appViewTarget === "portfolio");
+    const portfolioNav = viewLinks.find((link) => normalizeViewTarget(link.dataset.appViewTarget) === "marketmap");
     if (portfolioNav) portfolioNav.classList.add("hidden");
   }
 
@@ -6385,16 +6899,19 @@ async function init() {
   attachHandlers();
   renderPlanTraceGrid();
   renderWhatsNewLog();
+  renderTrackerWorkspace();
   renderMatrix();
+  renderExplorerPrimary();
   renderGrowthTriggers();
   if (runtimeState.enablePortfolioView) {
     renderPortfolio();
   }
   renderSignalsView();
+  renderMapperView();
   renderNetworkDashboard();
   renderAlertsView();
   await initializeComparisonState();
-  setActiveView("themes");
+  setActiveView(state.activeView);
   renderDataStatus();
   scheduleNextPoll(baseIntervalMs());
   window.setInterval(renderDataStatus, 1000);

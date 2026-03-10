@@ -12,21 +12,29 @@
   <body data-ui-variant="data-command" data-comparison-style="classic">
     <div class="bg-noise" aria-hidden="true"></div>
     <header class="topbar">
-      <div class="brand">INDIA MARKET COMMAND</div>
-      <nav class="nav-links">
-        <a href="#" class="active" data-app-view-target="themes">Themes</a>
-        <a href="#" class="muted" data-app-view-target="whatsnew">What's New</a>
-        <a href="#" class="muted" data-app-view-target="growth">Growth Triggers</a>
-        <a href="#" class="muted" data-app-view-target="portfolio">Portfolio</a>
-        <a href="#" class="muted" data-app-view-target="signals">Signals &amp; Analysis</a>
-        <a href="#" class="muted" data-app-view-target="comparison">Comparison</a>
-        <a href="#" class="muted" data-app-view-target="network">Network</a>
-        <a href="#" class="muted" data-app-view-target="alerts">Alerts</a>
+      <div class="brand-block">
+        <div class="brand">INDIA MARKET NEXUS</div>
+        <p class="brand-subline">Reference-driven thematic operating system for live Indian market research.</p>
+      </div>
+      <nav class="nav-links nav-primary">
+        <a href="#" class="active" data-app-view-target="tracker">Tracker</a>
+        <a href="#" class="muted" data-app-view-target="universe">Universe</a>
+        <a href="#" class="muted" data-app-view-target="domain">Domain</a>
+        <a href="#" class="muted" data-app-view-target="compare">Compare</a>
+        <a href="#" class="muted" data-app-view-target="mapper">Mapper</a>
+        <a href="#" class="muted" data-app-view-target="marketmap">Market Map</a>
+        <a href="#" class="muted" data-app-view-target="fundamentals">Fundamentals</a>
       </nav>
-      <div class="topbar-status">
-        <div id="liveSourcePill" class="live-pill"><span class="dot"></span><span id="liveSourceText">LIVE DATA</span></div>
-        <div id="freshnessStatus" class="status-pill status-pill-muted">Initializing data…</div>
-        <div id="healthStatus" class="status-pill status-pill-alert hidden"></div>
+      <div class="topbar-utility">
+        <div class="topbar-status">
+          <div id="liveSourcePill" class="live-pill"><span class="dot"></span><span id="liveSourceText">LIVE DATA</span></div>
+          <div id="freshnessStatus" class="status-pill status-pill-muted">Initializing data…</div>
+          <div id="healthStatus" class="status-pill status-pill-alert hidden"></div>
+        </div>
+        <nav class="nav-links nav-utility">
+          <a href="#" class="muted" data-app-view-target="network">Network</a>
+          <a href="#" class="muted" data-app-view-target="alerts">Alerts</a>
+        </nav>
       </div>
     </header>
 
@@ -34,10 +42,10 @@
       <section id="themesView" class="app-view active-view">
         <section class="themes-header">
           <div>
-            <p class="kicker">India Market Intelligence Layer</p>
-            <h1>Theme <span>Command Grid</span></h1>
+            <p class="kicker">Integrated Research Workflow</p>
+            <h1>Tracker <span>Workspace</span></h1>
             <p class="subhead">
-              Fast scanning across 2,486 stocks, 26 core heads, and 175 micro-clusters.
+              Start with the market map, move into industries, validate with fundamentals, and convert conviction into portfolio action.
             </p>
           </div>
 
@@ -63,6 +71,44 @@
           </div>
         </section>
 
+        <section class="tracker-intro-grid">
+          <article class="chart-card tracker-guide-card">
+            <header class="compare-card-head">
+              <h3>How To Use This</h3>
+              <p>The product now follows one analysis journey instead of disconnected tabs.</p>
+            </header>
+            <ol class="tracker-guide-steps">
+              <li>Start in Tracker to scan market breadth, trigger leadership, and portfolio overlap.</li>
+              <li>Open Universe or Domain to move from sector to industry and identify the right company.</li>
+              <li>Open Fundamentals to validate macro, transcript, and AI decision context before acting.</li>
+            </ol>
+            <div class="tracker-guide-actions">
+              <button class="portfolio-inline-btn" data-quick-view-target="universe" type="button">Open Universe</button>
+              <button class="portfolio-inline-btn" data-quick-view-target="fundamentals" type="button">Open Fundamentals</button>
+            </div>
+          </article>
+
+          <article class="chart-card tracker-spotlight-card">
+            <header class="compare-card-head">
+              <h3>Tracker Spotlight</h3>
+              <p id="trackerSpotlightMeta">Building live workspace context…</p>
+            </header>
+            <div id="trackerSpotlightBody" class="tracker-spotlight-body">
+              <div class="scan-empty">Waiting for market and portfolio data.</div>
+            </div>
+          </article>
+
+          <aside class="scan-card tracker-action-card">
+            <header class="compare-card-head">
+              <h3>Execution Rail</h3>
+              <p>Contextual access to portfolio, alerts, and diagnostics.</p>
+            </header>
+            <div id="trackerPortfolioRail" class="tracker-portfolio-rail">
+              <div class="scan-empty">Portfolio exposure appears once the broker snapshot loads.</div>
+            </div>
+          </aside>
+        </section>
+
         <section class="stats snapshot-strip" id="statsRow"></section>
 
         <section id="matrix" class="matrix"></section>
@@ -71,22 +117,39 @@
       <section id="whatsNewView" class="app-view">
         <section class="hero whats-new-hero">
           <div>
-            <p class="kicker">Release Intelligence</p>
-            <h1>What's <span>New</span></h1>
+            <p class="kicker">Symbol To Theme Discovery</p>
+            <h1>Market <span>Mapper</span></h1>
             <p class="subhead">
-              Track every shipped improvement and jump directly into each upgraded workflow.
+              Translate any symbol into sector, micro-cluster, exchange context, and the next best workspace to inspect it.
             </p>
           </div>
-          <span class="status-pill status-pill-ok">Waves 1-4 Complete</span>
+          <span class="status-pill status-pill-ok">Live symbol mapper</span>
         </section>
 
         <section class="whats-new-panel" aria-label="What's new in this release">
+          <section class="mapper-shell">
+            <header class="whats-new-head">
+              <div>
+                <p class="kicker">Discovery Entry Point</p>
+                <h2>Symbol Mapper</h2>
+                <p class="subhead">Search NSE/BSE names, then jump directly into company insights or compare context.</p>
+              </div>
+            </header>
+            <div class="mapper-toolbar">
+              <input id="mapperSearchInput" type="text" placeholder="Search stock, exchange, cluster, or head..." autocomplete="off" />
+              <span id="mapperMeta" class="status-pill status-pill-muted">Waiting for search input…</span>
+            </div>
+            <div id="mapperResults" class="mapper-results">
+              <div class="scan-empty">Start typing to map a symbol into its market context.</div>
+            </div>
+          </section>
+
           <header class="whats-new-head">
             <div>
-              <p class="kicker">Release Highlights</p>
-              <h2>What Changed In This Revamp</h2>
+              <p class="kicker">Guide &amp; Traceability</p>
+              <h2>Platform Memory</h2>
               <p class="subhead">
-                This release adds major backend intelligence plus new UI workflows. Use these cards to jump to each area.
+                Reference the shipped upgrades and source-to-feature traceability while navigating the new shell.
               </p>
             </div>
           </header>
@@ -98,7 +161,7 @@
                 <li>Live holdings + P&amp;L pipeline from Zerodha session.</li>
                 <li>Thematic mapping for holdings using BharatFinTrack index categories.</li>
               </ul>
-              <button class="whats-new-action" data-quick-view-target="portfolio">Open Portfolio Signals</button>
+              <button class="whats-new-action" data-quick-view-target="marketmap">Open Market Map</button>
             </article>
             <article class="whats-new-card">
               <p class="whats-new-tag">Wave 2</p>
@@ -107,7 +170,7 @@
                 <li>Breakout/consolidation/momentum scan flags through PKScreener adapter.</li>
                 <li>Ranked hotspot themes with breadth and strength scoring.</li>
               </ul>
-              <button class="whats-new-action" data-quick-view-target="comparison">Open Comparison Radar</button>
+              <button class="whats-new-action" data-quick-view-target="compare">Open Compare</button>
             </article>
             <article class="whats-new-card">
               <p class="whats-new-tag">Waves 3-4</p>
@@ -116,7 +179,7 @@
                 <li>Portfolio/market/news/recommendation multi-agent workflow with risk guardrails.</li>
                 <li>Separate Streamlit dashboard for portfolio + hotspots + recommendations.</li>
               </ul>
-              <button class="whats-new-action" data-quick-view-target="themes">Back To Theme Grid</button>
+              <button class="whats-new-action" data-quick-view-target="tracker">Open Tracker</button>
             </article>
           </div>
           <section class="plan-trace" aria-label="Roadmap source traceability">
@@ -138,28 +201,54 @@
       <section id="growthTriggersView" class="app-view">
         <section class="hero growth-hero">
           <div>
-            <p class="kicker">Catalyst Discovery Workspace</p>
-            <h1>Growth <span>Triggers</span></h1>
+            <p id="explorerModeBadge" class="kicker">Market Explorer</p>
+            <h1 id="explorerTitle">Universe <span>Explorer</span></h1>
             <p class="subhead">
-              Track the industry and company signals most likely to drive the next leg of earnings, re-rating, or capital rotation across the India universe.
+              Move from sector to industry to company, then hand off directly into company insights without losing context.
             </p>
           </div>
           <div class="growth-hero-controls">
-            <span class="status-pill status-pill-ok">Live trigger board</span>
+            <span class="status-pill status-pill-ok">Hierarchical drill-down</span>
             <span id="growthTriggersMeta" class="status-pill status-pill-muted">Scanning market breadth…</span>
           </div>
+        </section>
+
+        <section class="explorer-grid">
+          <article class="chart-card explorer-primary-card">
+            <header class="compare-card-head">
+              <div>
+                <h3 id="explorerHeading">Universe View</h3>
+                <p id="explorerBreadcrumb">All sectors</p>
+              </div>
+              <button id="explorerBackBtn" class="portfolio-inline-btn hidden" type="button">Back</button>
+            </header>
+            <div id="explorerSummary" class="growth-summary-grid"></div>
+            <div id="explorerPrimary" class="explorer-primary">
+              <div class="scan-empty">Loading sector map…</div>
+            </div>
+          </article>
+
+          <aside class="scan-card explorer-secondary-card">
+            <header class="compare-card-head">
+              <h3>Context Rail</h3>
+              <p>Active catalysts and portfolio overlap for the selected path.</p>
+            </header>
+            <div id="explorerSecondary" class="explorer-secondary">
+              <div class="scan-empty">Select a sector or industry to load context.</div>
+            </div>
+          </aside>
         </section>
 
         <section class="growth-how-grid">
           <article class="chart-card growth-how-card">
             <header class="compare-card-head">
               <h3>How To Use This</h3>
-              <p>Designed for fast scanning, not guesswork.</p>
+              <p>Designed for directional scanning, then drill-down.</p>
             </header>
             <ol class="growth-steps">
-              <li>Start with the featured trigger to see where breadth, momentum, and leadership are aligning now.</li>
-              <li>Use the focus and catalyst filters to isolate industries, portfolio-linked names, or breakout setups.</li>
-              <li>Jump into Comparison or Theme Grid once a trigger looks actionable, then validate before trading.</li>
+              <li>Use Universe to inspect the broad market, or Domain to follow an alternate sector taxonomy route.</li>
+              <li>Open a sector to view active industries, then open an industry to inspect the leading companies.</li>
+              <li>Use Company Insights to jump into Fundamentals for macro, transcript, and decision validation.</li>
             </ol>
           </article>
 
@@ -231,10 +320,10 @@
       <section id="comparisonView" class="app-view">
         <section class="hero comparison-hero">
           <div>
-            <p class="kicker">Cross-Cluster Performance Analysis</p>
-            <h1>Cluster <span>Comparison</span></h1>
+            <p class="kicker">Cross-Section Relative Performance</p>
+            <h1>Compare <span>Workspace</span></h1>
             <p class="subhead">
-              Real-time comparison across all 175 Indian micro-clusters in any combination.
+              Compare sectors, industries, and peer stocks without leaving the core research workflow.
             </p>
           </div>
 
@@ -322,10 +411,10 @@
       <section id="portfolioView" class="app-view">
         <section class="portfolio-header">
           <div>
-            <p class="kicker">Connected Broker Portfolio (India)</p>
-            <h1>Portfolio <span>Signals</span></h1>
+            <p class="kicker">Portfolio-Aware Market Surface</p>
+            <h1>Market <span>Map</span></h1>
             <p class="subhead">
-              Zerodha holdings/positions heatmap with explainable Buy/Sell/Accumulate/Hold/Reduce decisions.
+              Use your live holdings as an exposure lens inside the broader market map, then move into action with explainable decisions.
             </p>
           </div>
           <div class="portfolio-status-chips">
@@ -393,10 +482,10 @@
       <section id="signalsView" class="app-view">
         <section class="hero signals-hero">
           <div>
-            <p class="kicker">AI Decision Intelligence Workspace</p>
-            <h1>Signals <span>&amp; Analysis</span></h1>
+            <p class="kicker">Company Research &amp; Validation</p>
+            <h1>Company <span>Fundamentals</span></h1>
             <p class="subhead">
-              Unified technical, macro, research, and execution workflows for the selected stock or cluster.
+              Macro, technical, transcript, and AI execution context for the currently selected company or cluster.
             </p>
           </div>
           <div class="signals-hero-controls">
