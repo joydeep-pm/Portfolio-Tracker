@@ -30,6 +30,15 @@ This handoff is for a developer-grade review mindset, not a generic summary.
 2. Fonts are too small in multiple places (readability/accessibility gap).
 3. It is hard to understand how to use features (discoverability gap).
 
+## Deferred Strategic Item (Context Only, Not Current Scope)
+- There is interest in a future **India AI Investment Committee** modeled on the architecture style of multi-agent investing repos such as `virattt/ai-hedge-fund`.
+- For this audit, treat that as a roadmap item only.
+- Do not recommend pulling it forward ahead of current correctness/readability/usability fixes unless you find a strong architectural reason.
+- If you mention it, keep the recommendation narrow:
+  - India-native research copilot
+  - explainable ranking and paper-trading only
+  - no autonomous live trading recommendation
+
 ## What Was Recently Stabilized
 - Strict live ingest mode is available:
   - `node scripts/ingest-bharatfintrack.js --target-stocks 2486 --target-clusters 175 --require-live --output ./data/thematic_index_catalog.json`
@@ -107,6 +116,7 @@ Return a prioritized review with:
    - typography/readability
    - discoverability/onboarding
 4. Minimal-risk implementation order (what to fix first for max user impact).
+5. A short note on whether the repo is ready for the deferred India AI Investment Committee phase, and if not, what blockers must be cleared first.
 
 ## Non-Negotiable Review Rules
 - Do not claim a flow is healthy without reproducing it.

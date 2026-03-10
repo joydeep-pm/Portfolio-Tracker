@@ -247,6 +247,152 @@
 - 2026-03-04: Production deployment refreshed and smoke-validated; `G5` marked complete.
 - 2026-03-04: Approved to move into Macro/Regulatory Agent Phase 2 (LLM sentiment/context node) after Phase 1 harvester foundation.
 - 2026-03-04: Macro/Regulatory Phase 2 delivered with backend node, API/CLI surfaces, and Portfolio Signal Rationale UI tab integration.
+- **2026-03-10: COMPREHENSIVE AUDIT COMPLETED**
+  - **16 features tested end-to-end**
+  - **FINDINGS**: 4 fully working (25%), 4 partially working (25%), 8 broken/blocked (50%)
+  - **ROOT CAUSE**: Quant engine deployment stale (still in alerts-only mode despite fix pushed)
+  - **CRITICAL BLOCKER**: 5 features blocked by single Render deployment issue
+  - **USER USE CASES**: 1/4 fully working (sector rotation), 2/4 partial (portfolio, alerts), 1/4 broken (backtesting)
+  - **ACTION REQUIRED**: Manual Render redeploy to unblock Phase 5-6 features
+  - **DETAILED REPORT**: See `/COMPREHENSIVE_AUDIT.md` for full findings
+
+## Future Phase — India AI Investment Committee (Deferred)
+- [ ] F1 Define India-native multi-agent architecture for research and paper trading only
+  - [ ] F1.a Keep scope to research copilot, ranking, explanation, and paper allocation
+  - [ ] F1.b Explicitly exclude autonomous live trading and "hedge fund" positioning
+  - Evidence target: architecture note and system boundary document
+- [ ] F2 Finalize prerequisite quality gates before starting
+  - [ ] F2.a Existing feature flows are stable under manual and automated validation
+  - [ ] F2.b Typography/readability issues are remediated across dense UI surfaces
+  - [ ] F2.c Feature discoverability/onboarding gaps are reduced with in-product guidance
+  - [ ] F2.d Live data, broker sessions, and error messaging are reliable enough for decision workflows
+  - [ ] F2.e Growth trigger/event model is backed by real data, not just heuristics
+  - Evidence target: review sign-off in `docs/runbooks/claude-handoff.md` follow-up pass
+- [ ] F3 Build India-specific data and cost model layer
+  - [ ] F3.a Normalize NSE/BSE ticker identity and corporate-action handling
+  - [ ] F3.b Model India transaction costs and slippage assumptions
+  - [ ] F3.c Define liquidity/risk constraints for equities and, later, derivatives
+  - Evidence target: reproducible paper-trade cost model with tests
+- [ ] F4 Implement agent stack incrementally
+  - [ ] F4.a Theme agent
+  - [ ] F4.b Fundamentals agent
+  - [ ] F4.c Technicals agent
+  - [ ] F4.d Earnings/news agent
+  - [ ] F4.e Macro/policy agent
+  - [ ] F4.f Risk manager
+  - [ ] F4.g Portfolio allocator
+  - [ ] F4.h Paper execution simulator
+  - Evidence target: deterministic test harness and decision-trace output
+- [ ] F5 Add backtest and paper-trading evaluation harness
+  - [ ] F5.a Measure signal quality net of India costs/slippage
+  - [ ] F5.b Compare agent recommendations against simpler baselines
+  - [ ] F5.c Require paper-performance persistence before any execution discussion
+  - Evidence target: evaluation artifacts and replayable benchmark runs
+
+### Future Phase Dependencies
+- Current product correctness and UX gaps must be materially reduced first.
+- Trigger/event ingestion must become a real backend data source.
+- Paper-trading evaluation must exist before any execution adapter is considered.
+
+### Future Phase Acceptance Criteria
+- The system produces explainable ranked ideas and portfolio actions for the Indian market.
+- Output quality is measurable through backtests and paper runs, not only LLM narrative quality.
+- No live broker execution is enabled by default or implied by marketing/copy.
+
+---
+
+## Critical Remediation Items (Post-Audit 2026-03-10)
+
+### R1: Quant Engine Deployment Sync (CRITICAL - Blocks 5 Features)
+- [!] Quant engine on Render still running "alerts-only" mode
+- [!] Fix committed to GitHub (24273b9) but Render auto-deploy failed/disabled
+- [!] Blocking: backtesting, allocation, technical scanner, research chat, NLP commands
+- **Action**: Manual Render deployment trigger required
+- **Priority**: P0 - Critical blocker
+- **Owner**: Deployment admin
+- **Time**: 5 minutes + 2-3 minute deploy wait
+- **Acceptance**: `curl https://portfolio-tracker-if7l.onrender.com/health` returns `"mode": "full-engine"`
+
+### R2: Portfolio Authentication Flow (Blocks Portfolio Use Case)
+- [ ] Zerodha connection required for live portfolio data
+- [ ] Current state: connected=false, rows=[], decisions=[]
+- [ ] Decision engine functional but no input data
+- **Action**: User must connect Zerodha in Portfolio view
+- **Priority**: P1 - High (user-required action, not code fix)
+- **Owner**: End user
+- **Time**: 2 minutes
+- **Acceptance**: Portfolio view shows holdings with AI decisions
+
+### R3: Hotspot Data Population (Sector Rotation Enhancement)
+- [ ] Hotspots API working but returns empty array
+- [ ] PKScreener adapter needs scan trigger
+- **Action**: Manual trigger via UI or CLI
+- **Priority**: P1 - High (enhances working sector rotation feature)
+- **Owner**: User or scheduled job
+- **Time**: 30-60 seconds
+- **Acceptance**: `GET /api/v1/hotspots/snapshot` returns hotspots.length > 0
+
+### R4: Comparison Chart Route Investigation
+- [ ] Comparison series endpoint returns 405 Method Not Allowed
+- [ ] Peer RS endpoint returns 404 Not Found
+- **Action**: Debug route handlers and HTTP method expectations
+- **Priority**: P2 - Medium (affects chart features)
+- **Owner**: Backend developer
+- **Time**: 30 minutes
+- **Acceptance**: Comparison charts render normalized returns
+
+### R5: Alert Generation Rules Implementation
+- [ ] Alert infrastructure 100% working (delivery, dispatch, cron)
+- [ ] BUT: No automatic alert creation logic exists
+- [ ] Missing: macro monitor, breakout detector, portfolio decision tracker
+- **Action**: Implement monitoring logic (see ALERTS_STATUS.md)
+- **Priority**: P2 - Medium (infrastructure ready, needs business logic)
+- **Owner**: Backend developer
+- **Time**: 2-4 hours (30 min per rule × 3 rules)
+- **Acceptance**: Alerts auto-generate based on market conditions
+
+### R6: Agent API Payload Validation
+- [ ] Agent analyze endpoint works but returns 400 on test payloads
+- [ ] Likely missing required fields in contract
+- **Action**: Document API contract and add validation examples
+- **Priority**: P3 - Low (API works, just needs proper payload)
+- **Owner**: Documentation
+- **Time**: 15 minutes
+- **Acceptance**: API docs show required/optional fields
+
+---
+
+## Post-Audit Feature Status Summary
+
+**Tested**: 16 core features
+**Results**: 4 fully working | 4 partially working | 8 broken/blocked
+
+**Use Case Health**:
+- (a) Sector Rotation: 🟢 100% functional (USE NOW)
+- (b) Backtesting: 🔴 0% functional (blocked by R1)
+- (c) Portfolio Decisions: 🟡 60% functional (needs R1 + R2)
+- (d) Telegram Alerts: 🟡 50% functional (infrastructure ready, needs R5)
+
+**Critical Path to 100%**:
+1. R1 (quant redeploy) → unblocks 5 features
+2. R2 (Zerodha auth) → unlocks portfolio use case
+3. R3 (hotspots trigger) → enhances sector rotation
+4. R4 (route fixes) → enables chart features
+5. R5 (alert rules) → completes automation
+
+**Estimated Time to Full Functionality**: 3-5 hours (mostly R1 + R5)
+
+---
+
+## Audit Traceability
+
+**Audit Date**: 2026-03-10 01:15 IST
+**Audit Scope**: End-to-end feature testing (infrastructure + API + data + UI)
+**Audit Method**: Systematic endpoint testing + manual workflow validation
+**Audit Report**: `/COMPREHENSIVE_AUDIT.md`
+**Alert Analysis**: `/ALERTS_STATUS.md`
+**Feature Status**: `/FEATURE_STATUS.md`
+**User Guide**: `/USER_GUIDE.md`
 
 ## Phase 4 — Advanced UI & Charting Expansion (Post-Wave Extension)
 - [x] P4.1 Replace custom comparison canvas with TradingView Lightweight Charts.

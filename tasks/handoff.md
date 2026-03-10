@@ -81,12 +81,45 @@ Then in UI:
 - Live market data requires valid runtime session cookies (`pt_angel_*`).
 - App now auto-attempts session bootstrap on init, but if broker/session fails, data can still fallback.
 
+## Deferred Roadmap Item (Do Not Pull Forward Yet)
+- Future concept: **India AI Investment Committee** inspired by multi-agent research systems such as `virattt/ai-hedge-fund`, but adapted for NSE/BSE realities.
+- Positioning:
+  - research copilot and paper-trading decision layer
+  - not autonomous live trading
+  - not "hedge fund" branding
+- Intended scope when the product is ready:
+  1. theme agent
+  2. fundamentals agent
+  3. technicals agent
+  4. earnings/news agent
+  5. macro/policy agent
+  6. risk manager
+  7. portfolio allocator
+  8. paper execution simulator
+- India-specific constraints that must be respected:
+  - NSE/BSE symbol mapping and corporate-action hygiene
+  - brokerage/session reliability across Zerodha/Angel
+  - India transaction cost modeling (STT, stamp duty, exchange charges, GST, brokerage, SEBI charges)
+  - liquidity/slippage and lot-size constraints for Indian instruments
+- Explicit prerequisites before starting:
+  1. stabilize existing feature flows
+  2. fix typography/readability issues
+  3. improve feature discoverability and onboarding
+  4. harden live data and broker session reliability
+  5. replace heuristic trigger UX with a real trigger/event data model
+  6. build repeatable backtest + paper-trade evaluation
+- Build-order guidance:
+  - start with ranking, explanation, and paper allocation
+  - defer any real broker execution until paper results survive cost/slippage modeling
+
 ## Most Relevant Files for Next Thread
 - `/Users/joy/Portfolio Tracker/app.js`
 - `/Users/joy/Portfolio Tracker/index.html`
 - `/Users/joy/Portfolio Tracker/api/alerts.js`
 - `/Users/joy/Portfolio Tracker/vercel.json`
 - `/Users/joy/Portfolio Tracker/quant-engine/routers/alerts.py`
+- `/Users/joy/Portfolio Tracker/tasks/roadmap.md`
+- `/Users/joy/Portfolio Tracker/docs/runbooks/claude-handoff.md`
 - `/Users/joy/Portfolio Tracker/tasks/todo.md`
 - `/Users/joy/Portfolio Tracker/tasks/lessons.md`
 

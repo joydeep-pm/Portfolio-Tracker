@@ -35,3 +35,31 @@ Primary business requirement: when requested, enforce **live non-synthetic** mar
   - `tasks/lessons.md` (prevent repeated mistakes)
 - For full critical-audit context and execution checklist, start at:
   - `docs/runbooks/claude-handoff.md`
+
+## Approach
+- When given a task, implement the ACTUAL CODE — do not produce planning documents or implementation plans unless explicitly asked to plan.
+- Start with the user's specific scope. Do not expand to enterprise-grade solutions (Prisma DB, multi-sprint plans) when the user wants focused utility fixes.
+- If you're unsure about scope, ask — don't spend context exploring broadly.
+
+## TypeScript
+- This is a TypeScript-first codebase. Always run `tsc --noEmit` after edits to catch type errors before committing.
+- When adding analytics events, enum values, or union types, check the valid type definitions first — don't assume string literals are valid.
+- Watch for useEffect dependency ordering and variable-before-declaration issues.
+
+## UI/Design Implementation
+- When user provides visual references or screenshots, implement BOLD changes — not incremental/subtle tweaks. Match the reference's overall aesthetic, not just individual tokens.
+- Never declare a UI revamp complete without the user seeing it on-device. Subtle changes will be rejected.
+- When redesigning, change ALL affected screens for consistency — partial screen updates create worse UX than the original.
+
+## Task Completion
+- Never declare a phase, milestone, or checklist complete unless every checkbox/item has been verified. If the user provides a checklist, check off items one by one.
+- Before saying 'done', re-read the original request and verify each requirement was addressed.
+
+## React Native / Expo
+- After code changes, always verify the Metro bundler can serve the bundle. For physical Android devices, run `adb reverse tcp:8081 tcp:8081` before testing.
+- Google OAuth on Expo Android: use the **web** client ID approach, not native Android client ID, unless explicitly using bare workflow with native modules.
+- If the app shows a blank/white screen, check: (1) Metro connectivity, (2) import errors, (3) navigation container mounting.
+
+## Deployment
+- Vercel deployments often require manual dashboard configuration (root directory, repo visibility). Do NOT promise autonomous Vercel deployment. Instead, provide the user with exact steps to configure in the Vercel dashboard after pushing code.
+- Always verify the deployment target and auth requirements before attempting deploy commands.

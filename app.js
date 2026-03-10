@@ -427,6 +427,12 @@ let themesState = {
   compactDensity: true,
 };
 
+let growthTriggersState = {
+  search: "",
+  focus: "all",
+  catalyst: "all",
+};
+
 let portfolioState = {
   rows: [],
   summary: null,
@@ -550,6 +556,7 @@ let runtimeState = {
 
 const themesViewEl = document.getElementById("themesView");
 const whatsNewViewEl = document.getElementById("whatsNewView");
+const growthTriggersViewEl = document.getElementById("growthTriggersView");
 const comparisonViewEl = document.getElementById("comparisonView");
 const portfolioViewEl = document.getElementById("portfolioView");
 const signalsViewEl = document.getElementById("signalsView");
@@ -558,6 +565,14 @@ const alertsViewEl = document.getElementById("alertsView");
 const viewLinks = [...document.querySelectorAll("[data-app-view-target]")];
 const whatsNewLogEl = document.getElementById("whatsNewLog");
 const planTraceGridEl = document.getElementById("planTraceGrid");
+const growthTriggersMeta = document.getElementById("growthTriggersMeta");
+const growthTriggerSummary = document.getElementById("growthTriggerSummary");
+const growthTriggerSearchInput = document.getElementById("growthTriggerSearchInput");
+const growthFeaturedTrigger = document.getElementById("growthFeaturedTrigger");
+const growthTriggerFeed = document.getElementById("growthTriggerFeed");
+const growthCoverageCloud = document.getElementById("growthCoverageCloud");
+const growthFocusButtons = [...document.querySelectorAll("[data-growth-focus]")];
+const growthCatalystButtons = [...document.querySelectorAll("[data-growth-catalyst]")];
 
 const matrixEl = document.getElementById("matrix");
 const statsEl = document.getElementById("statsRow");
@@ -2334,6 +2349,252 @@ function markerHash(markers = []) {
   return markers
     .map((item) => `${item.time}:${item.action}:${item.confidence}:${item.text}`)
     .join("|");
+}
+
+const GROWTH_CATALYST_LABELS = {
+  breakout: "Breakout",
+  earnings: "Earnings Revision",
+  policy: "Policy Tailwind",
+  demand: "Demand Breadth",
+  capex: "Capex Cycle",
+  rotation: "Capital Rotation",
+};
+
+function classifyGrowthCatalyst(cluster, breadth) {
+  const combined = `${cluster.headName} ${cluster.name}`.toLowerCase();
+  if (cluster.momentum["1D"] >= 2.2 && cluster.momentum["5D"] >= 4) return "breakout";
+  if (/bank|finance|insurance|power|rail|defence|capital|infra|renewable|psu/.test(combined)) return "policy";
+  if (cluster.momentum["6M"] >= 16) return "capex";
+  if (breadth >= 0.68 && cluster.momentum["1M"] >= 4) return "demand";
+  if (cluster.momentum["1M"] >= 5) return "earnings";
+  return "rotation";
+}
+
+function growthHeadlineForCluster(cluster, catalyst) {
+  const label = displayClusterLabel(cluster) || cluster.name;
+  if (catalyst === "breakout") return `${label} is breaking out with broad participation`;
+  if (catalyst === "earnings") return `${label} is holding a strong earnings-revision profile`;
+  if (catalyst === "policy") return `${label} is reacting to policy and funding tailwinds`;
+  if (catalyst === "demand") return `${label} is showing expanding demand confirmation`;
+  if (catalyst === "capex") return `${label} is in a capex-backed upcycle`;
+  return `Capital is rotating into ${label}`;
+}
+
+function growthDetailForCluster(cluster, leader, breadth, portfolioMatches) {
+  const breadthPct = Math.round(breadth * 100);
+  const leaderLabel = leader ? `${leader.exchange}:${leader.symbol}` : "leader unavailable";
+  const portfolioLabel = portfolioMatches.length
+    ? `${portfolioMatches.length} portfolio holding${portfolioMatches.length > 1 ? "s" : ""} exposed`
+    : "no current portfolio overlap";
+  return `${cluster.headName} • 1D ${percent(cluster.momentum["1D"])} • 1M ${percent(cluster.momentum["1M"])} • 6M ${percent(cluster.momentum["6M"])} • breadth ${breadthPct}% • leader ${leaderLabel} • ${portfolioLabel}.`;
+}
+
+function buildGrowthTriggerModels() {
+  const stockByKey = new Map(state.stocks.map((stock) => [stockKey(stock.symbol, stock.exchange), stock]));
+  const portfolioByCluster = new Map();
+
+  portfolioState.rows.forEach((row) => {
+    const stock = stockByKey.get(stockKey(row.symbol, row.exchange));
+    if (!stock?.clusterId) return;
+    if (!portfolioByCluster.has(stock.clusterId)) portfolioByCluster.set(stock.clusterId, []);
+    portfolioByCluster.get(stock.clusterId).push(row);
+  });
+
+  return state.clusters
+    .map((cluster) => {
+      const stocks = [...cluster.stocks];
+      if (!stocks.length) return null;
+      const sortedBy1M = [...stocks].sort((a, b) => b.returns["1M"] - a.returns["1M"]);
+      const leader = sortedBy1M[0] || null;
+      const positiveCount = stocks.filter((stock) => stock.returns["1M"] > 0).length;
+      const breadth = stocks.length ? positiveCount / stocks.length : 0;
+      const portfolioMatches = portfolioByCluster.get(cluster.id) || [];
+      const catalyst = classifyGrowthCatalyst(cluster, breadth);
+      const score = Number.parseFloat(
+        clamp(cluster.momentum["6M"] * 1.2 + cluster.momentum["1M"] * 2.6 + cluster.momentum["1D"] * 4.4 + breadth * 28, 5, 99).toFixed(1),
+      );
+      const confidence = Number.parseFloat(clamp(46 + Math.abs(cluster.momentum["1M"]) * 3 + breadth * 34, 42, 97).toFixed(1));
+      return {
+        cluster,
+        catalyst,
+        catalystLabel: GROWTH_CATALYST_LABELS[catalyst] || "Rotation",
+        headline: growthHeadlineForCluster(cluster, catalyst),
+        detail: growthDetailForCluster(cluster, leader, breadth, portfolioMatches),
+        leader,
+        breadth,
+        score,
+        confidence,
+        portfolioMatches,
+        tags: [
+          `${cluster.stocks.length} stocks`,
+          `breadth ${Math.round(breadth * 100)}%`,
+          leader ? `leader ${leader.symbol}` : "leader pending",
+        ],
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return b.cluster.momentum["1M"] - a.cluster.momentum["1M"];
+    });
+}
+
+function growthTriggerMatches(model) {
+  if (growthTriggersState.focus === "portfolio" && !model.portfolioMatches.length) return false;
+  if (growthTriggersState.focus === "breakouts" && model.catalyst !== "breakout") return false;
+  if (growthTriggersState.focus === "industries" && model.cluster.stocks.length < 8) return false;
+  if (growthTriggersState.catalyst !== "all" && model.catalyst !== growthTriggersState.catalyst) return false;
+
+  const query = growthTriggersState.search.trim().toLowerCase();
+  if (!query) return true;
+
+  const haystack = [
+    model.cluster.name,
+    model.cluster.headName,
+    model.headline,
+    model.leader?.symbol || "",
+    model.leader?.name || "",
+    ...model.portfolioMatches.map((row) => row.symbol),
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return haystack.includes(query);
+}
+
+function growthSummaryCards(models, filtered) {
+  const portfolioLinked = filtered.filter((model) => model.portfolioMatches.length > 0);
+  const breakouts = filtered.filter((model) => model.catalyst === "breakout");
+  const strongest = filtered[0];
+  return [
+    {
+      label: "Active Triggers",
+      value: `${filtered.length}`,
+      detail: `${breakouts.length} breakout setups are active right now.`,
+    },
+    {
+      label: "Portfolio Exposure",
+      value: `${portfolioLinked.length}`,
+      detail: portfolioLinked.length
+        ? `${portfolioLinked.reduce((sum, item) => sum + item.portfolioMatches.length, 0)} holdings map into current triggers.`
+        : "Connect live holdings to light up portfolio-linked triggers.",
+    },
+    {
+      label: "Top Signal",
+      value: strongest?.catalystLabel || "--",
+      detail: strongest ? `${displayClusterLabel(strongest.cluster)} leads at score ${strongest.score}.` : "No triggers match the current filters.",
+    },
+  ];
+}
+
+function growthFeaturedHtml(model) {
+  return `
+    <div class="growth-trigger-shell">
+      <div class="growth-trigger-topline">
+        <span class="growth-trigger-catalyst ${model.catalyst}">${escapeHtml(model.catalystLabel)}</span>
+        <span class="growth-trigger-score">Score ${model.score} • Confidence ${model.confidence}%</span>
+      </div>
+      <h3>${escapeHtml(model.headline)}</h3>
+      <p>${escapeHtml(model.detail)}</p>
+      <div class="growth-trigger-metrics">
+        <article class="growth-trigger-metric">
+          <span>Industry</span>
+          <strong>${escapeHtml(model.cluster.headName)}</strong>
+        </article>
+        <article class="growth-trigger-metric">
+          <span>Cluster Momentum</span>
+          <strong>${percent(model.cluster.momentum["1M"])}</strong>
+        </article>
+        <article class="growth-trigger-metric">
+          <span>Leader</span>
+          <strong>${escapeHtml(model.leader ? `${model.leader.exchange}:${model.leader.symbol}` : "--")}</strong>
+        </article>
+        <article class="growth-trigger-metric">
+          <span>Portfolio Link</span>
+          <strong>${model.portfolioMatches.length ? `${model.portfolioMatches.length} holdings` : "None"}</strong>
+        </article>
+      </div>
+      <div class="growth-trigger-tags">
+        ${model.tags.map((tag) => `<span class="growth-trigger-tag">${escapeHtml(tag)}</span>`).join("")}
+      </div>
+      <div class="growth-trigger-actions">
+        <button class="portfolio-inline-btn" data-quick-view-target="comparison" type="button">Open Comparison</button>
+        <button class="portfolio-inline-btn" data-quick-view-target="themes" type="button">Back To Theme Grid</button>
+      </div>
+    </div>
+  `;
+}
+
+function growthFeedHtml(models) {
+  if (!models.length) {
+    return `<div class="scan-empty">No triggers match the current search and filter combination.</div>`;
+  }
+
+  return models
+    .slice(0, 10)
+    .map(
+      (model) => `
+      <article class="growth-feed-item">
+        <div class="growth-feed-item-head">
+          <span class="growth-trigger-catalyst ${model.catalyst}">${escapeHtml(model.catalystLabel)}</span>
+          <span class="growth-trigger-score">${percent(model.cluster.momentum["1M"])} 1M</span>
+        </div>
+        <h4>${escapeHtml(model.cluster.name)}</h4>
+        <p>${escapeHtml(model.detail)}</p>
+        <div class="growth-feed-meta">
+          <span>Leader ${escapeHtml(model.leader ? `${model.leader.exchange}:${model.leader.symbol}` : "--")}</span>
+          <span>Score ${model.score}</span>
+          <span>${model.portfolioMatches.length ? `${model.portfolioMatches.length} portfolio-linked` : "not in portfolio"}</span>
+        </div>
+      </article>
+    `,
+    )
+    .join("");
+}
+
+function growthCoverageHtml(models) {
+  if (!models.length) {
+    return `<div class="scan-empty">Coverage cloud is empty for the current filter set.</div>`;
+  }
+
+  return models
+    .slice(0, 24)
+    .map(
+      (model) => `
+      <div class="growth-coverage-chip">
+        <strong>${escapeHtml(displayClusterLabel(model.cluster) || model.cluster.name)}</strong>
+        <span>${escapeHtml(model.catalystLabel)} • ${percent(model.cluster.momentum["1D"])}</span>
+      </div>
+    `,
+    )
+    .join("");
+}
+
+function renderGrowthTriggers() {
+  if (!growthTriggersMeta || !growthTriggerSummary || !growthFeaturedTrigger || !growthTriggerFeed || !growthCoverageCloud) return;
+
+  const models = buildGrowthTriggerModels();
+  const filtered = models.filter((model) => growthTriggerMatches(model));
+  const featured = filtered[0] || null;
+
+  growthTriggersMeta.textContent = `${filtered.length}/${models.length} triggers • ${state.asOf ? asOfClockLabel(state.asOf) : "--"}`;
+  growthTriggerSummary.innerHTML = growthSummaryCards(models, filtered)
+    .map(
+      (card) => `
+      <article class="growth-summary-stat">
+        <p>${escapeHtml(card.label)}</p>
+        <h4>${escapeHtml(card.value)}</h4>
+        <span>${escapeHtml(card.detail)}</span>
+      </article>
+    `,
+    )
+    .join("");
+
+  growthFeaturedTrigger.innerHTML = featured
+    ? growthFeaturedHtml(featured)
+    : `<div class="scan-empty">No featured trigger found. Broaden the filters or clear the search.</div>`;
+  growthTriggerFeed.innerHTML = growthFeedHtml(filtered.slice(featured ? 1 : 0));
+  growthCoverageCloud.innerHTML = growthCoverageHtml(filtered.length ? filtered : models);
 }
 
 function markerClassForAction(action) {
@@ -4176,6 +4437,7 @@ function renderPortfolio() {
   renderPortfolioSummary();
   renderPortfolioRows();
   renderPortfolioDecisionPanel();
+  renderGrowthTriggers();
 }
 
 function buildSignalsSelectorOptions() {
@@ -5480,7 +5742,7 @@ function renderPlanTraceGrid() {
 }
 
 function setActiveView(target) {
-  const allowedViews = new Set(["themes", "whatsnew", "comparison", "portfolio", "signals", "network", "alerts"]);
+  const allowedViews = new Set(["themes", "whatsnew", "growth", "comparison", "portfolio", "signals", "network", "alerts"]);
   if (!allowedViews.has(target)) {
     target = "themes";
   }
@@ -5490,6 +5752,7 @@ function setActiveView(target) {
   state.activeView = target;
   themesViewEl.classList.toggle("active-view", target === "themes");
   whatsNewViewEl.classList.toggle("active-view", target === "whatsnew");
+  growthTriggersViewEl.classList.toggle("active-view", target === "growth");
   comparisonViewEl.classList.toggle("active-view", target === "comparison");
   portfolioViewEl.classList.toggle("active-view", target === "portfolio");
   if (signalsViewEl) {
@@ -5523,6 +5786,10 @@ function setActiveView(target) {
     });
     clearNetworkRefreshTimer();
     clearAlertsRefreshTimer();
+  } else if (target === "growth") {
+    clearNetworkRefreshTimer();
+    clearAlertsRefreshTimer();
+    renderGrowthTriggers();
   } else if (target === "signals") {
     clearNetworkRefreshTimer();
     clearAlertsRefreshTimer();
@@ -5601,6 +5868,29 @@ function attachHandlers() {
       }
       renderDataStatus();
     }
+  });
+
+  if (growthTriggerSearchInput) {
+    growthTriggerSearchInput.addEventListener("input", (event) => {
+      growthTriggersState.search = event.target.value || "";
+      renderGrowthTriggers();
+    });
+  }
+
+  growthFocusButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      growthTriggersState.focus = button.dataset.growthFocus || "all";
+      growthFocusButtons.forEach((item) => item.classList.toggle("active", item === button));
+      renderGrowthTriggers();
+    });
+  });
+
+  growthCatalystButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      growthTriggersState.catalyst = button.dataset.growthCatalyst || "all";
+      growthCatalystButtons.forEach((item) => item.classList.toggle("active", item === button));
+      renderGrowthTriggers();
+    });
   });
 
   viewLinks.forEach((link) => {
@@ -6008,6 +6298,8 @@ async function pollAndApplyUpdates() {
 
     if (state.activeView === "themes") {
       renderMatrix();
+    } else if (state.activeView === "growth") {
+      renderGrowthTriggers();
     }
 
     if (state.activeClusterId && modal.open) {
@@ -6094,6 +6386,7 @@ async function init() {
   renderPlanTraceGrid();
   renderWhatsNewLog();
   renderMatrix();
+  renderGrowthTriggers();
   if (runtimeState.enablePortfolioView) {
     renderPortfolio();
   }

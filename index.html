@@ -16,6 +16,7 @@
       <nav class="nav-links">
         <a href="#" class="active" data-app-view-target="themes">Themes</a>
         <a href="#" class="muted" data-app-view-target="whatsnew">What's New</a>
+        <a href="#" class="muted" data-app-view-target="growth">Growth Triggers</a>
         <a href="#" class="muted" data-app-view-target="portfolio">Portfolio</a>
         <a href="#" class="muted" data-app-view-target="signals">Signals &amp; Analysis</a>
         <a href="#" class="muted" data-app-view-target="comparison">Comparison</a>
@@ -131,6 +132,99 @@
             <h3>Recent Updates</h3>
             <div id="whatsNewLog" class="whats-new-log-list"></div>
           </section>
+        </section>
+      </section>
+
+      <section id="growthTriggersView" class="app-view">
+        <section class="hero growth-hero">
+          <div>
+            <p class="kicker">Catalyst Discovery Workspace</p>
+            <h1>Growth <span>Triggers</span></h1>
+            <p class="subhead">
+              Track the industry and company signals most likely to drive the next leg of earnings, re-rating, or capital rotation across the India universe.
+            </p>
+          </div>
+          <div class="growth-hero-controls">
+            <span class="status-pill status-pill-ok">Live trigger board</span>
+            <span id="growthTriggersMeta" class="status-pill status-pill-muted">Scanning market breadth…</span>
+          </div>
+        </section>
+
+        <section class="growth-how-grid">
+          <article class="chart-card growth-how-card">
+            <header class="compare-card-head">
+              <h3>How To Use This</h3>
+              <p>Designed for fast scanning, not guesswork.</p>
+            </header>
+            <ol class="growth-steps">
+              <li>Start with the featured trigger to see where breadth, momentum, and leadership are aligning now.</li>
+              <li>Use the focus and catalyst filters to isolate industries, portfolio-linked names, or breakout setups.</li>
+              <li>Jump into Comparison or Theme Grid once a trigger looks actionable, then validate before trading.</li>
+            </ol>
+          </article>
+
+          <article class="chart-card growth-summary-card">
+            <header class="compare-card-head">
+              <h3>Trigger Snapshot</h3>
+              <p>Real-time summary of the current board.</p>
+            </header>
+            <div id="growthTriggerSummary" class="growth-summary-grid"></div>
+          </article>
+        </section>
+
+        <section class="growth-toolbar" aria-label="Growth trigger filters">
+          <input
+            id="growthTriggerSearchInput"
+            type="text"
+            placeholder="Search cluster, head, stock, or portfolio symbol..."
+            autocomplete="off"
+          />
+          <div id="growthFocusGroup" class="compare-pill-group" role="group" aria-label="Growth trigger focus">
+            <button class="compare-pill active" data-growth-focus="all" type="button">All Triggers</button>
+            <button class="compare-pill" data-growth-focus="industries" type="button">Industries</button>
+            <button class="compare-pill" data-growth-focus="portfolio" type="button">Portfolio Linked</button>
+            <button class="compare-pill" data-growth-focus="breakouts" type="button">Breakouts</button>
+          </div>
+          <div id="growthCatalystGroup" class="compare-pill-group" role="group" aria-label="Catalyst filter">
+            <button class="compare-pill active" data-growth-catalyst="all" type="button">All Catalysts</button>
+            <button class="compare-pill" data-growth-catalyst="breakout" type="button">Breakout</button>
+            <button class="compare-pill" data-growth-catalyst="earnings" type="button">Earnings</button>
+            <button class="compare-pill" data-growth-catalyst="policy" type="button">Policy</button>
+            <button class="compare-pill" data-growth-catalyst="demand" type="button">Demand</button>
+            <button class="compare-pill" data-growth-catalyst="capex" type="button">Capex</button>
+          </div>
+        </section>
+
+        <section class="growth-grid">
+          <article class="chart-card growth-featured-card">
+            <header class="compare-card-head">
+              <h3>Featured Trigger</h3>
+              <p>Highest-conviction industry setup right now.</p>
+            </header>
+            <div id="growthFeaturedTrigger" class="growth-featured-body">
+              <div class="scan-empty">Waiting for market data to build the first trigger board.</div>
+            </div>
+          </article>
+
+          <aside class="scan-card growth-feed-card">
+            <header class="compare-card-head">
+              <h3>Trigger Feed</h3>
+              <p>Company and industry setups ranked by breadth and momentum.</p>
+            </header>
+            <div id="growthTriggerFeed" class="growth-feed-list">
+              <div class="scan-empty">No trigger feed available yet.</div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="chart-card growth-coverage-card">
+          <header class="compare-card-head">
+            <h3>Coverage Cloud</h3>
+            <p>Fast view of sectors and micro-clusters with active catalysts.</p>
+          </header>
+          <div id="growthCoverageCloud" class="growth-coverage-cloud">
+            <div class="scan-empty">Coverage cloud will populate after the universe loads.</div>
+          </div>
         </section>
       </section>
 
