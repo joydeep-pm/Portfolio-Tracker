@@ -383,6 +383,9 @@ let state = {
   heads: [],
   clusters: [],
   stocks: [],
+  activeRoute: "tracker",
+  explorerMode: "universe",
+  viewType: "tracker",
   mode: "all",
   search: "",
   isLive: true,
@@ -756,6 +759,10 @@ function normalizeViewTarget(target) {
     tracker: "tracker",
     growth: "universe",
     universe: "universe",
+    sector: "sector",
+    sectors: "sector",
+    industry: "industry",
+    industries: "industry",
     domain: "domain",
     comparison: "compare",
     compare: "compare",
@@ -771,19 +778,66 @@ function normalizeViewTarget(target) {
   return aliases[key] || "tracker";
 }
 
+function explorerRootRoute() {
+  return state.explorerMode === "domain" ? "domain" : "universe";
+}
+
 function isExplorerView(view) {
-  return view === "universe" || view === "domain";
+  return view === "universe" || view === "domain" || view === "sector" || view === "industry";
+}
+
+function resolveWorkspaceRoot(route) {
+  if (route === "domain") return "domain";
+  if (route === "sector" || route === "industry") return explorerRootRoute();
+  return route;
+}
+
+function normalizeExplorerModeFromRoute(route, explicitMode = "") {
+  const explicit = sanitizeExplorerMode(explicitMode);
+  if (explicit) return explicit;
+  if (route === "domain") return "domain";
+  if (route === "universe") return "universe";
+  return state.explorerMode || "universe";
+}
+
+function resolveCompareWindow(value) {
+  return COMPARE_WINDOWS[value] ? value : compareState.window;
+}
+
+function sanitizeCompareMode(value) {
+  return ["all", "nse", "bse"].includes(value) ? value : compareState.exchange;
+}
+
+function sanitizeExplorerMode(value) {
+  return value === "domain" ? "domain" : "universe";
 }
 
 function hydrateViewStateFromUrl() {
   const params = new URLSearchParams(window.location.search);
-  state.activeView = normalizeViewTarget(params.get("view") || state.activeView);
+  const rawView = normalizeViewTarget(params.get("view"));
+  const explicitMode = sanitizeExplorerMode(params.get("type"));
+  state.explorerMode = normalizeExplorerModeFromRoute(rawView, explicitMode);
+  state.activeRoute = rawView;
+  state.activeView = resolveWorkspaceRoot(rawView);
+  state.viewType = isExplorerView(state.activeRoute) ? state.explorerMode : state.activeView;
   explorerState.selectedHeadName = params.get("sector") || "";
   explorerState.selectedClusterId = params.get("industry") || "";
-  const compareWindow = params.get("compareWindow");
-  if (COMPARE_WINDOWS[compareWindow]) compareState.window = compareWindow;
-  const compareExchange = params.get("compareExchange");
-  if (["all", "nse", "bse"].includes(compareExchange)) compareState.exchange = compareExchange;
+  compareState.window = resolveCompareWindow(params.get("tf") || params.get("compareWindow"));
+  compareState.exchange = sanitizeCompareMode(params.get("compareMode") || params.get("compareExchange"));
+  const compareTarget = params.get("compareTarget") || "";
+  if (compareTarget) {
+    compareState.selectedClusterIds = compareTarget
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean)
+      .slice(0, MAX_COMPARE_SELECTION);
+  } else {
+    compareState.selectedClusterIds = [];
+  }
+  const uiMode = params.get("mode");
+  if (["all", "movers", "laggards"].includes(uiMode)) {
+    state.mode = uiMode;
+  }
   const symbol = params.get("symbol");
   if (symbol) {
     const [exchange, ticker] = symbol.includes(":") ? symbol.split(":") : ["NSE", symbol];
@@ -794,7 +848,16 @@ function hydrateViewStateFromUrl() {
 
 function syncUrlState() {
   const params = new URLSearchParams(window.location.search);
-  params.set("view", state.activeView);
+  params.set("view", state.activeRoute);
+  params.set("tf", compareState.window);
+  if (isExplorerView(state.activeRoute)) {
+    params.set("type", state.explorerMode);
+  } else if (state.viewType) {
+    params.set("type", state.viewType);
+  } else {
+    params.delete("type");
+  }
+  params.set("mode", state.mode);
   if (isExplorerView(state.activeView) && explorerState.selectedHeadName) {
     params.set("sector", explorerState.selectedHeadName);
   } else {
@@ -805,14 +868,22 @@ function syncUrlState() {
   } else {
     params.delete("industry");
   }
-  if (state.activeView === "compare") {
+  if (state.activeRoute === "compare") {
     params.set("compareWindow", compareState.window);
     params.set("compareExchange", compareState.exchange);
+    params.set("compareMode", compareState.exchange);
+    if (compareState.selectedClusterIds.length) {
+      params.set("compareTarget", compareState.selectedClusterIds.join(","));
+    } else {
+      params.delete("compareTarget");
+    }
   } else {
     params.delete("compareWindow");
     params.delete("compareExchange");
+    params.delete("compareMode");
+    params.delete("compareTarget");
   }
-  if (state.activeView === "fundamentals" && signalsState.selectedStockKey) {
+  if (state.activeRoute === "fundamentals" && signalsState.selectedStockKey) {
     params.set("symbol", signalsState.selectedStockKey);
   } else {
     params.delete("symbol");
@@ -2721,10 +2792,67 @@ function topStocksForCluster(cluster, limit = 8) {
 }
 
 function openCompanyInsights(symbol, exchange, clusterId = "") {
+  onOpenCompanyInsights(symbol, exchange, clusterId);
+}
+
+function onOpenCompanyInsights(symbol, exchange, clusterId = "") {
   signalsState.selectedType = "stock";
   signalsState.selectedStockKey = stockKey(symbol, exchange);
   signalsState.selectedClusterId = clusterId ? String(clusterId) : "";
   setActiveView("fundamentals");
+}
+
+function onTrackerSectorClick(name, options = {}) {
+  onSectorClick(name, {
+    mode: sanitizeExplorerMode(options.mode || state.activeView),
+  });
+}
+
+function onTrackerIndustryClick(clusterId, options = {}) {
+  onIndustryClick(clusterId, {
+    mode: sanitizeExplorerMode(options.mode || state.activeView),
+  });
+}
+
+function onDomainIndustryClick(clusterId) {
+  onIndustryClick(clusterId, { mode: "domain" });
+}
+
+function onSectorClick(name, options = {}) {
+  const normalized = String(name || "").trim();
+  if (!normalized) return;
+
+  state.explorerMode = sanitizeExplorerMode(options.mode || state.explorerMode);
+  explorerState.selectedHeadName = normalized;
+  explorerState.selectedClusterId = "";
+  setActiveView("sector");
+}
+
+function onIndustryClick(clusterId, options = {}) {
+  const normalized = String(clusterId || "").trim();
+  if (!normalized) return;
+
+  state.explorerMode = sanitizeExplorerMode(options.mode || state.explorerMode);
+  if (!explorerState.selectedHeadName) {
+    explorerState.selectedHeadName = state.clusters.find((cluster) => cluster.id === normalized)?.headName || "";
+  }
+  explorerState.selectedClusterId = normalized;
+  setActiveView("industry");
+}
+
+function onSectorBack() {
+  explorerState.selectedHeadName = "";
+  explorerState.selectedClusterId = "";
+  setActiveView(explorerRootRoute());
+}
+
+function onIndustryBack() {
+  if (explorerState.selectedClusterId) {
+    explorerState.selectedClusterId = "";
+    setActiveView("sector");
+    return;
+  }
+  onSectorBack();
 }
 
 function openCompareForClusters(clusterIds = []) {
@@ -6236,7 +6364,9 @@ function setActiveView(target) {
   if (target === "marketmap" && !runtimeState.enablePortfolioView) {
     target = "tracker";
   }
-  state.activeView = target;
+  state.activeRoute = target;
+  state.activeView = resolveWorkspaceRoot(target);
+  state.viewType = isExplorerView(state.activeRoute) ? state.explorerMode : state.activeView;
   syncUrlState();
   themesViewEl.classList.toggle("active-view", target === "tracker");
   whatsNewViewEl.classList.toggle("active-view", target === "mapper");
@@ -6313,12 +6443,12 @@ function setActiveView(target) {
 }
 
 async function initializeComparisonState() {
-  const defaultSelection = [...state.clusters]
-    .sort((a, b) => b.momentum["1M"] - a.momentum["1M"])
-    .slice(0, 4)
-    .map((cluster) => cluster.id);
-
-  compareState.selectedClusterIds = defaultSelection;
+  if (!compareState.selectedClusterIds.length) {
+    compareState.selectedClusterIds = [...state.clusters]
+      .sort((a, b) => b.momentum["1M"] - a.momentum["1M"])
+      .slice(0, 4)
+      .map((cluster) => cluster.id);
+  }
   compareState.peerAnchor = pickDefaultPeerAnchor();
   applyCompareButtonStates();
   initCompareChart();
@@ -6419,30 +6549,25 @@ function attachHandlers() {
   if (explorerBackBtn) {
     explorerBackBtn.addEventListener("click", () => {
       if (explorerState.selectedClusterId) {
-        explorerState.selectedClusterId = "";
+        onIndustryBack();
       } else {
-        explorerState.selectedHeadName = "";
+        onSectorBack();
       }
-      syncUrlState();
-      renderExplorerPrimary();
     });
   }
 
   document.addEventListener("click", (event) => {
     const headButton = event.target.closest("[data-explorer-head]");
     if (headButton) {
-      explorerState.selectedHeadName = headButton.dataset.explorerHead || "";
-      explorerState.selectedClusterId = "";
-      syncUrlState();
-      renderExplorerPrimary();
+      const mode = state.activeView === "domain" ? "domain" : state.activeView;
+      onTrackerSectorClick(headButton.dataset.explorerHead || "", { mode });
       return;
     }
 
     const clusterButton = event.target.closest("[data-explorer-cluster]");
     if (clusterButton) {
-      explorerState.selectedClusterId = clusterButton.dataset.explorerCluster || "";
-      syncUrlState();
-      renderExplorerPrimary();
+      const mode = state.activeView === "domain" ? "domain" : "universe";
+      onTrackerIndustryClick(clusterButton.dataset.explorerCluster || "", { mode });
       return;
     }
 
@@ -6475,7 +6600,7 @@ function attachHandlers() {
     if (companyButton) {
       const [exchange, symbol, clusterId] = String(companyButton.dataset.companyInsight || "").split("|");
       if (exchange && symbol) {
-        openCompanyInsights(symbol, exchange, clusterId);
+        onOpenCompanyInsights(symbol, exchange, clusterId);
       }
     }
   });
@@ -6973,7 +7098,7 @@ async function init() {
   renderNetworkDashboard();
   renderAlertsView();
   await initializeComparisonState();
-  setActiveView(state.activeView);
+  setActiveView(state.activeRoute);
   renderDataStatus();
   scheduleNextPoll(baseIntervalMs());
   window.setInterval(renderDataStatus, 1000);
